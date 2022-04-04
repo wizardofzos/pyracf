@@ -1,0 +1,3613 @@
+{
+    "group-basic-data-record": {
+      "record-type": "0100",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/gsr.htm",
+      "offsets": [{
+          "field-name": "GPBD_RECORD_TYPE",
+          "field-desc": "Record type of the Group Basic Data record (0100).",
+          "type": "int",
+          "start": "1",
+          "end": "4"
+        },
+        {
+          "field-name": "GPBD_NAME",
+          "field-desc": "Group name as taken from the profile name.",
+          "type": "char",
+          "start": "6",
+          "end": "13"
+        },
+        {
+          "field-name": "GPBD_SUPGRP_ID",
+          "field-desc": "Name of the superior group to this group.",
+          "type": "char",
+          "start": "15",
+          "end": "22"
+        },
+        {
+          "field-name": "GPBD_CREATE_DATE",
+          "field-desc": "Date that the group was defined.",
+          "type": "date",
+          "start": "24",
+          "end": "33"
+        },
+        {
+          "field-name": "GPBD_OWNER_ID",
+          "field-desc": "The user ID or group name which owns the profile.",
+          "type": "char",
+          "start": "35",
+          "end": "42"
+        },
+        {
+          "field-name": "GPBD_UACC",
+          "field-desc": "The default universal access. Valid values are NONE for all groups other than the IBM-defined VSAMDSET group which has CREATE.",
+          "type": "char",
+          "start": "44",
+          "end": "51"
+        },
+        {
+          "field-name": "GPBD_NOTERMUACC",
+          "type": "yes/no",
+          "start": "53",
+          "end": "56"
+        },
+        {
+          "field-name": "GPBD_UNIVERSAL",
+          "type": "yes/no",
+          "start": "359",
+          "end": "362"
+        }
+      ]
+    },
+    "group-subgroups-record": {
+      "record-type": "0101",
+      "ref-url": "meh",
+      "offsets": [{
+        "field-desc": "Record type of the Group Subgroups record (0101).",
+        "start": "1",
+        "field-name": "GPSGRP_RECORD_TYPE",
+        "end": "4",
+        "type": "Int"
+      }, {
+        "field-desc": "Group name as taken from the profile name.",
+        "start": "6",
+        "field-name": "GPSGRP_NAME",
+        "end": "13",
+        "type": "Char"
+      }, {
+        "field-desc": "The name of a subgroup within the group.",
+        "start": "15",
+        "field-name": "GPSGRP_SUBGRP_ID",
+        "end": "22",
+        "type": "Char"
+      }]
+    },
+    "group-members-record": {
+      "record-type": "0102",
+      "ref-url": "neh",
+      "offsets": [{
+          "field-desc": "Record type of the Group Members record (0102).",
+          "start": "1",
+          "field-name": "GPMEM_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Group name as taken from the profile name.",
+          "start": "6",
+          "field-name": "GPMEM_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "A user ID within the group.",
+          "start": "15",
+          "field-name": "GPMEM_MEMBER_ID",
+          "end": "22",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Indicates the authority that the user ID has within the group. Valid values are USE , CONNECT , JOIN , and CREATE .",
+          "start": "24",
+          "field-name": "GPMEM_AUTH",
+          "end": "31",
+          "type": "Char"
+        }
+      ]
+    },
+    "group-dfp-data-record": {
+      "record-type": "0110",
+      "ref-url": "meh",
+      "offsets": [{
+        "field-desc": "Record type of the Group DFP Data record (0110).",
+        "start": "1",
+        "field-name": "GPDFP_RECORD_TYPE",
+        "end": "4",
+        "type": "Int"
+      }, {
+        "field-desc": "Group name as taken from the profile name.",
+        "start": "6",
+        "field-name": "GPDFP_NAME",
+        "end": "13",
+        "type": "Char"
+      }, {
+        "field-desc": "Default application name for the group.",
+        "start": "15",
+        "field-name": "GPDFP_DATAAPPL",
+        "end": "22",
+        "type": "Char"
+      }, {
+        "field-desc": "Default data class for the group.",
+        "start": "24",
+        "field-name": "GPDFP_DATACLAS",
+        "end": "31",
+        "type": "Char"
+      }, {
+        "field-desc": "Default management class for the group.",
+        "start": "33",
+        "field-name": "GPDFP_MGMTCLAS",
+        "end": "40",
+        "type": "Char"
+      }, {
+        "field-desc": "Default storage class for the group.",
+        "start": "42",
+        "field-name": "GPDFP_STORCLAS",
+        "end": "49",
+        "type": "Char"
+      }]
+    },
+    "group-omvs-data-record": {
+      "record-type": "0120",
+      "ref-url": "https://www.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/gsr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the Group OMVS Data record (0120).",
+          "start": "1",
+          "field-name": "GPOMVS_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Group name as taken from the profile name.",
+          "start": "6",
+          "field-name": "GPOMVS_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "OMVS z/OS UNIX group identifier (GID) associated with the group name from the profile.",
+          "start": "15",
+          "field-name": "GPOMVS_GID",
+          "end": "24",
+          "type": "Char"
+        }
+      ]
+    },
+    "group-ovm-data-record": {
+      "record-type": "0130",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the Group OVM Data record (0130).",
+          "start": "1",
+          "field-name": "GPOVM_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Group name as taken from the profile name.",
+          "start": "6",
+          "field-name": "GPOVM_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "OpenExtensions group identifier (GID) associated with the group name from the profile.",
+          "start": "15",
+          "field-name": "GPOVM_GID",
+          "end": "24",
+          "type": "Char"
+        }
+      ]
+    },
+    "group-tme-data-record": {
+      "record-type": "0141",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the Group TME Data record (0141).",
+          "start": "1",
+          "field-name": "GPTME_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Group name as taken from the profile name.",
+          "start": "6",
+          "field-name": "GPTME_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Role profile name.",
+          "start": "15",
+          "field-name": "GPTME_ROLE",
+          "end": "260",
+          "type": "Char"
+        }
+      ]
+    },
+    "group-csdata-custom-fields": {
+      "record-type": "0151",
+      "ref-url": "meh",
+      "offsets": [{
+          "field-desc": "Record type of the Group CSDATA custom fields (0151).",
+          "start": "1",
+          "field-name": "GPCSD_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Group name.",
+          "start": "6",
+          "field-name": "GPCSD_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Data type for the custom field. Valid values are CHAR, FLAG, HEX, NUM.",
+          "start": "15",
+          "field-name": "GPCSD_TYPE",
+          "end": "18",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Custom field keyword; maximum length = 8.",
+          "start": "20",
+          "field-name": "GPCSD_KEY",
+          "end": "51",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Custom field value.",
+          "start": "53",
+          "field-name": "GPCSD_VALUE",
+          "end": "1152",
+          "type": "Char"
+        }
+      ]
+    },
+    "user-basic-data-record": {
+      "record-type": "0200",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm%23wq1264",
+      "offsets": [{
+          "field-name": "USBD_RECORD_TYPE",
+          "field-desc": "Record type of the User Basic Data record (0200).",
+          "type": "int",
+          "start": "1",
+          "end": "4"
+        },
+        {
+          "field-name": "USBD_NAME",
+          "type": "char",
+          "start": "6",
+          "end": "13"
+        },
+        {
+          "field-name": "USBD_CREATE_DATE",
+          "type": "date",
+          "start": "15",
+          "end": "24"
+        },
+        {
+          "field-name": "USBD_OWNER_ID",
+          "type": "char",
+          "start": "26",
+          "end": "33"
+        },
+        {
+          "field-name": "USBD_ADSP",
+          "type": "yes/no",
+          "start": "35",
+          "end": "38"
+        },
+        {
+          "field-name": "USBD_SPECIAL",
+          "type": "yes/no",
+          "start": "40",
+          "end": "43"
+        },
+        {
+          "field-name": "USBD_OPER",
+          "type": "yes/no",
+          "start": "45",
+          "end": "48"
+        },
+        {
+          "field-name": "USBD_REVOKE",
+          "type": "yes/no",
+          "start": "50",
+          "end": "53"
+        },
+        {
+          "field-name": "USBD_GRPACC",
+          "type": "yes/no",
+          "start": "55",
+          "end": "58"
+        },
+        {
+          "field-name": "USBD_PWD_INTERVAL",
+          "type": "int",
+          "start": "60",
+          "end": "62"
+        },
+        {
+          "field-name": "USBD_PWD_DATE",
+          "type": "date",
+          "start": "64",
+          "end": "73"
+        },
+        {
+          "field-name": "USBD_PROGRAMMER",
+          "type": "char",
+          "start": "75",
+          "end": "94"
+        },
+        {
+          "field-name": "USBD_DEFGRP_ID",
+          "type": "char",
+          "start": "96",
+          "end": "103"
+        },
+        {
+          "field-name": "USBD_LASTJOB_TIME",
+          "type": "time",
+          "start": "105",
+          "end": "112"
+        },
+        {
+          "field-name": "USBD_LASTJOB_DATE",
+          "type": "date",
+          "start": "114",
+          "end": "123"
+        },
+        {
+          "field-name": "USBD_AUDITOR",
+          "type": "yes/no",
+          "start": "386",
+          "end": "389"
+        },
+        {
+          "field-name": "USBD_NOPWD",
+          "type": "char",
+          "start": "391",
+          "end": "394"
+        },
+        {
+          "field-name": "USBD_OIDCARD",
+          "type": "yes/no",
+          "start": "396",
+          "end": "399"
+        },
+        {
+          "field-name": "USBD_REVOKE_CNT",
+          "type": "int",
+          "start": "405",
+          "end": "407"
+        },
+        {
+          "field-name": "USBD_SECLEVEL",
+          "type": "int",
+          "start": "454",
+          "end": "456"
+        },
+        {
+          "field-name": "USBD_REVOKE_DATE",
+          "type": "date",
+          "start": "458",
+          "end": "467"
+        },
+        {
+          "field-name": "USBD_RESUME_DATE",
+          "type": "date",
+          "start": "469",
+          "end": "478"
+        },
+        {
+          "field-name": "USBD_ACCESS_SUN",
+          "type": "yes/no",
+          "start": "480",
+          "end": "483"
+        },
+        {
+          "field-name": "USBD_ACCESS_MON",
+          "type": "yes/no",
+          "start": "485",
+          "end": "488"
+        },
+        {
+          "field-name": "USBD_ACCESS_TUE",
+          "type": "yes/no",
+          "start": "490",
+          "end": "493"
+        },
+        {
+          "field-name": "USBD_ACCESS_WED",
+          "type": "yes/no",
+          "start": "495",
+          "end": "498"
+        },
+        {
+          "field-name": "USBD_ACCESS_THU",
+          "type": "yes/no",
+          "start": "500",
+          "end": "503"
+        },
+        {
+          "field-name": "USBD_ACCESS_FRI",
+          "type": "yes/no",
+          "start": "505",
+          "end": "508"
+        },
+        {
+          "field-name": "USBD_ACCESS_SAT",
+          "type": "yes/no",
+          "start": "510",
+          "end": "513"
+        },
+        {
+          "field-name": "USBD_START_TIME",
+          "type": "time",
+          "start": "515",
+          "end": "522"
+        },
+        {
+          "field-name": "USBD_END_TIME",
+          "type": "time",
+          "start": "524",
+          "end": "531"
+        },
+        {
+          "field-name": "USBD_SECLABEL",
+          "type": "char",
+          "start": "533",
+          "end": "540"
+        },
+        {
+          "field-name": "USBD_PHR_DATE",
+          "type": "date",
+          "start": "561",
+          "end": "570"
+        }
+      ]
+    },
+    "user-categories-record": {
+      "record-type": "0201",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the User Categories record (0201).",
+          "start": "1",
+          "field-name": "USCAT_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from the profile name.",
+          "start": "6",
+          "field-name": "USCAT_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Category to which the user has access.",
+          "start": "15",
+          "field-name": "USCAT_CATEGORY",
+          "end": "19",
+          "type": "Int"
+        }
+      ]
+    },
+    "user-classes-record": {
+      "record-type": "0202",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the User Classes record (0202).",
+          "start": "1",
+          "field-name": "USCLA_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from the profile name.",
+          "start": "6",
+          "field-name": "USCLA_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "A class in which the user is allowed to define profiles.",
+          "start": "15",
+          "field-name": "USCLA_CLASS",
+          "end": "22",
+          "type": "Char"
+        }
+      ]
+    },
+    "user-group-connections-record": {
+      "record-type": "0203",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the User Group Connections record (0203).",
+          "start": "1",
+          "field-name": "USGCON_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from the profile name.",
+          "start": "6",
+          "field-name": "USGCON_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The group with which the user is associated.",
+          "start": "15",
+          "field-name": "USGCON_GRP_ID",
+          "end": "22",
+          "type": "Char"
+        }
+      ]
+    },
+    "installation-data-record": {
+      "record-type": "0204",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the User Installation Data record (0204).",
+          "start": "1",
+          "field-name": "USINSTD_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from the profile name.",
+          "start": "6",
+          "field-name": "USINSTD_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The name of the installation-defined field.",
+          "start": "15",
+          "field-name": "USINSTD_USR_NAME",
+          "end": "22",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The data for the installation-defined field.",
+          "start": "24",
+          "field-name": "USINSTD_USR_DATA",
+          "end": "278",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The flag for the installation-defined field in the form X<cc> .",
+          "start": "280",
+          "field-name": "USINSTD_USR_FLAG",
+          "end": "287",
+          "type": "Char"
+        }
+      ]
+    },
+    "user-connect-data-record": {
+      "record-type": "0205",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the User Connect Data record (0205).",
+          "start": "1",
+          "field-name": "USCON_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from the profile name.",
+          "start": "6",
+          "field-name": "USCON_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The group name.",
+          "start": "15",
+          "field-name": "USCON_GRP_ID",
+          "end": "22",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The date that the user was connected.",
+          "start": "24",
+          "field-name": "USCON_CONNECT_DATE",
+          "end": "33",
+          "type": "Date"
+        },
+        {
+          "field-desc": "The owner of the user-group connection.",
+          "start": "35",
+          "field-name": "USCON_OWNER_ID",
+          "end": "42",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Time that the user last connected to this group.",
+          "start": "44",
+          "field-name": "USCON_LASTCON_TIME",
+          "end": "51",
+          "type": "Time"
+        },
+        {
+          "field-desc": "Date that the user last connected to this group.",
+          "start": "53",
+          "field-name": "USCON_LASTCON_DATE",
+          "end": "62",
+          "type": "Date"
+        },
+        {
+          "field-desc": "The default universal access authority for all new resources the user defines while connected to the specified group. Valid values are NONE , READ , UPDATE , CONTROL , and ALTER .",
+          "start": "64",
+          "field-name": "USCON_UACC",
+          "end": "71",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The number of RACINITs issued for this user/group combination.",
+          "start": "73",
+          "field-name": "USCON_INIT_CNT",
+          "end": "77",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Does this user have the ADSP attribute in this group?",
+          "start": "79",
+          "field-name": "USCON_GRP_ADSP",
+          "end": "82",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Does this user have GROUP-SPECIAL in this group?",
+          "start": "84",
+          "field-name": "USCON_GRP_SPECIAL",
+          "end": "87",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Does this user have GROUP-OPERATIONS in this group?",
+          "start": "89",
+          "field-name": "USCON_GRP_OPER",
+          "end": "92",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this user revoked?",
+          "start": "94",
+          "field-name": "USCON_REVOKE",
+          "end": "97",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Does this user have the GRPACC attribute?",
+          "start": "99",
+          "field-name": "USCON_GRP_ACC",
+          "end": "102",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Does this user have the NOTERMUACC attribute in this group?",
+          "start": "104",
+          "field-name": "USCON_NOTERMUACC",
+          "end": "107",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Does this user have the GROUP-AUDITOR attribute in this group?",
+          "start": "109",
+          "field-name": "USCON_GRP_AUDIT",
+          "end": "112",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "The date that the user's connection to the group will be revoked.",
+          "start": "114",
+          "field-name": "USCON_REVOKE_DATE",
+          "end": "123",
+          "type": "Date"
+        },
+        {
+          "field-desc": "The date that the user's connection to the group will be resumed.",
+          "start": "125",
+          "field-name": "USCON_RESUME_DATE",
+          "end": "134",
+          "type": "Date"
+        }
+      ]
+    },
+    "rrsf-data-record": {
+      "record-type": "0206",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the RRSF data record (0206).",
+          "start": "1",
+          "field-name": "USRSF_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from the profile name.",
+          "start": "6",
+          "field-name": "USRSF_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Target node name.",
+          "start": "15",
+          "field-name": "USRSF_TARG_NODE",
+          "end": "22",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Target user ID.",
+          "start": "24",
+          "field-name": "USRSF_TARG_USER_ID",
+          "end": "31",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Version of this record.",
+          "start": "33",
+          "field-name": "USRSF_VERSION",
+          "end": "35",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Is this a peer user ID?",
+          "start": "37",
+          "field-name": "USRSF_PEER",
+          "end": "40",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is USRSF_NAME managing this ID?",
+          "start": "42",
+          "field-name": "USRSF_MANAGING",
+          "end": "45",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is USRSF_NAME being managed by this ID?",
+          "start": "47",
+          "field-name": "USRSF_MANAGED",
+          "end": "50",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this remote RACF association pending?",
+          "start": "52",
+          "field-name": "USRSF_REMOTE_PEND",
+          "end": "55",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this local RACF association pending?",
+          "start": "57",
+          "field-name": "USRSF_LOCAL_PEND",
+          "end": "60",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is there password synchronization with this user ID?",
+          "start": "62",
+          "field-name": "USRSF_PWD_SYNC",
+          "end": "65",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Was a system error encountered on the remote system?",
+          "start": "67",
+          "field-name": "USRSF_REM_REFUSAL",
+          "end": "70",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "GMT date stamp for when this record was defined.",
+          "start": "72",
+          "field-name": "USRSF_DEFINE_DATE",
+          "end": "81",
+          "type": "Date"
+        },
+        {
+          "field-desc": "GMT time stamp for when this record was defined.",
+          "start": "83",
+          "field-name": "USRSF_DEFINE_TIME",
+          "end": "97",
+          "type": "Time"
+        },
+        {
+          "field-desc": "GMT date stamp when this association was approved or refused. Based on the REMOTE_REFUSAL bit setting.",
+          "start": "99",
+          "field-name": "USRSF_ACCEPT_DATE",
+          "end": "108",
+          "type": "Date"
+        },
+        {
+          "field-desc": "GMT time stamp when this association was approved or refused. Based on the REMOTE_REFUSAL bit setting.",
+          "start": "110",
+          "field-name": "USRSF_ACCEPT_TIME",
+          "end": "124",
+          "type": "Time"
+        },
+        {
+          "field-desc": "User ID who created this entry.",
+          "start": "126",
+          "field-name": "USRSF_CREATOR_ID",
+          "end": "133",
+          "type": "Char"
+        }
+      ]
+    },
+    "user-cert-name-record": {
+      "record-type": "0207",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the user certificate name record (0207).",
+          "start": "1",
+          "field-name": "USCERT_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from the profile name.",
+          "start": "6",
+          "field-name": "USCERT_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Digital certificate name.",
+          "start": "15",
+          "field-name": "USCERT_CERT_NAME",
+          "end": "260",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Digital certificate label.",
+          "start": "262",
+          "field-name": "USCERT_CERTLABL",
+          "end": "293",
+          "type": "Char"
+        }
+      ]
+    },
+    "user-associated-mappings-record": {
+      "record-type": "0208",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the User Associated Mappings record (0208).",
+          "start": "1",
+          "field-name": "USNMAP_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from the profile name.",
+          "start": "6",
+          "field-name": "USNMAP_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The label associated with this mapping.",
+          "start": "15",
+          "field-name": "USNMAP_LABEL",
+          "end": "46",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The name of the DIGTNMAP profile associated with this user.",
+          "start": "48",
+          "field-name": "USNMAP_MAP_NAME",
+          "end": "293",
+          "type": "Char"
+        }
+      ]
+    },
+    "user-associated-distributed-mappings-record": {
+      "record-type": "0209",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the User Associated Distributed Mappings record (0209).",
+          "start": "1",
+          "field-name": "USDMAP_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from the profile name.",
+          "start": "6",
+          "field-name": "USDMAP_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The label associated with this mapping.",
+          "start": "15",
+          "field-name": "USDMAP_LABEL",
+          "end": "46",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The name of the IDIDMAP profile associated with this user. Note: This value is stored in the RACF database in UTF-8 format. If possible, database unload changes this value to the EBCDIC format. If not possible, hexadecimal values are produced.",
+          "start": "48",
+          "field-name": "USDMAP_MAP_NAME",
+          "end": "293",
+          "type": "Char"
+        }
+      ]
+    },
+    "user-dfp-data-record": {
+      "record-type": "0210",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the User DFP data record (0210).",
+          "start": "1",
+          "field-name": "USDFP_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from the profile name.",
+          "start": "6",
+          "field-name": "USDFP_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Default application name for the user.",
+          "start": "15",
+          "field-name": "USDFP_DATAAPPL",
+          "end": "22",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Default data class for the user.",
+          "start": "24",
+          "field-name": "USDFP_DATACLAS",
+          "end": "31",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Default management class for the user.",
+          "start": "33",
+          "field-name": "USDFP_MGMTCLAS",
+          "end": "40",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Default storage class for the user.",
+          "start": "42",
+          "field-name": "USDFP_STORCLAS",
+          "end": "49",
+          "type": "Char"
+        }
+      ]
+    },
+    "user-tso-data-record":{"record-type": "0220", "ref-url": "meh", "offsets": [{"field-desc": "Record type of the User TSO Data record (0220).", "start": "1", "field-name": "USTSO_RECORD_TYPE", "end": "4", "type": "Int"}, {"field-desc": "User ID as taken from the profile name.", "start": "6", "field-name": "USTSO_NAME", "end": "13", "type": "Char"}, {"field-desc": "The default account number.", "start": "15", "field-name": "USTSO_ACCOUNT", "end": "54", "type": "Char"}, {"field-desc": "The command issued at LOGON.", "start": "56", "field-name": "USTSO_COMMAND", "end": "135", "type": "Char"}, {"field-desc": "The default destination identifier.", "start": "137", "field-name": "USTSO_DEST", "end": "144", "type": "Char"}, {"field-desc": "The default hold class.", "start": "146", "field-name": "USTSO_HOLD_CLASS", "end": "146", "type": "Char"}, {"field-desc": "The default job class.", "start": "148", "field-name": "USTSO_JOB_CLASS", "end": "148", "type": "Char"}, {"field-desc": "The default logon procedure.", "start": "150", "field-name": "USTSO_LOGON_PROC", "end": "157", "type": "Char"}, {"field-desc": "The default logon region size.", "start": "159", "field-name": "USTSO_LOGON_SIZE", "end": "168", "type": "Int"}, {"field-desc": "The default message class.", "start": "170", "field-name": "USTSO_MSG_CLASS", "end": "170", "type": "Char"}, {"field-desc": "The maximum logon region size.", "start": "172", "field-name": "USTSO_LOGON_MAX", "end": "181", "type": "Int"}, {"field-desc": "The performance group associated with the user.", "start": "183", "field-name": "USTSO_PERF_GROUP", "end": "192", "type": "Int"}, {"field-desc": "The default sysout class.", "start": "194", "field-name": "USTSO_SYSOUT_CLASS", "end": "194", "type": "Char"}, {"field-desc": "The TSO user data, in hexadecimal in the form X<cccc> .", "start": "196", "field-name": "USTSO_USER_DATA", "end": "203", "type": "Char"}, {"field-desc": "The default SYSDA device.", "start": "205", "field-name": "USTSO_UNIT_NAME", "end": "212", "type": "Char"}, {"field-desc": "The default logon security label.", "start": "214", "field-name": "USTSO_SECLABEL", "end": "221", "type": "Char"}]},
+    "user-cics-data-record": {
+      "record-type": "0230",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the User CICS Data record (0230).",
+          "start": "1",
+          "field-name": "USCICS_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from the profile name.",
+          "start": "6",
+          "field-name": "USCICS_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The CICS operator identifier.",
+          "start": "15",
+          "field-name": "USCICS_OPIDENT",
+          "end": "17",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The CICS operator priority.",
+          "start": "19",
+          "field-name": "USCICS_OPPRTY",
+          "end": "23",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Is the extended recovery facility (XRF) NOFORCE option in effect?",
+          "start": "25",
+          "field-name": "USCICS_NOFORCE",
+          "end": "28",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "The terminal time-out value. Expressed in hh:mm",
+          "start": "30",
+          "field-name": "USCICS_TIMEOUT",
+          "end": "34",
+          "type": "Char"
+        }
+      ]
+    },
+    "user-cics-operator-class-record": {
+      "record-type": "0231",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the User CICS Operator Class record (0231).",
+          "start": "1",
+          "field-name": "USCOPC_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from the profile name.",
+          "start": "6",
+          "field-name": "USCOPC_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The class associated with the CICS operator.",
+          "start": "15",
+          "field-name": "USCOPC_OPCLASS",
+          "end": "17",
+          "type": "Char"
+        }
+      ]
+    },
+    "user-cics-rsl-keys-record": {
+      "record-type": "0232",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the User CICS RSL keys record (0232).",
+          "start": "1",
+          "field-name": "USCRSL_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from the profile name.",
+          "start": "6",
+          "field-name": "USCRSL_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "RSL key number.",
+          "start": "15",
+          "field-name": "USCRSL_KEY",
+          "end": "19",
+          "type": "Int"
+        }
+      ]
+    },
+    "user-cics-tsl-keys-record": {
+      "record-type": "0233",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the User CICS TSL keys record (0233).",
+          "start": "1",
+          "field-name": "USCTSL_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from the profile name.",
+          "start": "6",
+          "field-name": "USCTSL_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "TSL key number.",
+          "start": "15",
+          "field-name": "USCTSL_KEY",
+          "end": "19",
+          "type": "Int"
+        }
+      ]
+    },
+    "user-language-data-record": {
+      "record-type": "0240",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the User Language Data record (0240).",
+          "start": "1",
+          "field-name": "USLAN_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from the profile name.",
+          "start": "6",
+          "field-name": "USLAN_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The primary language for the user.",
+          "start": "15",
+          "field-name": "USLAN_PRIMARY",
+          "end": "17",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The secondary language for the user.",
+          "start": "19",
+          "field-name": "USLAN_SECONDARY",
+          "end": "21",
+          "type": "Char"
+        }
+      ]
+    },
+    "user-operparm-data-record": {
+      "record-type": "0250",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the User OPERPARM Data record (0250).",
+          "start": "1",
+          "field-name": "USOPR_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from the profile name.",
+          "start": "6",
+          "field-name": "USOPR_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The number of megabytes of storage that can be used for message queuing.",
+          "start": "15",
+          "field-name": "USOPR_STORAGE",
+          "end": "19",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Does this user have MASTER console authority?",
+          "start": "21",
+          "field-name": "USOPR_MASTERAUTH",
+          "end": "24",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Does this user have ALL console authority?",
+          "start": "26",
+          "field-name": "USOPR_ALLAUTH",
+          "end": "29",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Does this user have SYSAUTH console authority?",
+          "start": "31",
+          "field-name": "USOPR_SYSAUTH",
+          "end": "34",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Does this user have I/O console authority?",
+          "start": "36",
+          "field-name": "USOPR_IOAUTH",
+          "end": "39",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Does this user have CONS console authority?",
+          "start": "41",
+          "field-name": "USOPR_CONSAUTH",
+          "end": "44",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Does this user have INFO console authority?",
+          "start": "46",
+          "field-name": "USOPR_INFOAUTH",
+          "end": "49",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Do console messages contain a timestamp?",
+          "start": "51",
+          "field-name": "USOPR_TIMESTAMP",
+          "end": "54",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Do console messages contain a system ID?",
+          "start": "56",
+          "field-name": "USOPR_SYSTEMID",
+          "end": "59",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Do console messages contain a job ID?",
+          "start": "61",
+          "field-name": "USOPR_JOBID",
+          "end": "64",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Do console messages contain a message ID?",
+          "start": "66",
+          "field-name": "USOPR_MSGID",
+          "end": "69",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Are the job name and system name to be suppressed for messages issued from the JES3 global processor?",
+          "start": "71",
+          "field-name": "USOPR_X",
+          "end": "74",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Does the console receive WTOR messages?",
+          "start": "76",
+          "field-name": "USOPR_WTOR",
+          "end": "79",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Does the console receive immediate messages?",
+          "start": "81",
+          "field-name": "USOPR_IMMEDIATE",
+          "end": "84",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Does the console receive critical event messages?",
+          "start": "86",
+          "field-name": "USOPR_CRITICAL",
+          "end": "89",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Does the console receive eventual event messages?",
+          "start": "91",
+          "field-name": "USOPR_EVENTUAL",
+          "end": "94",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Does the console receive informational messages?",
+          "start": "96",
+          "field-name": "USOPR_INFO",
+          "end": "99",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Are broadcast messages to this console suppressed?",
+          "start": "101",
+          "field-name": "USOPR_NOBRODCAST",
+          "end": "104",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Does the console receive all messages?",
+          "start": "106",
+          "field-name": "USOPR_ALL",
+          "end": "109",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Are job names monitored?",
+          "start": "111",
+          "field-name": "USOPR_JOBNAMES",
+          "end": "114",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Are job names monitored with timestamps displayed?",
+          "start": "116",
+          "field-name": "USOPR_JOBNAMEST",
+          "end": "119",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Are user IDs displayed with each TSO initiation and termination?",
+          "start": "121",
+          "field-name": "USOPR_SESS",
+          "end": "124",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Are user IDs and timestamps displayed with each TSO initiation and termination?",
+          "start": "126",
+          "field-name": "USOPR_SESST",
+          "end": "129",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Are data set names and dispositions displayed with each data set that is freed?",
+          "start": "131",
+          "field-name": "USOPR_STATUS",
+          "end": "134",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 001?",
+          "start": "136",
+          "field-name": "USOPR_ROUTECODE001",
+          "end": "139",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 002?",
+          "start": "141",
+          "field-name": "USOPR_ROUTECODE002",
+          "end": "144",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 003?",
+          "start": "146",
+          "field-name": "USOPR_ROUTECODE003",
+          "end": "149",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 004?",
+          "start": "151",
+          "field-name": "USOPR_ROUTECODE004",
+          "end": "154",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 005?",
+          "start": "156",
+          "field-name": "USOPR_ROUTECODE005",
+          "end": "159",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 006?",
+          "start": "161",
+          "field-name": "USOPR_ROUTECODE006",
+          "end": "164",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 007?",
+          "start": "166",
+          "field-name": "USOPR_ROUTECODE007",
+          "end": "169",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 008?",
+          "start": "171",
+          "field-name": "USOPR_ROUTECODE008",
+          "end": "174",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 009?",
+          "start": "176",
+          "field-name": "USOPR_ROUTECODE009",
+          "end": "179",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 010?",
+          "start": "181",
+          "field-name": "USOPR_ROUTECODE010",
+          "end": "184",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 011?",
+          "start": "186",
+          "field-name": "USOPR_ROUTECODE011",
+          "end": "189",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 012?",
+          "start": "191",
+          "field-name": "USOPR_ROUTECODE012",
+          "end": "194",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 013?",
+          "start": "196",
+          "field-name": "USOPR_ROUTECODE013",
+          "end": "199",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 014?",
+          "start": "201",
+          "field-name": "USOPR_ROUTECODE014",
+          "end": "204",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 015?",
+          "start": "206",
+          "field-name": "USOPR_ROUTECODE015",
+          "end": "209",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 016?",
+          "start": "211",
+          "field-name": "USOPR_ROUTECODE016",
+          "end": "214",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 017?",
+          "start": "216",
+          "field-name": "USOPR_ROUTECODE017",
+          "end": "219",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 018?",
+          "start": "221",
+          "field-name": "USOPR_ROUTECODE018",
+          "end": "224",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 019?",
+          "start": "226",
+          "field-name": "USOPR_ROUTECODE019",
+          "end": "229",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 020?",
+          "start": "231",
+          "field-name": "USOPR_ROUTECODE020",
+          "end": "234",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 021?",
+          "start": "236",
+          "field-name": "USOPR_ROUTECODE021",
+          "end": "239",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 022?",
+          "start": "241",
+          "field-name": "USOPR_ROUTECODE022",
+          "end": "244",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 023?",
+          "start": "246",
+          "field-name": "USOPR_ROUTECODE023",
+          "end": "249",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 024?",
+          "start": "251",
+          "field-name": "USOPR_ROUTECODE024",
+          "end": "254",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 025?",
+          "start": "256",
+          "field-name": "USOPR_ROUTECODE025",
+          "end": "259",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 026?",
+          "start": "261",
+          "field-name": "USOPR_ROUTECODE026",
+          "end": "264",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 027?",
+          "start": "266",
+          "field-name": "USOPR_ROUTECODE027",
+          "end": "269",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 028?",
+          "start": "271",
+          "field-name": "USOPR_ROUTECODE028",
+          "end": "274",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 029?",
+          "start": "276",
+          "field-name": "USOPR_ROUTECODE029",
+          "end": "279",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 030?",
+          "start": "281",
+          "field-name": "USOPR_ROUTECODE030",
+          "end": "284",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 031?",
+          "start": "286",
+          "field-name": "USOPR_ROUTECODE031",
+          "end": "289",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 032?",
+          "start": "291",
+          "field-name": "USOPR_ROUTECODE032",
+          "end": "294",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 033?",
+          "start": "296",
+          "field-name": "USOPR_ROUTECODE033",
+          "end": "299",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 034?",
+          "start": "301",
+          "field-name": "USOPR_ROUTECODE034",
+          "end": "304",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 035?",
+          "start": "306",
+          "field-name": "USOPR_ROUTECODE035",
+          "end": "309",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 036?",
+          "start": "311",
+          "field-name": "USOPR_ROUTECODE036",
+          "end": "314",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 037?",
+          "start": "316",
+          "field-name": "USOPR_ROUTECODE037",
+          "end": "319",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 038?",
+          "start": "321",
+          "field-name": "USOPR_ROUTECODE038",
+          "end": "324",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 039?",
+          "start": "326",
+          "field-name": "USOPR_ROUTECODE039",
+          "end": "329",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 040?",
+          "start": "331",
+          "field-name": "USOPR_ROUTECODE040",
+          "end": "334",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 041?",
+          "start": "336",
+          "field-name": "USOPR_ROUTECODE041",
+          "end": "339",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 042?",
+          "start": "341",
+          "field-name": "USOPR_ROUTECODE042",
+          "end": "344",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 043?",
+          "start": "346",
+          "field-name": "USOPR_ROUTECODE043",
+          "end": "349",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 044?",
+          "start": "351",
+          "field-name": "USOPR_ROUTECODE044",
+          "end": "354",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 045?",
+          "start": "356",
+          "field-name": "USOPR_ROUTECODE045",
+          "end": "359",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 046?",
+          "start": "361",
+          "field-name": "USOPR_ROUTECODE046",
+          "end": "364",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 047?",
+          "start": "366",
+          "field-name": "USOPR_ROUTECODE047",
+          "end": "369",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 048?",
+          "start": "371",
+          "field-name": "USOPR_ROUTECODE048",
+          "end": "374",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 049?",
+          "start": "376",
+          "field-name": "USOPR_ROUTECODE049",
+          "end": "379",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 050?",
+          "start": "381",
+          "field-name": "USOPR_ROUTECODE050",
+          "end": "384",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 051?",
+          "start": "386",
+          "field-name": "USOPR_ROUTECODE051",
+          "end": "389",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 052?",
+          "start": "391",
+          "field-name": "USOPR_ROUTECODE052",
+          "end": "394",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 053?",
+          "start": "396",
+          "field-name": "USOPR_ROUTECODE053",
+          "end": "399",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 054?",
+          "start": "401",
+          "field-name": "USOPR_ROUTECODE054",
+          "end": "404",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 055?",
+          "start": "406",
+          "field-name": "USOPR_ROUTECODE055",
+          "end": "409",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 056?",
+          "start": "411",
+          "field-name": "USOPR_ROUTECODE056",
+          "end": "414",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 057?",
+          "start": "416",
+          "field-name": "USOPR_ROUTECODE057",
+          "end": "419",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 058?",
+          "start": "421",
+          "field-name": "USOPR_ROUTECODE058",
+          "end": "424",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 059?",
+          "start": "426",
+          "field-name": "USOPR_ROUTECODE059",
+          "end": "429",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 060?",
+          "start": "431",
+          "field-name": "USOPR_ROUTECODE060",
+          "end": "434",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 061?",
+          "start": "436",
+          "field-name": "USOPR_ROUTECODE061",
+          "end": "439",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 062?",
+          "start": "441",
+          "field-name": "USOPR_ROUTECODE062",
+          "end": "444",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 063?",
+          "start": "446",
+          "field-name": "USOPR_ROUTECODE063",
+          "end": "449",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 064?",
+          "start": "451",
+          "field-name": "USOPR_ROUTECODE064",
+          "end": "454",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 065?",
+          "start": "456",
+          "field-name": "USOPR_ROUTECODE065",
+          "end": "459",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 066?",
+          "start": "461",
+          "field-name": "USOPR_ROUTECODE066",
+          "end": "464",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 067?",
+          "start": "466",
+          "field-name": "USOPR_ROUTECODE067",
+          "end": "469",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 068?",
+          "start": "471",
+          "field-name": "USOPR_ROUTECODE068",
+          "end": "474",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 069?",
+          "start": "476",
+          "field-name": "USOPR_ROUTECODE069",
+          "end": "479",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 070?",
+          "start": "481",
+          "field-name": "USOPR_ROUTECODE070",
+          "end": "484",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 071?",
+          "start": "486",
+          "field-name": "USOPR_ROUTECODE071",
+          "end": "489",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 072?",
+          "start": "491",
+          "field-name": "USOPR_ROUTECODE072",
+          "end": "494",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 073?",
+          "start": "496",
+          "field-name": "USOPR_ROUTECODE073",
+          "end": "499",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 074?",
+          "start": "501",
+          "field-name": "USOPR_ROUTECODE074",
+          "end": "504",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 075?",
+          "start": "506",
+          "field-name": "USOPR_ROUTECODE075",
+          "end": "509",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 076?",
+          "start": "511",
+          "field-name": "USOPR_ROUTECODE076",
+          "end": "514",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 077?",
+          "start": "516",
+          "field-name": "USOPR_ROUTECODE077",
+          "end": "519",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 078?",
+          "start": "521",
+          "field-name": "USOPR_ROUTECODE078",
+          "end": "524",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 079?",
+          "start": "526",
+          "field-name": "USOPR_ROUTECODE079",
+          "end": "529",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 080?",
+          "start": "531",
+          "field-name": "USOPR_ROUTECODE080",
+          "end": "534",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 081?",
+          "start": "536",
+          "field-name": "USOPR_ROUTECODE081",
+          "end": "539",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 082?",
+          "start": "541",
+          "field-name": "USOPR_ROUTECODE082",
+          "end": "544",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 083?",
+          "start": "546",
+          "field-name": "USOPR_ROUTECODE083",
+          "end": "549",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 084?",
+          "start": "551",
+          "field-name": "USOPR_ROUTECODE084",
+          "end": "554",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 085?",
+          "start": "556",
+          "field-name": "USOPR_ROUTECODE085",
+          "end": "559",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 086?",
+          "start": "561",
+          "field-name": "USOPR_ROUTECODE086",
+          "end": "564",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 087?",
+          "start": "566",
+          "field-name": "USOPR_ROUTECODE087",
+          "end": "569",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 088?",
+          "start": "571",
+          "field-name": "USOPR_ROUTECODE088",
+          "end": "574",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 089?",
+          "start": "576",
+          "field-name": "USOPR_ROUTECODE089",
+          "end": "579",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 090?",
+          "start": "581",
+          "field-name": "USOPR_ROUTECODE090",
+          "end": "584",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 091?",
+          "start": "586",
+          "field-name": "USOPR_ROUTECODE091",
+          "end": "589",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 092?",
+          "start": "591",
+          "field-name": "USOPR_ROUTECODE092",
+          "end": "594",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 093?",
+          "start": "596",
+          "field-name": "USOPR_ROUTECODE093",
+          "end": "599",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 094?",
+          "start": "601",
+          "field-name": "USOPR_ROUTECODE094",
+          "end": "604",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 095?",
+          "start": "606",
+          "field-name": "USOPR_ROUTECODE095",
+          "end": "609",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 096?",
+          "start": "611",
+          "field-name": "USOPR_ROUTECODE096",
+          "end": "614",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 097?",
+          "start": "616",
+          "field-name": "USOPR_ROUTECODE097",
+          "end": "619",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 098?",
+          "start": "621",
+          "field-name": "USOPR_ROUTECODE098",
+          "end": "624",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 099?",
+          "start": "626",
+          "field-name": "USOPR_ROUTECODE099",
+          "end": "629",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 100?",
+          "start": "631",
+          "field-name": "USOPR_ROUTECODE100",
+          "end": "634",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 101?",
+          "start": "636",
+          "field-name": "USOPR_ROUTECODE101",
+          "end": "639",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 102?",
+          "start": "641",
+          "field-name": "USOPR_ROUTECODE102",
+          "end": "644",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 103?",
+          "start": "646",
+          "field-name": "USOPR_ROUTECODE103",
+          "end": "649",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 104?",
+          "start": "651",
+          "field-name": "USOPR_ROUTECODE104",
+          "end": "654",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 105?",
+          "start": "656",
+          "field-name": "USOPR_ROUTECODE105",
+          "end": "659",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 106?",
+          "start": "661",
+          "field-name": "USOPR_ROUTECODE106",
+          "end": "664",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 107?",
+          "start": "666",
+          "field-name": "USOPR_ROUTECODE107",
+          "end": "669",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 108?",
+          "start": "671",
+          "field-name": "USOPR_ROUTECODE108",
+          "end": "674",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 109?",
+          "start": "676",
+          "field-name": "USOPR_ROUTECODE109",
+          "end": "679",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 110?",
+          "start": "681",
+          "field-name": "USOPR_ROUTECODE110",
+          "end": "684",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 111?",
+          "start": "686",
+          "field-name": "USOPR_ROUTECODE111",
+          "end": "689",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 112?",
+          "start": "691",
+          "field-name": "USOPR_ROUTECODE112",
+          "end": "694",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 113?",
+          "start": "696",
+          "field-name": "USOPR_ROUTECODE113",
+          "end": "699",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 114?",
+          "start": "701",
+          "field-name": "USOPR_ROUTECODE114",
+          "end": "704",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 115?",
+          "start": "706",
+          "field-name": "USOPR_ROUTECODE115",
+          "end": "709",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 116?",
+          "start": "711",
+          "field-name": "USOPR_ROUTECODE116",
+          "end": "714",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 117?",
+          "start": "716",
+          "field-name": "USOPR_ROUTECODE117",
+          "end": "719",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 118?",
+          "start": "721",
+          "field-name": "USOPR_ROUTECODE118",
+          "end": "724",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 119?",
+          "start": "726",
+          "field-name": "USOPR_ROUTECODE119",
+          "end": "729",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 120?",
+          "start": "731",
+          "field-name": "USOPR_ROUTECODE120",
+          "end": "734",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 121?",
+          "start": "736",
+          "field-name": "USOPR_ROUTECODE121",
+          "end": "739",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 122?",
+          "start": "741",
+          "field-name": "USOPR_ROUTECODE122",
+          "end": "744",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 123?",
+          "start": "746",
+          "field-name": "USOPR_ROUTECODE123",
+          "end": "749",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 124?",
+          "start": "751",
+          "field-name": "USOPR_ROUTECODE124",
+          "end": "754",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 125?",
+          "start": "756",
+          "field-name": "USOPR_ROUTECODE125",
+          "end": "759",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 126?",
+          "start": "761",
+          "field-name": "USOPR_ROUTECODE126",
+          "end": "764",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 127?",
+          "start": "766",
+          "field-name": "USOPR_ROUTECODE127",
+          "end": "769",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this console enabled for route code 128?",
+          "start": "771",
+          "field-name": "USOPR_ROUTECODE128",
+          "end": "774",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Specifies the logging of command responses received by the extended operator. Valid values are SYSTEM , NO , and blank.",
+          "start": "776",
+          "field-name": "USOPR_LOGCMDRESP",
+          "end": "783",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Is this extended operator to receive a migration ID?",
+          "start": "785",
+          "field-name": "USOPR_MIGRATIONID",
+          "end": "788",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Does this extended operator receive delete operator messages? Valid values are NORMAL , ALL , and NONE .",
+          "start": "790",
+          "field-name": "USOPR_DELOPERMSG",
+          "end": "797",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Specifies a retrieval key used for searching. A null value is indicated by NONE .",
+          "start": "799",
+          "field-name": "USOPR_RETRIEVE_KEY",
+          "end": "806",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The name of the system that the extended operator is connected to for command processing.",
+          "start": "808",
+          "field-name": "USOPR_CMDSYS",
+          "end": "815",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Is this operator to receive undeliverable messages?",
+          "start": "817",
+          "field-name": "USOPR_UD",
+          "end": "820",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "The default group associated with this operator.",
+          "start": "822",
+          "field-name": "USOPR_ALTGRP_ID",
+          "end": "829",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Is this operator to receive messages automated within the sysplex?",
+          "start": "831",
+          "field-name": "USOPR_AUTO",
+          "end": "834",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this operator to receive messages that are directed to hard copy?",
+          "start": "836",
+          "field-name": "USOPR_HC",
+          "end": "839",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this operator to receive messages that are directed to console ID zero?",
+          "start": "841",
+          "field-name": "USOPR_INT",
+          "end": "844",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is this operator to receive messages which are directed to unknown console IDs?",
+          "start": "846",
+          "field-name": "USOPR_UNKN",
+          "end": "849",
+          "type": "Yes/ No"
+        }
+      ]
+    },
+    "0260": {
+      "record-type": "user-workattr-data-record",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the User WORKATTR Data record (0260).",
+          "start": "1",
+          "field-name": "USWRK_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from the profile name.",
+          "start": "6",
+          "field-name": "USWRK_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Area for delivery.",
+          "start": "15",
+          "field-name": "USWRK_AREA_NAME",
+          "end": "74",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Building for delivery.",
+          "start": "76",
+          "field-name": "USWRK_BUILDING",
+          "end": "135",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Department for delivery.",
+          "start": "137",
+          "field-name": "USWRK_DEPARTMENT",
+          "end": "196",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Room for delivery.",
+          "start": "198",
+          "field-name": "USWRK_ROOM",
+          "end": "257",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Address line 1.",
+          "start": "259",
+          "field-name": "USWRK_ADDR_LINE1",
+          "end": "318",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Address line 2.",
+          "start": "320",
+          "field-name": "USWRK_ADDR_LINE2",
+          "end": "379",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Address line 3.",
+          "start": "381",
+          "field-name": "USWRK_ADDR_LINE3",
+          "end": "440",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Address line 4.",
+          "start": "442",
+          "field-name": "USWRK_ADDR_LINE4",
+          "end": "501",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Account number.",
+          "start": "503",
+          "field-name": "USWRK_ACCOUNT",
+          "end": "757",
+          "type": "Char"
+        }
+      ]
+    },
+    "user-data-record": {
+      "record-type": "0270",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the User Data record (0270).",
+          "start": "1",
+          "field-name": "USOMVS_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User name as taken from the profile name.",
+          "start": "6",
+          "field-name": "USOMVS_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "z/OS UNIX user identifier (UID) associated with the user name from the profile.",
+          "start": "15",
+          "field-name": "USOMVS_UID",
+          "end": "24",
+          "type": "Char"
+        },
+        {
+          "field-desc": "HOME PATH associated with the z/OS UNIX user identifier (UID).",
+          "start": "26",
+          "field-name": "USOMVS_HOME_PATH",
+          "end": "1048",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Default Program associated with the z/OS UNIX user identifier (UID).",
+          "start": "1050",
+          "field-name": "USOMVS_PROGRAM",
+          "end": "2072",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Maximum CPU time associated with the UID.",
+          "start": "2074",
+          "field-name": "USOMVS_CPUTIMEMAX",
+          "end": "2083",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Maximum address space size associated with the UID.",
+          "start": "2085",
+          "field-name": "USOMVS_ASSIZEMAX",
+          "end": "2094",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Maximum active or open files associated with the UID.",
+          "start": "2096",
+          "field-name": "USOMVS_FILEPROCMAX",
+          "end": "2105",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Maximum number of processes associated with the UID.",
+          "start": "2107",
+          "field-name": "USOMVS_PROCUSERMAX",
+          "end": "2116",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Maximum number of threads associated with the UID.",
+          "start": "2118",
+          "field-name": "USOMVS_THREADSMAX",
+          "end": "2127",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Maximum mappable storage amount associated with the UID.",
+          "start": "2129",
+          "field-name": "USOMVS_MMAPAREAMAX",
+          "end": "2138",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Maximum size of non-shared memory",
+          "start": "2140",
+          "field-name": "USOMVS_MEMLIMIT",
+          "end": "2148",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Maximum size of shared memory",
+          "start": "2150",
+          "field-name": "USOMVS_SHMEMAX",
+          "end": "2158",
+          "type": "Char"
+        }
+      ]
+    },
+    "user-netview-record": {
+      "record-type": "0280",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the user NETVIEW segment record (0280).",
+          "start": "1",
+          "field-name": "USNETV_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from profile name",
+          "start": "6",
+          "field-name": "USNETV_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Command list processed at logon",
+          "start": "15",
+          "field-name": "USNETV_IC",
+          "end": "269",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Default console name",
+          "start": "271",
+          "field-name": "USNETV_CONSNAME",
+          "end": "278",
+          "type": "Char"
+        },
+        {
+          "field-desc": "CTL value: GENERAL, GLOBAL, or SPECIFIC",
+          "start": "280",
+          "field-name": "USNETV_CTL",
+          "end": "287",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Eligible to receive unsolicited messages?",
+          "start": "289",
+          "field-name": "USNETV_MSGRECVR",
+          "end": "292",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Authorized to NetView graphic monitoring facility?",
+          "start": "294",
+          "field-name": "USNETV_NGMFADMN",
+          "end": "297",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Value of view span options",
+          "start": "299",
+          "field-name": "USNETV_NGMFVSPN",
+          "end": "306",
+          "type": "Char"
+        }
+      ]
+    },
+    "user-opclass-record": {
+      "record-type": "0281",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the user OPCLASS record (0281).",
+          "start": "1",
+          "field-name": "USNOPC_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from the profile name",
+          "start": "6",
+          "field-name": "USNOPC_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "OPCLASS value from 1 to 2040",
+          "start": "15",
+          "field-name": "USNOPC_OPCLASS",
+          "end": "19",
+          "type": "Int"
+        }
+      ]
+    },
+    "user-domains-record": {
+      "record-type": "0282",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the user DOMAINS record (0282).",
+          "start": "1",
+          "field-name": "USNDOM_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from the profile name",
+          "start": "6",
+          "field-name": "USNDOM_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "DOMAIN value.",
+          "start": "15",
+          "field-name": "USNDOM_DOMAINS",
+          "end": "19",
+          "type": "Char"
+        }
+      ]
+    },
+    "user-dce-data-record": {
+      "record-type": "0290",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the user DCE data record (0290).",
+          "start": "1",
+          "field-name": "USDCE_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "RACF user name as taken from the profile name.",
+          "start": "6",
+          "field-name": "USDCE_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "DCE UUID associated with the user name from the profile.",
+          "start": "15",
+          "field-name": "USDCE_UUID",
+          "end": "50",
+          "type": "Char"
+        },
+        {
+          "field-desc": "DCE principal name associated with this user.",
+          "start": "52",
+          "field-name": "USDCE_DCE_NAME",
+          "end": "1074",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Home cell name.",
+          "start": "1076",
+          "field-name": "USDCE_HOMECELL",
+          "end": "2098",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Home cell UUID.",
+          "start": "2100",
+          "field-name": "USDCE_HOMEUUID",
+          "end": "2135",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Is this user eligible for an automatic DCE login?",
+          "start": "2137",
+          "field-name": "USDCE_AUTOLOGIN",
+          "end": "2140",
+          "type": "Yes/ No"
+        }
+      ]
+    },
+    "user-ovm-data-record": {
+      "record-type": "02A0",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the user OVM data record (02A0).",
+          "start": "1",
+          "field-name": "USOVM_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User name as taken from the profile name.",
+          "start": "6",
+          "field-name": "USOVM_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "User identifier (UID) associated with the user name from the profile.",
+          "start": "15",
+          "field-name": "USOVM_UID",
+          "end": "24",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Home path associated with the user identifier (UID).",
+          "start": "26",
+          "field-name": "USOVM_HOME_PATH",
+          "end": "1048",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Default program associated with the user identifier (UID).",
+          "start": "1050",
+          "field-name": "USOVM_PROGRAM",
+          "end": "2072",
+          "type": "Char"
+        },
+        {
+          "field-desc": "File system root for this user.",
+          "start": "2074",
+          "field-name": "USOVM_FSROOT",
+          "end": "3096",
+          "type": "Char"
+        }
+      ]
+    },
+    "lnotes-data-record": {
+      "record-type": "02B0",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the LNOTES data record (02B0).",
+          "start": "1",
+          "field-name": "USLNOT_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from the profile name.",
+          "start": "6",
+          "field-name": "USLNOT_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "LNOTES short name associated with the user ID.",
+          "start": "15",
+          "field-name": "USLNOT_SNAME",
+          "end": "78",
+          "type": "Char"
+        }
+      ]
+    },
+    "nds-data-record": {
+      "record-type": "02C0",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the NDS data record (02C0).",
+          "start": "1",
+          "field-name": "USNDS_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID as taken from the profile name.",
+          "start": "6",
+          "field-name": "USNDS_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "NDS user name associated with the user ID.",
+          "start": "15",
+          "field-name": "USNDS_UNAME",
+          "end": "260",
+          "type": "Char"
+        }
+      ]
+    },
+    "user-kerb-segment-record": {
+      "record-type": "02D0",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the User KERB segment record (02D0).",
+          "start": "1",
+          "field-name": "USKERB_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "RACF user name as taken from the profile.",
+          "start": "6",
+          "field-name": "USKERB_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The Kerberos principal name.",
+          "start": "15",
+          "field-name": "USKERB_KERBNAME",
+          "end": "254",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Maximum ticket life.",
+          "start": "256",
+          "field-name": "USKERB_MAX_LIFE",
+          "end": "265",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Current key version.",
+          "start": "267",
+          "field-name": "USKERB_KEY_VERS",
+          "end": "269",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Is key encryption using DES enabled?",
+          "start": "271",
+          "field-name": "USKERB_ENCRYPT_DES",
+          "end": "274",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is key encryption using DES3 enabled?",
+          "start": "276",
+          "field-name": "USKERB_ENCRYPT_DES3",
+          "end": "279",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is key encryption using DES with derivation enabled?",
+          "start": "281",
+          "field-name": "USKERB_ENCRYPT_DESD",
+          "end": "284",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is key encryption using AES128 enabled?",
+          "start": "286",
+          "field-name": "USKERB_ENCRPT_A128",
+          "end": "289",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Is key encryption using AES256 enabled?",
+          "start": "291",
+          "field-name": "USKERB_ENCRPT_A256",
+          "end": "294",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Key source. Valid values are PASSWORD or PHRASE.",
+          "start": "351",
+          "field-name": "USKERB_KEY_FROM",
+          "end": "358",
+          "type": "Char"
+        }
+      ]
+    },
+    "user-proxy-record": {
+      "record-type": "02E0",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the user PROXY record (02E0).",
+          "start": "1",
+          "field-name": "USPROXY_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "RACF user name as taken from the profile name.",
+          "start": "6",
+          "field-name": "USPROXY_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "LDAP server URL.",
+          "start": "15",
+          "field-name": "USPROXY_LDAP_HOST",
+          "end": "1037",
+          "type": "Char"
+        },
+        {
+          "field-desc": "LDAP BIND distinguished name.",
+          "start": "1039",
+          "field-name": "USPROXY_BIND_DN",
+          "end": "2061",
+          "type": "Char"
+        }
+      ]
+    },
+    "user-eim-record": {
+      "record-type": "02F0",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the user EIM segment record (02F0).",
+          "start": "1",
+          "field-name": "USEIM_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User name.",
+          "start": "6",
+          "field-name": "USEIM_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "EIM LDAPBIND profile name.",
+          "start": "15",
+          "field-name": "USEIM_LDAPPROF",
+          "end": "260",
+          "type": "Char"
+        }
+      ]
+    },
+    "user-csdata-custom-fields-record": {
+      "record-type": "02G1",
+      "ref-url": "https://www-01.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/usr.htm",
+      "offsets": [{
+          "field-desc": "Record type of the user CSDATA custom fields record (02G1).",
+          "start": "1",
+          "field-name": "USCSD_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User name.",
+          "start": "6",
+          "field-name": "USCSD_NAME",
+          "end": "13",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Data type for the custom field. Valid values are CHAR, FLAG, HEX, NUM.",
+          "start": "15",
+          "field-name": "USCSD_TYPE",
+          "end": "18",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Custom field keyword; maximum length = 8.",
+          "start": "20",
+          "field-name": "USCSD_KEY",
+          "end": "51",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Custom field value.",
+          "start": "53",
+          "field-name": "USCSD_VALUE",
+          "end": "1152",
+          "type": "Char"
+        }
+      ]
+    },
+    "general-resource-basic-data-record": {
+      "record-type": "0500",
+      "ref-url": "https://www.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/grr.htm#grr",
+      "offsets": [{
+          "field-desc": "Record type of the General Resource Basic Data record (0500).",
+          "start": "1",
+          "field-name": "GRBD_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "General resource name as taken from the profile name. Note: When GRBD_CLASS_NAME is IDIDMAP, this value is stored in the RACF database in UTF-8 format. If possible, database unload changes this value to the EBCDIC format. If not possible, hexadecimal values are produced.",
+          "start": "6",
+          "field-name": "GRBD_NAME",
+          "end": "251",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Name of the class to which the general resource profile belongs.",
+          "start": "253",
+          "field-name": "GRBD_CLASS_NAME",
+          "end": "260",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Is this a generic profile?",
+          "start": "262",
+          "field-name": "GRBD_GENERIC",
+          "end": "265",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "The class number of the profile.",
+          "start": "267",
+          "field-name": "GRBD_CLASS",
+          "end": "269",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Date the profile was created.",
+          "start": "271",
+          "field-name": "GRBD_CREATE_DATE",
+          "end": "280",
+          "type": "Date"
+        },
+        {
+          "field-desc": "The user ID or group name which owns the profile.",
+          "start": "282",
+          "field-name": "GRBD_OWNER_ID",
+          "end": "289",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The date that the resource was last referenced.",
+          "start": "291",
+          "field-name": "GRBD_LASTREF_DATE",
+          "end": "300",
+          "type": "Date"
+        },
+        {
+          "field-desc": "The date that the resource was last changed.",
+          "start": "302",
+          "field-name": "GRBD_LASTCHG_DATE",
+          "end": "311",
+          "type": "Date"
+        },
+        {
+          "field-desc": "The number of times that the resource was accessed with ALTER authority.",
+          "start": "313",
+          "field-name": "GRBD_ALTER_CNT",
+          "end": "317",
+          "type": "Int"
+        },
+        {
+          "field-desc": "The number of times that the resource was accessed with CONTROL authority.",
+          "start": "319",
+          "field-name": "GRBD_CONTROL_CNT",
+          "end": "323",
+          "type": "Int"
+        },
+        {
+          "field-desc": "The number of times that the resource was accessed with UPDATE authority.",
+          "start": "325",
+          "field-name": "GRBD_UPDATE_CNT",
+          "end": "329",
+          "type": "Int"
+        },
+        {
+          "field-desc": "The number of times that the resource was accessed with READ authority.",
+          "start": "331",
+          "field-name": "GRBD_READ_CNT",
+          "end": "335",
+          "type": "Int"
+        },
+        {
+          "field-desc": "The universal access of this resource. For profiles in classes other than DIGTCERT, the valid values are NONE , READ , EXECUTE , UPDATE , CONTROL , and ALTER . For DIGTCERT profiles, the valid values are TRUST , NOTRUST , and HIGHTRST .",
+          "start": "337",
+          "field-name": "GRBD_UACC",
+          "end": "344",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Indicates the level of resource-owner-specified auditing that is performed. Valid values are ALL , SUCCESS , FAIL , and NONE .",
+          "start": "346",
+          "field-name": "GRBD_AUDIT_LEVEL",
+          "end": "353",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The level of the resource.",
+          "start": "355",
+          "field-name": "GRBD_LEVEL",
+          "end": "357",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Indicates the level of auditor-specified auditing that is performed. Valid values are ALL , SUCCESS , FAIL , and NONE .",
+          "start": "359",
+          "field-name": "GRBD_GAUDIT_LEVEL",
+          "end": "366",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Installation-defined data.",
+          "start": "368",
+          "field-name": "GRBD_INSTALL_DATA",
+          "end": "622",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The resource-owner-specified successful access audit qualifier. This is set to blanks if AUDIT_LEVEL is NONE . Otherwise, it is set to either READ , UPDATE , CONTROL , or ALTER .",
+          "start": "624",
+          "field-name": "GRBD_AUDIT_OKQUAL",
+          "end": "631",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The resource-owner-specified failing access audit qualifier. This is set to blanks if AUDIT_LEVEL is NONE . Otherwise, it is set to either READ , UPDATE , CONTROL , or ALTER .",
+          "start": "633",
+          "field-name": "GRBD_AUDIT_FAQUAL",
+          "end": "640",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The auditor-specified successful access audit qualifier. This is set to blanks if GAUDIT_LEVEL is NONE . Otherwise, it is set to either READ , UPDATE , CONTROL , or ALTER .",
+          "start": "642",
+          "field-name": "GRBD_GAUDIT_OKQUAL",
+          "end": "649",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The auditor-specified failing access audit qualifier. This is set to blanks if GAUDIT_LEVEL is NONE . Otherwise, it is set to either READ , UPDATE , CONTROL , or ALTER .",
+          "start": "651",
+          "field-name": "GRBD_GAUDIT_FAQUAL",
+          "end": "658",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Does this resource have the WARNING attribute?",
+          "start": "660",
+          "field-name": "GRBD_WARNING",
+          "end": "663",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "If this is a TAPEVOL profile, is there only one data set on this tape?",
+          "start": "665",
+          "field-name": "GRBD_SINGLEDS",
+          "end": "668",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "If this is a TAPEVOL profile, is the TAPEVOL protection automatic?",
+          "start": "670",
+          "field-name": "GRBD_AUTO",
+          "end": "673",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "If this is a TAPEVOL profile, is there a tape volume table of contents on this tape?",
+          "start": "675",
+          "field-name": "GRBD_TVTOC",
+          "end": "678",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "User ID that is notified when violations occur.",
+          "start": "680",
+          "field-name": "GRBD_NOTIFY_ID",
+          "end": "687",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Can the terminal be used on Sunday?",
+          "start": "689",
+          "field-name": "GRBD_ACCESS_SUN",
+          "end": "692",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Can the terminal be used on Monday?",
+          "start": "694",
+          "field-name": "GRBD_ACCESS_MON",
+          "end": "697",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Can the terminal be used on Tuesday?",
+          "start": "699",
+          "field-name": "GRBD_ACCESS_TUE",
+          "end": "702",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Can the terminal be used on Wednesday?",
+          "start": "704",
+          "field-name": "GRBD_ACCESS_WED",
+          "end": "707",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Can the terminal be used on Thursday?",
+          "start": "709",
+          "field-name": "GRBD_ACCESS_THU",
+          "end": "712",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Can the terminal be used on Friday?",
+          "start": "714",
+          "field-name": "GRBD_ACCESS_FRI",
+          "end": "717",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Can the terminal be used on Saturday?",
+          "start": "719",
+          "field-name": "GRBD_ACCESS_SAT",
+          "end": "722",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "After what time can a user logon from this terminal?",
+          "start": "724",
+          "field-name": "GRBD_START_TIME",
+          "end": "731",
+          "type": "Time"
+        },
+        {
+          "field-desc": "After what time can a user not logon from this terminal?",
+          "start": "733",
+          "field-name": "GRBD_END_TIME",
+          "end": "740",
+          "type": "Time"
+        },
+        {
+          "field-desc": "Time zone in which the terminal is located. Expressed as hh:mm . Blank if the time zone has not been specified.",
+          "start": "742",
+          "field-name": "GRBD_ZONE_OFFSET",
+          "end": "746",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The direction of the time zone shift. Valid values are E (east), W (west), and blank.",
+          "start": "748",
+          "field-name": "GRBD_ZONE_DIRECT",
+          "end": "748",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The security level of the general resource.",
+          "start": "750",
+          "field-name": "GRBD_SECLEVEL",
+          "end": "752",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Installation-defined data.",
+          "start": "754",
+          "field-name": "GRBD_APPL_DATA",
+          "end": "1008",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The security label for the general resource.",
+          "start": "1010",
+          "field-name": "GRBD_SECLABEL",
+          "end": "1017",
+          "type": "Char"
+        }
+      ]
+    },
+    "dataset-conditional-access-record":{"record-type": "0402", "ref-url": "https://www.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/dsr.htm#dsr", "offsets": [{"field-desc": "Record type of the Data Set Conditional Access record (0402).", "start": "1", "field-name": "DSCACC_RECORD_TYPE", "end": "4", "type": "Int"}, {"field-desc": "Data set name as taken from the profile name.", "start": "6", "field-name": "DSCACC_NAME", "end": "49", "type": "Char"}, {"field-desc": "Volume upon which this data set resides. Blank if the profile is generic, and *MODEL if the profile is a model profile.", "start": "51", "field-name": "DSCACC_VOL", "end": "56", "type": "Char"}, {"field-desc": "The type of conditional access checking that is being performed. Valid values are APPCPORT , PROGRAM , CONSOLE , TERMINAL , JESINPUT , and SERVAUTH .", "start": "58", "field-name": "DSCACC_CATYPE", "end": "65", "type": "Char"}, {"field-desc": "The name of a conditional access element that is permitted access.", "start": "67", "field-name": "DSCACC_CANAME", "end": "74", "type": "Char"}, {"field-desc": "The user ID or group name that is authorized to the data set.", "start": "76", "field-name": "DSCACC_AUTH_ID", "end": "83", "type": "Char"}, {"field-desc": "The access of the conditional access element/user combination. Valid values are NONE , EXECUTE , READ , UPDATE , CONTROL , and ALTER .", "start": "85", "field-name": "DSCACC_ACCESS", "end": "92", "type": "Char"}, {"field-desc": "The number of times that the data set was accessed.", "start": "94", "field-name": "DSCACC_ACCESS_CNT", "end": "98", "type": "Int"}, {"field-desc": "The network name when DSCACC_CATYPE is APPCPORT.", "start": "100", "field-name": "DSCACC_NET_ID", "end": "107", "type": "Char"}, {"field-desc": "The IP name when DSCACC_CATYPE is SERVAUTH.", "start": "109", "field-name": "DSCACC_CACRITERIA", "end": "352", "type": "Char"}]},
+    "dataset-access-record":{"record-type": "0404", "ref-url": "https://www.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/dsr.htm#dsr", "offsets": [{"field-desc": "Record type of the Data Set Access Record (0404).", "start": "1", "field-name": "DSACC_RECORD_TYPE", "end": "4", "type": "Int"}, {"field-desc": "Data set name as taken from the profile name.", "start": "6", "field-name": "DSACC_NAME", "end": "49", "type": "Char"}, {"field-desc": "Volume upon which this data set resides. Blank if the profile is generic, and *MODEL if the profile is a model profile.", "start": "51", "field-name": "DSACC_VOL", "end": "56", "type": "Char"}, {"field-desc": "The user ID or group name that is authorized to the data set.", "start": "58", "field-name": "DSACC_AUTH_ID", "end": "65", "type": "Char"}, {"field-desc": "The access allowed to the user. Valid values are NONE , EXECUTE , READ , UPDATE , CONTROL , and ALTER .", "start": "67", "field-name": "DSACC_ACCESS", "end": "74", "type": "Char"}, {"field-desc": "The number of times that the data set was accessed.", "start": "76", "field-name": "DSACC_ACCESS_CNT", "end": "80", "type": "Int"}]},
+    "dataset-dfp-data-record":{"record-type": "0410", "ref-url": "https://www.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/dsr.htm#dsr", "offsets": [{"field-desc": "Record type of the Data Set DFP Data record (0410).", "start": "1", "field-name": "DSDFP_RECORD_TYPE", "end": "4", "type": "Int"}, {"field-desc": "Data set name as taken from the profile name.", "start": "6", "field-name": "DSDFP_NAME", "end": "49", "type": "Char"}, {"field-desc": "Volume upon which this data set resides. Blank if the profile is generic, and *MODEL if the profile is a model profile.", "start": "51", "field-name": "DSDFP_VOL", "end": "56", "type": "Char"}, {"field-desc": "The resource owner of the data set.", "start": "58", "field-name": "DSDFP_RESOWNER_ID", "end": "65", "type": "Char"}]},
+    "general_tapevol_data_record": {
+      "record-type": "0501",
+      "ref-url": "meh",
+      "offsets": [{
+        "field-desc": "Record type of the General Resource Tape Volume Data record (0501).",
+        "start": "1",
+        "field-name": "GRTVOL_RECORD_TYPE",
+        "end": "4",
+        "type": "Int"
+      }, {
+        "field-desc": "General resource name as taken from the profile name.",
+        "start": "6",
+        "field-name": "GRTVOL_NAME",
+        "end": "251",
+        "type": "Char"
+      }, {
+        "field-desc": "Name of the class to which the general resource profile belongs, namely TAPEVOL .",
+        "start": "253",
+        "field-name": "GRTVOL_CLASS_NAME",
+        "end": "260",
+        "type": "Char"
+      }, {
+        "field-desc": "The file sequence number of the tape data set.",
+        "start": "262",
+        "field-name": "GRTVOL_SEQUENCE",
+        "end": "266",
+        "type": "Int"
+      }, {
+        "field-desc": "Creation date of the tape data set.",
+        "start": "268",
+        "field-name": "GRTVOL_CREATE_DATE",
+        "end": "277",
+        "type": "Date"
+      }, {
+        "field-desc": "Does a discrete profile exist?",
+        "start": "279",
+        "field-name": "GRTVOL_DISCRETE",
+        "end": "282",
+        "type": "Yes/ No"
+      }, {
+        "field-desc": "The RACF internal data set name.",
+        "start": "284",
+        "field-name": "GRTVOL_INTERN_NAME",
+        "end": "327",
+        "type": "Char"
+      }, {
+        "field-desc": "The volumes upon which the data set resides.",
+        "start": "329",
+        "field-name": "GRTVOL_INTERN_VOLS",
+        "end": "583",
+        "type": "Char"
+      }, {
+        "field-desc": "The data set name used when creating the data set.",
+        "start": "585",
+        "field-name": "GRTVOL_CREATE_NAME",
+        "end": "628",
+        "type": "Char"
+      }]
+    },
+    "general-resource-access-record": {
+      "record-type": "0505",
+      "ref-url": "https://www.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/grr.htm#grr",
+      "offsets": [{
+          "field-desc": "Record type of the General Resource Access record (0505).",
+          "start": "1",
+          "field-name": "GRACC_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "General resource name as taken from the profile name.",
+          "start": "6",
+          "field-name": "GRACC_NAME",
+          "end": "251",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Name of the class to which the general resource profile belongs.",
+          "start": "253",
+          "field-name": "GRACC_CLASS_NAME",
+          "end": "260",
+          "type": "Char"
+        },
+        {
+          "field-desc": "User ID or group name which is authorized to use the general resource.",
+          "start": "262",
+          "field-name": "GRACC_AUTH_ID",
+          "end": "269",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The authority that the user or group has over the resource. Valid values are NONE , EXECUTE , READ , UPDATE , CONTROL , and ALTER .",
+          "start": "271",
+          "field-name": "GRACC_ACCESS",
+          "end": "278",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The number of times that the resource was accessed.",
+          "start": "280",
+          "field-name": "GRACC_ACCESS_CNT",
+          "end": "284",
+          "type": "Int"
+        }
+      ]
+    },
+    "general-resource-certificate-information-record":{
+      "record-type": "1560",
+      "ref-url": "http://www.redbooks.ibm.com/iea/pdf/zOS_V2R1_RACF_Database_Unload_of_Certificate_DNs.pdf",
+      "offsets":[{
+        "field-desc": "Record type of the certificate information record (1560).",
+        "start": "1",
+        "field-name": "CERTN_RECORD_TYPE",
+        "end": "4",
+        "type": "Int"
+      },
+      {
+        "field-desc": "General resource name as taken from the profile name.",
+        "start": "6",
+        "field-name": "CERTN_NAME",
+        "end": "251",
+        "type": "Char"
+      },
+      {
+        "field-desc": "Name of the class to which the general resource profile belongs.",
+        "start": "253",
+        "field-name": "CERTN_CLASS_NAME",
+        "end": "260",
+        "type": "Char"
+      },
+      {
+        "field-desc": "Issuer distinguished name. (1024 characters)",
+        "start": "262",
+        "field-name": "CERTN_ISSUER_DN",
+        "end": "1285",
+        "type": "Char"
+      },
+      {
+        "field-desc": "Subject distinguished name. (1024 characters)",
+        "start": "1287",
+        "field-name": "CERTN_SUBJECT_DN",
+        "end": "2310",
+        "type": "Char"
+      },
+      {
+        "field-desc": "Certificate signature algorithm. Valid values are md2RSA, md5RSA, sha1RSA, sha1DSA, sha256RSA, sha224RSA, sha384RSA, sha512RSA, sha1ECDSA, sha256ECDSA, sha224ECDSA, sha384ECDSA, sha512ECDSA, and UNKNOWN.",
+        "start": "2312",
+        "field-name": "CERTN_SIG_ALG",
+        "end": "2327",
+        "type": "Char"
+      }
+      ]
+    },
+    "dataset-basic-data-record": {
+      "record-type": "0400",
+      "ref-url": "",
+      "offsets": [{
+          "field-desc": "Record type of the Data Set Basic Data record (0400).",
+          "start": "1",
+          "field-name": "DSBD_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Data set name as taken from the profile name.",
+          "start": "6",
+          "field-name": "DSBD_NAME",
+          "end": "49",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Volume upon which this data set resides. Blank if the profile is generic, and *MODEL if the profile is a model profile.",
+          "start": "51",
+          "field-name": "DSBD_VOL",
+          "end": "56",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Is this a generic profile?",
+          "start": "58",
+          "field-name": "DSBD_GENERIC",
+          "end": "61",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Date the profile was created.",
+          "start": "63",
+          "field-name": "DSBD_CREATE_DATE",
+          "end": "72",
+          "type": "Date"
+        },
+        {
+          "field-desc": "The user ID or group name that owns the profile.",
+          "start": "74",
+          "field-name": "DSBD_OWNER_ID",
+          "end": "81",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The date that the data set was last referenced.",
+          "start": "83",
+          "field-name": "DSBD_LASTREF_DATE",
+          "end": "92",
+          "type": "Date"
+        },
+        {
+          "field-desc": "The date that the data set was last changed.",
+          "start": "94",
+          "field-name": "DSBD_LASTCHG_DATE",
+          "end": "103",
+          "type": "Date"
+        },
+        {
+          "field-desc": "The number of times that the data set was accessed with ALTER authority.",
+          "start": "105",
+          "field-name": "DSBD_ALTER_CNT",
+          "end": "109",
+          "type": "Int"
+        },
+        {
+          "field-desc": "The number of times that the data set was accessed with CONTROL authority.",
+          "start": "111",
+          "field-name": "DSBD_CONTROL_CNT",
+          "end": "115",
+          "type": "Int"
+        },
+        {
+          "field-desc": "The number of times that the data set was accessed with UPDATE authority.",
+          "start": "117",
+          "field-name": "DSBD_UPDATE_CNT",
+          "end": "121",
+          "type": "Int"
+        },
+        {
+          "field-desc": "The number of times that the data set was accessed with READ authority.",
+          "start": "123",
+          "field-name": "DSBD_READ_CNT",
+          "end": "127",
+          "type": "Int"
+        },
+        {
+          "field-desc": "The universal access of this data set. Valid values are NONE , EXECUTE , READ , UPDATE , CONTROL , and ALTER .",
+          "start": "129",
+          "field-name": "DSBD_UACC",
+          "end": "136",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Is this a group data set?",
+          "start": "138",
+          "field-name": "DSBD_GRPDS",
+          "end": "141",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Indicates the level of resource-owner-specified auditing that is performed. Valid values are ALL , SUCCESS , FAIL , and NONE .",
+          "start": "143",
+          "field-name": "DSBD_AUDIT_LEVEL",
+          "end": "150",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The connect group of the user who created this data set.",
+          "start": "152",
+          "field-name": "DSBD_GRP_ID",
+          "end": "159",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The type of the data set. Valid values are VSAM , NONVSAM , TAPE , and MODEL .",
+          "start": "161",
+          "field-name": "DSBD_DS_TYPE",
+          "end": "168",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The level of the data set.",
+          "start": "170",
+          "field-name": "DSBD_LEVEL",
+          "end": "172",
+          "type": "Int"
+        },
+        {
+          "field-desc": "The EBCDIC name of the device type on which the data set resides.",
+          "start": "174",
+          "field-name": "DSBD_DEVICE_NAME",
+          "end": "181",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Indicates the level of auditor-specified auditing that is performed. Valid values are ALL , SUCCESS , FAIL , and NONE .",
+          "start": "183",
+          "field-name": "DSBD_GAUDIT_LEVEL",
+          "end": "190",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Installation-defined data.",
+          "start": "192",
+          "field-name": "DSBD_INSTALL_DATA",
+          "end": "446",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The resource-owner-specified successful access audit qualifier. This is set to blanks if AUDIT_LEVEL is NONE . Otherwise, it is set to either READ , UPDATE , CONTROL , or ALTER .",
+          "start": "448",
+          "field-name": "DSBD_AUDIT_OKQUAL",
+          "end": "455",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The resource-owner-specified failing access audit qualifier. This is set to blanks if AUDIT_LEVEL is NONE . Otherwise, it is set to either READ , UPDATE , CONTROL , or ALTER .",
+          "start": "457",
+          "field-name": "DSBD_AUDIT_FAQUAL",
+          "end": "464",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The auditor-specified successful access audit qualifier. This is set to blanks if GAUDIT_LEVEL is NONE . Otherwise, it is set to either READ , UPDATE , CONTROL , or ALTER .",
+          "start": "466",
+          "field-name": "DSBD_GAUDIT_OKQUAL",
+          "end": "473",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The auditor-specified failing access audit qualifier. This is set to blanks if GAUDIT_LEVEL is NONE . Otherwise, it is set to either READ , UPDATE , CONTROL , or ALTER .",
+          "start": "475",
+          "field-name": "DSBD_GAUDIT_FAQUAL",
+          "end": "482",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Does this data set have the WARNING attribute?",
+          "start": "484",
+          "field-name": "DSBD_WARNING",
+          "end": "487",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "The data set security level.",
+          "start": "489",
+          "field-name": "DSBD_SECLEVEL",
+          "end": "491",
+          "type": "Int"
+        },
+        {
+          "field-desc": "User ID that is notified when violations occur.",
+          "start": "493",
+          "field-name": "DSBD_NOTIFY_ID",
+          "end": "500",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Retention period of the data set.",
+          "start": "502",
+          "field-name": "DSBD_RETENTION",
+          "end": "506",
+          "type": "Int"
+        },
+        {
+          "field-desc": "For a DASD data set, is this data set scratched when the data set is deleted?",
+          "start": "508",
+          "field-name": "DSBD_ERASE",
+          "end": "511",
+          "type": "Yes/ No"
+        },
+        {
+          "field-desc": "Security label of the data set.",
+          "start": "513",
+          "field-name": "DSBD_SECLABEL",
+          "end": "520",
+          "type": "Char"
+        }
+      ]
+    }
+  }
