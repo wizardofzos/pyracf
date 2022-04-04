@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="pyracf",
-    version="0.0.1",
+    version="0.0.2",
     author="Wizard of z/OS",
     author_email="wizard@zdevops.com",
     description="Parsing IRRDBU00 unloads in panda dataframes.",
@@ -22,5 +22,10 @@ setuptools.setup(
     ],
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
+    include_package_data=True,
+    install_requires=[
+        'wheel',
+        'pandas',
+    ],
     python_requires=">=3.6",
 )
