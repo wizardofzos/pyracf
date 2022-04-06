@@ -100,6 +100,11 @@ class RACF:
         return False
 
     def parse(self):
+        pt = threading.Thread(target=self.parse_t)
+        pt.start()
+        return True
+
+    def parse_t(self):
         # TODO: make this multiple threads (per record-type?)
         self._state = self.STATE_PARSING
         # TODO: Complete all record-types. Fix offsets.json !
