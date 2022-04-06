@@ -91,7 +91,16 @@ class RACF:
             seen += self._records[r]['seen']
             parsed += self._records[r]['parsed']
 
-        return {'status': self._state, 'in-lines': seen, 'parsed-lines': parsed}
+        if self._state == self.STATE_BAD:
+            status = "Error"
+        elif self._state == self.STATE_INIT:
+            status = "Initial Object"
+        elif self._state == self.STATE_PARSING:
+            status = "Still parsing your unload"
+        elif self._state == self.STATE_READY:
+            status = "Ready"
+
+        return {'status': status, 'in-lines': seen, 'parsed-lines': parsed}
 
     def findOffsets(self, recordType):
         for offset in self._offsets:
@@ -157,6 +166,7 @@ class RACF:
         return True
 
 
+    @property
     def users(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
@@ -168,25 +178,40 @@ class RACF:
         # TODO: Need more coolness here :)
 
         return self._users
+    
+    def user(self, userid=None):
+        if not userid:
+            raise StoopidException('userid not specified...')
+        return self._users.loc[self._users.USBD_NAME==userid]
 
+
+    @property
     def groups(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         
         return self._groups
+    
+    def group(self, group=None):
+        if not group:
+            raise StoopidException('group not specified...')
+        return self._groups.loc[self._groups.GPBD_NAME==group]
 
+    @property
     def datasets(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         
         return self._datasets
 
+    @property
     def connects(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         
         return self._connects
 
+    @property
     def datasetAccess(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
@@ -199,12 +224,14 @@ class RACF:
             
         return self._datasetAccess
 
+    @property
     def generics(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         
         return self._generics
 
+    @property
     def genericAccess(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
