@@ -88,6 +88,9 @@ class RACF:
     def status(self):
         seen = 0
         parsed = 0
+        start  = "n.a."
+        stop   = "n.a."
+
         for r in self._records:
             seen += self._records[r]['seen']
             parsed += self._records[r]['parsed']
@@ -98,10 +101,14 @@ class RACF:
             status = "Initial Object"
         elif self._state == self.STATE_PARSING:
             status = "Still parsing your unload"
+            start  = self._starttime
         elif self._state == self.STATE_READY:
             status = "Ready"
+            start  = self._starttime
+            stop   = self._stopttime
+        
 
-        return {'status': status, 'in-lines': seen, 'parsed-lines': parsed}
+        return {'status': status, 'in-lines': seen, 'parsed-lines': parsed, 'start': start, 'stop': stop}
 
     def findOffsets(self, recordType):
         for offset in self._offsets:
@@ -110,6 +117,7 @@ class RACF:
         return False
 
     def parse(self):
+        self._starttime = datetime.now().strftime("%H:%M:%S.%f")
         pt = threading.Thread(target=self.parse_t)
         pt.start()
         return True
@@ -164,6 +172,7 @@ class RACF:
         self._genericAccess = pd.DataFrame.from_dict(self.GRACC)
         
         self._state = self.STATE_READY         
+        self._stopttime = datetime.now().strftime("%H:%M:%S.%f")
         return True
 
 
