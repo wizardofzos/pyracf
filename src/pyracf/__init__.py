@@ -10,6 +10,7 @@ import threading
 import time
 from datetime import datetime
 
+#TODO : @property breaks the goddamn query== tools :(
 
 class StoopidException(Exception):
     def __init__(self, message):
