@@ -266,7 +266,7 @@ class RACF:
 
     @property
     def uacc_read_datasets(self):
-        self._datasets.loc[self._datasets.DSBD_UACC=="READ"]
+        return self._datasets.loc[self._datasets.DSBD_UACC=="READ"]
 
     @property
     def generics(self, query=None):
@@ -280,6 +280,7 @@ class RACF:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._genericAccess
     
+    @property
     def orphans(self):
         self._datasetAccess = self._datasetAccess.assign(inGroups=self._datasetAccess.DSACC_AUTH_ID.isin(self._groups.GPBD_NAME))
         self._datasetAccess = self._datasetAccess.assign(inUsers=self._datasetAccess.DSACC_AUTH_ID.isin(self._users.USBD_NAME))
