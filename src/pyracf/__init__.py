@@ -26,6 +26,9 @@ class RACF:
     STATE_PARSING =  1
     STATE_READY   =  2
 
+    # Running threads
+    THREAD_COUNT = 0
+
     # list of parsed record-types
     _records = {}
 
@@ -94,6 +97,7 @@ class RACF:
         start  = "n.a."
         stop   = "n.a."
         speed  = "n.a."
+        parsetime = "n.a."
 
         for r in self._records:
             seen += self._records[r]['seen']
@@ -113,10 +117,11 @@ class RACF:
             start  = self._starttime
             stop   = self._stopttime
             speed  = seen/((self._stopttime - self._starttime).total_seconds())
+            parsetime = (self._stopttime - self._starttime).total_seconds()
      
 
 
-        return {'status': status, 'lines-read': seen, 'lines-parsed': parsed, 'lines-per-second': math.floor(speed)}
+        return {'status': status, 'lines-read': seen, 'lines-parsed': parsed, 'lines-per-second': math.floor(speed), 'parse-time': parsetime}
 
     def findOffsets(self, recordType):
         for offset in self._offsets:
@@ -124,17 +129,26 @@ class RACF:
                 return json.loads(json.dumps(self._offsets[offset]))
         return False
 
-    def parse(self):
+    def parse(self, thread_count=1):
         self._starttime = datetime.now()
-        pt = threading.Thread(target=self.parse_t)
-        pt.start()
+        if thread_count == 1:
+            pt3 = threading.Thread(target=self.parse_t,args=(['0100', '0102', '0200','0400', '0404', '0500', '0505'],))
+            pt3.start()
+        elif thread_count == 2:
+            pt1 = threading.Thread(target=self.parse_t,args=(['0100', '0102', '0200'],))
+            pt2 = threading.Thread(target=self.parse_t,args=(['0400', '0404', '0500', '0505'],))
+            pt1.start()
+            pt2.start()
+        else:
+            raise StoopidException('Thread count can only be 1 or 2.')
+        
         return True
 
-    def parse_t(self):
+    def parse_t(self, thingswewant=['0100', '0102', '0200', '0400', '0404', '0500', '0505']):
         # TODO: make this multiple threads (per record-type?)
         self._state = self.STATE_PARSING
+        self.THREAD_COUNT += 1
         # TODO: Complete all record-types. Fix offsets.json !
-        thingswewant = ['0100', '0102', '0200', '0400', '0404', '0500', '0505']    
         with open(self._irrdbu00, 'r', encoding="utf-8", errors="replace") as infile:
             for line in infile:
                 r = line[:4]
@@ -171,16 +185,25 @@ class RACF:
                             self.GRACC.append(irrmodel)       
                     self._records[r]['parsed'] += 1
         # all models parsed :)
-        self._users = pd.DataFrame.from_dict(self.USBD)  
-        self._groups = pd.DataFrame.from_dict(self.GPBD)
-        self._connects = pd.DataFrame.from_dict(self.GPMEM)
-        self._datasets = pd.DataFrame.from_dict(self.DSBD)
-        self._generics = pd.DataFrame.from_dict(self.GRBD)
-        self._datasetAccess = pd.DataFrame.from_dict(self.DSACC)
-        self._genericAccess = pd.DataFrame.from_dict(self.GRACC)
+        if "0200" in thingswewant:
+            self._users = pd.DataFrame.from_dict(self.USBD)     
+        if "0100" in thingswewant:
+            self._groups = pd.DataFrame.from_dict(self.GPBD)
+        if "0102" in thingswewant:
+            self._connects = pd.DataFrame.from_dict(self.GPMEM)
+        if "0400" in thingswewant:
+            self._datasets = pd.DataFrame.from_dict(self.DSBD)
+        if "0500" in thingswewant:
+            self._generics = pd.DataFrame.from_dict(self.GRBD)
+        if "0404" in thingswewant:
+            self._datasetAccess = pd.DataFrame.from_dict(self.DSACC)
+        if "0505" in thingswewant:
+            self._genericAccess = pd.DataFrame.from_dict(self.GRACC)
         
-        self._state = self.STATE_READY         
-        self._stopttime = datetime.now()
+        self.THREAD_COUNT -= 1
+        if self.THREAD_COUNT == 0:
+            self._state = self.STATE_READY         
+            self._stopttime = datetime.now()
         return True
 
 
