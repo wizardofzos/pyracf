@@ -2,6 +2,8 @@ import importlib.resources
 import json
 import pandas as pd 
 
+import math
+
 # No mess with my header lines
 import pandas.io.formats.excel
 pandas.io.formats.excel.ExcelFormatter.header_style = None
@@ -85,11 +87,13 @@ class RACF:
             self._irrdbu00 = irrdbu00
             self._state    = self.STATE_INIT
 
+    @property
     def status(self):
         seen = 0
         parsed = 0
         start  = "n.a."
         stop   = "n.a."
+        speed  = "n.a."
 
         for r in self._records:
             seen += self._records[r]['seen']
@@ -102,13 +106,17 @@ class RACF:
         elif self._state == self.STATE_PARSING:
             status = "Still parsing your unload"
             start  = self._starttime
+            speed  = seen/((datetime.now() -self._starttime).total_seconds())
+
         elif self._state == self.STATE_READY:
             status = "Ready"
             start  = self._starttime
             stop   = self._stopttime
-        
+            speed  = seen/((self._stopttime - self._starttime).total_seconds())
+     
 
-        return {'status': status, 'in-lines': seen, 'parsed-lines': parsed, 'start': start, 'stop': stop}
+
+        return {'status': status, 'lines-read': seen, 'lines-parsed': parsed, 'lines-per-second': math.floor(speed)}
 
     def findOffsets(self, recordType):
         for offset in self._offsets:
@@ -117,7 +125,7 @@ class RACF:
         return False
 
     def parse(self):
-        self._starttime = datetime.now().strftime("%H:%M:%S.%f")
+        self._starttime = datetime.now()
         pt = threading.Thread(target=self.parse_t)
         pt.start()
         return True
@@ -172,7 +180,7 @@ class RACF:
         self._genericAccess = pd.DataFrame.from_dict(self.GRACC)
         
         self._state = self.STATE_READY         
-        self._stopttime = datetime.now().strftime("%H:%M:%S.%f")
+        self._stopttime = datetime.now()
         return True
 
 
@@ -180,13 +188,6 @@ class RACF:
     def users(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-
-        if query == 'special':
-            return self._users.loc[self._users['USBD_SPECIAL'] == 'YES']
-        if query == 'operations':
-            return self._users.loc[self._users['USBD_OPER'] == 'YES']
-        # TODO: Need more coolness here :)
-
         return self._users
     
     def user(self, userid=None):
@@ -194,6 +195,21 @@ class RACF:
             raise StoopidException('userid not specified...')
         return self._users.loc[self._users.USBD_NAME==userid]
 
+    @property
+    def specials(self):
+        return self._users.loc[self._users['USBD_SPECIAL'] == 'YES']
+
+    @property
+    def operations(self):
+        return self._users.loc[self._users['USBD_OPER'] == 'YES']
+
+    @property
+    def auditors(self):
+        return self._users.loc[self._users['USBD_AUDITOR'] == 'YES']
+
+    @property
+    def revoked(self):
+        return self._users.loc[self._users['USBD_REVOKE'] == 'YES']
 
     @property
     def groups(self, query=None):
@@ -211,45 +227,43 @@ class RACF:
     def datasets(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        
         return self._datasets
 
     @property
     def connects(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        
         return self._connects
 
     @property
     def datasetAccess(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        
-        if query == "orphans":
-            self._datasetAccess = self._datasetAccess.assign(inGroups=self._datasetAccess.DSACC_AUTH_ID.isin(self._groups.GPBD_NAME))
-            self._datasetAccess = self._datasetAccess.assign(inUsers=self._datasetAccess.DSACC_AUTH_ID.isin(self._users.USBD_NAME))
-            # So we can select all dataset profiles that have an orphan profile on the accesslist
-            return self._datasetAccess.loc[(self._datasetAccess['inGroups'] == False) & (self._datasetAccess['inUsers'] == False) & (self._datasetAccess['DSACC_AUTH_ID'] != "*") & (self._datasetAccess['DSACC_AUTH_ID'] != "&RACUID")]
-            
         return self._datasetAccess
+
+    @property
+    def uacc_read_datasets(self):
+        self._datasets.loc[self._datasets.DSBD_UACC=="READ"]
 
     @property
     def generics(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        
         return self._generics
 
     @property
     def genericAccess(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        
-        if query == "orphans":
-            self._genericAccess = self._genericAccess.assign(inGroups=self._genericAccess.GRACC_AUTH_ID.isin(self._groups.GPBD_NAME))
-            self._genericAccess = self._genericAccess.assign(inUsers=self._genericAccess.GRACC_AUTH_ID.isin(self._users.USBD_NAME))
-            return self._genericAccess.loc[(self._genericAccess['inGroups'] == False) & (self._genericAccess['inUsers'] == False) & (self._genericAccess['GRACC_AUTH_ID'] != "*") & (self._genericAccess['GRACC_AUTH_ID'] != "&RACUID")]
-
         return self._genericAccess
     
+    def orphans(self):
+        self._datasetAccess = self._datasetAccess.assign(inGroups=self._datasetAccess.DSACC_AUTH_ID.isin(self._groups.GPBD_NAME))
+        self._datasetAccess = self._datasetAccess.assign(inUsers=self._datasetAccess.DSACC_AUTH_ID.isin(self._users.USBD_NAME))
+        datasetOrphans = self._datasetAccess.loc[(self._datasetAccess['inGroups'] == False) & (self._datasetAccess['inUsers'] == False) & (self._datasetAccess['DSACC_AUTH_ID'] != "*") & (self._datasetAccess['DSACC_AUTH_ID'] != "&RACUID")]
+        
+        self._genericAccess = self._genericAccess.assign(inGroups=self._genericAccess.GRACC_AUTH_ID.isin(self._groups.GPBD_NAME))
+        self._genericAccess = self._genericAccess.assign(inUsers=self._genericAccess.GRACC_AUTH_ID.isin(self._users.USBD_NAME))
+        genericOrphans =  self._genericAccess.loc[(self._genericAccess['inGroups'] == False) & (self._genericAccess['inUsers'] == False) & (self._genericAccess['GRACC_AUTH_ID'] != "*") & (self._genericAccess['GRACC_AUTH_ID'] != "&RACUID")]
+
+        return datasetOrphans, genericOrphans
