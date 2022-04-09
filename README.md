@@ -89,10 +89,25 @@ Example:
 
     [62 rows x 8 columns]
 
-## All functions ()
+## All functions
 
 | Function/Property | Explanation | Example |
 |---|---|---|
 | auditors | Returns DataFrame with all user having the auditor bit switched on | mysys.auditors |
 | connects | Returns DataFrame with all user to group connects | mysys.connects |
+| datasetAccess | Returns DataFrame with all Accesslists for all dataset profiles | mysys.datasetsAccess |
+| datasets | Returns DataFrame with all datasetprofiles | mysys.datasets |
+| genericAccess | Returns DataFrame with with all accesslists for generic resource profiles | mysys.genericAccess
+| generics | Returns DataFrame with with all generic resource profiles | mysys.generics 
+| group | Returns DataFrame with with one dataset profile only | mysys.group('SYS1') |
+| groups | Returns DataFrame with all group data | mysys.groups |
+| operations | Returns a DataFrame  with all operations users | mysys.operations |
+| orphans | Returns 2 DataFrames one with orphans in dataset profile access lists, and one for generic resources | d, g = mysys.orphans |
+| orphans | Returns 2 DataFrames one with orphans in dataset profile access lists, and one for generic resources | d, g = mysys.orphans |
+| revoked | Returns a DataFrame  with all revoked users | mysys.revoked |
+| specials | Returns a DataFrame  with all special users | mysys.specials |
+| uacc_read_datasets | Returns a DataFrame  with all dataset profiles having UACC=READ | mysys.uacc_read_datasets |
+
+
+
 
