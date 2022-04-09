@@ -368,6 +368,18 @@
           "end": "123"
         },
         {
+          "field-name": "USBD_INSTALL_DATA",
+          "type": "char",
+          "start": "125",
+          "end": "379"
+        },    
+        {
+          "field-name": "USBD_UAUDIT",
+          "type": "yes/no",
+          "start": "381",
+          "end": "384"
+        },   
+        {
           "field-name": "USBD_AUDITOR",
           "type": "yes/no",
           "start": "386",
@@ -386,11 +398,23 @@
           "end": "399"
         },
         {
+          "field-name": "USBD_PWD_GEN",
+          "type": "int",
+          "start": "401",
+          "end": "403"
+        },
+        {
           "field-name": "USBD_REVOKE_CNT",
           "type": "int",
           "start": "405",
           "end": "407"
         },
+        {
+          "field-name": "USBD_MODEL",
+          "type": "char",
+          "start": "409",
+          "end": "452"
+        },        
         {
           "field-name": "USBD_SECLEVEL",
           "type": "int",
@@ -470,11 +494,53 @@
           "end": "540"
         },
         {
+          "field-name": "USBD_ATTRIBS",
+          "type": "char",
+          "start": "542",
+          "end": "549"
+        },    
+        {
+          "field-name": "USBD_PWDENV_EXISTS",
+          "type": "char",
+          "start": "551",
+          "end": "554"
+        },      
+        {
+          "field-name": "USBD_PWD_ASIS",
+          "type": "char",
+          "start": "556",
+          "end": "559"
+        },                 
+        {
           "field-name": "USBD_PHR_DATE",
           "type": "date",
           "start": "561",
           "end": "570"
-        }
+        },
+        {
+          "field-name": "USBD_PHR_GEN",
+          "type": "int",
+          "start": "572",
+          "end": "574"
+        },
+        {
+          "field-name": "USBD_CERT_SEQN",
+          "type": "int",
+          "start": "576",
+          "end": "585"
+        },  
+        {
+          "field-name": "USBD_PPHENV_EXISTS",
+          "type": "yes/no",
+          "start": "587",
+          "end": "590"
+        },      
+        {
+          "field-name": "USBD_PWD_ALG",
+          "type": "char",
+          "start": "592",
+          "end": "603"
+        }                   
       ]
     },
     "user-categories-record": {
