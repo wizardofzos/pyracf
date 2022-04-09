@@ -1,5 +1,8 @@
 # pyracf
 
+    pip install pyracf
+
+
 ## Parsing IRRDBU00 unloads like a boss
 
     >>> from pyracf import RACF
@@ -36,6 +39,8 @@
 Get all users that have not logged in (on?) since January 1st 2022. And print userID and last logon...
 
     import time
+    from pyracf import RACF
+
     mysys = RACF('/path/to/irrdbu00')
     mysys.parse()
     while mysys.status['status'] != 'Ready':
@@ -44,7 +49,7 @@ Get all users that have not logged in (on?) since January 1st 2022. And print us
     for user in selection.values:
       print(f"Userid {user[0]}, last active: {user[1]})
 
-      
+
 
 
 
