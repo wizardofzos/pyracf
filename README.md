@@ -49,6 +49,10 @@ Get all users that have not logged in (on?) since January 1st 2022. And print us
       print(f"Userid {user[0]}, last active: {user[1]})
 
 
+# Contribute to PyRACF
+
+If you've some additions and/or bugfixes, feel free to [fork](https://github.com/wizardofzos/pyracf/fork) this repository, make your additions and fire a pull request.
+
 
 
 
