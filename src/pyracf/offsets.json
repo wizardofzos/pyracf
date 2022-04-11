@@ -51,6 +51,18 @@
           "end": "56"
         },
         {
+          "field-name": "GPBD_INSTALL_DATA",
+          "type": "char",
+          "start": "58",
+          "end": "312"
+        },
+        {
+          "field-name": "GPBD_MODEL",
+          "type": "char",
+          "start": "314",
+          "end": "357"
+        },        
+        {
           "field-name": "GPBD_UNIVERSAL",
           "type": "yes/no",
           "start": "359",
