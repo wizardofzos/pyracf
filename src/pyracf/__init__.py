@@ -20,62 +20,12 @@ class StoopidException(Exception):
         super().__init__(self.message)
 
 class RACF:
+    
     # Our states
     STATE_BAD     = -1
     STATE_INIT    =  0
     STATE_PARSING =  1
     STATE_READY   =  2
-
-    # Running threads
-    THREAD_COUNT = 0
-
-    # list of parsed record-types
-    _records = {}
-
-    # Better be prepared for all of em :)
-    GPBD  = []            
-    GPSGRP = []
-    GPMEM  = []
-    GPDFP  = []
-    GPOMVS  = []
-    GPOVM  = []
-    GPTME  = []
-    GPCSD  = []
-    USBD  = []
-    USCAT  = []
-    USCLA  = []
-    USINSTD  = []
-    USCERT  = []
-    USNMAP  = []
-    USDMAP  = []
-    USDFP  = []
-    USTSO  = []
-    USCICS  = []
-    USCOPC  = []
-    USCRSL  = []
-    USCTSL  = []
-    USLAN  = []
-    USOPR  = []
-    USOPRP  = []
-    USWRK  = []
-    USOMVS  = []
-    USNOPC  = []
-    USNDOM  = []
-    USDCE  = []
-    USOVM  = []
-    USLNOT  = []
-    USDNS  = []
-    USKERB  = []
-    USPROXY  = []
-    USEIM  = []
-    USCSD  = []
-    DSBD  = []
-    DSACC  = []
-    DSDFP  = []
-    GRBD  = []
-    GRTVOL  = []
-    GRACC  = []
-    CERTN  = []
 
     def __init__(self, irrdbu00=None):
 
@@ -89,6 +39,58 @@ class RACF:
         else:
             self._irrdbu00 = irrdbu00
             self._state    = self.STATE_INIT
+
+
+        # Running threads
+        self.THREAD_COUNT = 0
+
+        # list of parsed record-types
+        self._records = {}
+
+        # Better be prepared for all of em :)
+        self.GPBD  = []            
+        self.GPSGRP = []
+        self.GPMEM  = []
+        self.GPDFP  = []
+        self.GPOMVS  = []
+        self.GPOVM  = []
+        self.GPTME  = []
+        self.GPCSD  = []
+        self.USBD  = []
+        self.USCAT  = []
+        self.USCLA  = []
+        self.USINSTD  = []
+        self.USCERT  = []
+        self.USNMAP  = []
+        self.USDMAP  = []
+        self.USDFP  = []
+        self.USTSO  = []
+        self.USCICS  = []
+        self.USCOPC  = []
+        self.USCRSL  = []
+        self.USCTSL  = []
+        self.USLAN  = []
+        self.USOPR  = []
+        self.USOPRP  = []
+        self.USWRK  = []
+        self.USOMVS  = []
+        self.USNOPC  = []
+        self.USNDOM  = []
+        self.USDCE  = []
+        self.USOVM  = []
+        self.USLNOT  = []
+        self.USDNS  = []
+        self.USKERB  = []
+        self.USPROXY  = []
+        self.USEIM  = []
+        self.USCSD  = []
+        self.DSBD  = []
+        self.DSACC  = []
+        self.DSDFP  = []
+        self.GRBD  = []
+        self.GRTVOL  = []
+        self.GRACC  = []
+        self.CERTN  = []
 
     @property
     def status(self):
