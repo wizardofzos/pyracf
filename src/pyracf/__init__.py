@@ -14,7 +14,6 @@ from datetime import datetime
 
 import xlsxwriter
 
-#TODO : @property breaks the goddamn query== tools :(
 
 class StoopidException(Exception):
     def __init__(self, message):
@@ -297,6 +296,8 @@ class RACF:
         return datasetOrphans, genericOrphans
 
     def xls(self,fileName='irrdbu00.xlsx'):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         writer = pd.ExcelWriter(f'{fileName}', engine='xlsxwriter')
         accessLevelFormats = {
                     'N': writer.book.add_format({'bg_color': 'silver'}),
