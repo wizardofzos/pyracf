@@ -135,10 +135,10 @@ class RACF:
     def parse(self, thread_count=1):
         self._starttime = datetime.now()
         if thread_count == 1:
-            pt3 = threading.Thread(target=self.parse_t,args=(['0100', '0102', '0200','0400', '0404', '0500', '0505'],))
+            pt3 = threading.Thread(target=self.parse_t,args=(['0100', '0102', '0200','0205','0400', '0404', '0500', '0505'],))
             pt3.start()
         elif thread_count == 2:
-            pt1 = threading.Thread(target=self.parse_t,args=(['0100', '0102', '0200'],))
+            pt1 = threading.Thread(target=self.parse_t,args=(['0100', '0102', '0200','0205'],))
             pt2 = threading.Thread(target=self.parse_t,args=(['0400', '0404', '0500', '0505'],))
             pt1.start()
             pt2.start()
@@ -147,7 +147,7 @@ class RACF:
         
         return True
 
-    def parse_t(self, thingswewant=['0100', '0102', '0200', '0400', '0404', '0500', '0505']):
+    def parse_t(self, thingswewant=['0100', '0102', '0200', '0205', '0400', '0404', '0500', '0505']):
         # TODO: make this multiple threads (per record-type?)
         self._state = self.STATE_PARSING
         self.THREAD_COUNT += 1
@@ -178,6 +178,8 @@ class RACF:
                             self.GPMEM.append(irrmodel)
                         if r == '0200':
                             self.USBD.append(irrmodel)   
+                        if r == '0205':
+                            self.USCON.append(irrmodel)
                         if r == '0400':
                             self.DSBD.append(irrmodel)
                         if r == '0404':
@@ -190,6 +192,8 @@ class RACF:
         # all models parsed :)
         if "0200" in thingswewant:
             self._users = pd.DataFrame.from_dict(self.USBD)     
+        if "0205" in thingswewant:
+            self._connectData = pd.DataFrame.from_dict(self.USCON)
         if "0100" in thingswewant:
             self._groups = pd.DataFrame.from_dict(self.GPBD)
         if "0102" in thingswewant:
@@ -220,6 +224,12 @@ class RACF:
         if not userid:
             raise StoopidException('userid not specified...')
         return self._users.loc[self._users.USBD_NAME==userid]
+
+    @property
+    def connectData(self):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._connectData
 
     @property
     def specials(self):
