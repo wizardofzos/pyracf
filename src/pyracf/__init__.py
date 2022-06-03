@@ -135,10 +135,10 @@ class RACF:
     def parse(self, thread_count=1):
         self._starttime = datetime.now()
         if thread_count == 1:
-            pt3 = threading.Thread(target=self.parse_t,args=(['0100', '0102', '0200','0205','0400', '0404', '0500', '0505'],))
+            pt3 = threading.Thread(target=self.parse_t,args=(['0100', '0101', '0102', '0200','0205','0400', '0404', '0500', '0505'],))
             pt3.start()
         elif thread_count == 2:
-            pt1 = threading.Thread(target=self.parse_t,args=(['0100', '0102', '0200','0205'],))
+            pt1 = threading.Thread(target=self.parse_t,args=(['0100', '0101', '0102', '0200','0205'],))
             pt2 = threading.Thread(target=self.parse_t,args=(['0400', '0404', '0500', '0505'],))
             pt1.start()
             pt2.start()
@@ -147,7 +147,7 @@ class RACF:
         
         return True
 
-    def parse_t(self, thingswewant=['0100', '0102', '0200', '0205', '0400', '0404', '0500', '0505']):
+    def parse_t(self, thingswewant=['0100', '0101', '0102', '0200', '0205', '0400', '0404', '0500', '0505']):
         # TODO: make this multiple threads (per record-type?)
         self._state = self.STATE_PARSING
         self.THREAD_COUNT += 1
@@ -174,6 +174,8 @@ class RACF:
                             
                         if r == '0100':
                             self.GPBD.append(irrmodel)
+                        if r == '0101':
+                            self.GPSGRP.append(irrmodel)
                         if r == '0102':
                             self.GPMEM.append(irrmodel)
                         if r == '0200':
@@ -196,6 +198,8 @@ class RACF:
             self._connectData = pd.DataFrame.from_dict(self.USCON)
         if "0100" in thingswewant:
             self._groups = pd.DataFrame.from_dict(self.GPBD)
+        if "0101" in thingswewant:
+            self._subgroups = pd.DataFrame.from_dict(self.GPSGRP)
         if "0102" in thingswewant:
             self._connects = pd.DataFrame.from_dict(self.GPMEM)
         if "0400" in thingswewant:
@@ -270,6 +274,12 @@ class RACF:
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._connects
+
+    @property
+    def subgroups(self):
+        if self._state != self.STATE_READY:
+            raise StoopidExeption('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self.subgroups
 
     @property
     def datasetAccess(self):
