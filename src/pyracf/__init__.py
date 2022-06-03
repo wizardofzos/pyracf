@@ -62,6 +62,7 @@ class RACF:
         self.USCLA  = []
         self.USINSTD  = []
         self.USCERT  = []
+        self.USCON = []
         self.USNMAP  = []
         self.USDMAP  = []
         self.USDFP  = []
@@ -270,7 +271,7 @@ class RACF:
     def subgroups(self):
         if self._state != self.STATE_READY:
             raise StoopidExeption('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self.subgroups
+        return self._subgroups
 
     @property
     def datasetAccess(self):
