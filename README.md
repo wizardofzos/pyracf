@@ -27,6 +27,7 @@ PyRACF is a module to easily parse and query the setup of any RACF database. It 
 | groups | Returns DataFrame with all group data | mysys.groups |
 | operations | Returns a DataFrame  with all operations users | mysys.operations |
 | orphans | Returns 2 DataFrames one with orphans in dataset profile access lists, and one for generic resources | d, g = mysys.orphans |
+| parse | parses the unload. optional specify recordtypes | mysys.parse(recordtype=['0200']) |
 | revoked | Returns a DataFrame  with all revoked users | mysys.revoked |
 | specials | Returns a DataFrame  with all special users | mysys.specials |
 | status | Returns JSON with parsing status | mysys.status |

@@ -132,19 +132,10 @@ class RACF:
                 return json.loads(json.dumps(self._offsets[offset]))
         return False
 
-    def parse(self, thread_count=1):
+    def parse(self, recordtypes=['0100', '0101', '0102', '0200','0205','0400', '0404', '0500', '0505']):
         self._starttime = datetime.now()
-        if thread_count == 1:
-            pt3 = threading.Thread(target=self.parse_t,args=(['0100', '0101', '0102', '0200','0205','0400', '0404', '0500', '0505'],))
-            pt3.start()
-        elif thread_count == 2:
-            pt1 = threading.Thread(target=self.parse_t,args=(['0100', '0101', '0102', '0200','0205'],))
-            pt2 = threading.Thread(target=self.parse_t,args=(['0400', '0404', '0500', '0505'],))
-            pt1.start()
-            pt2.start()
-        else:
-            raise StoopidException('Thread count can only be 1 or 2.')
-        
+        pt = threading.Thread(target=self.parse_t,args=(recordtypes,))
+        pt.start()
         return True
 
     def parse_t(self, thingswewant=['0100', '0101', '0102', '0200', '0205', '0400', '0404', '0500', '0505']):
