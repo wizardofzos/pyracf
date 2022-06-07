@@ -133,13 +133,13 @@ class RACF:
                 return json.loads(json.dumps(self._offsets[offset]))
         return False
 
-    def parse(self, recordtypes=['0100', '0101', '0102', '0200','0205','0400', '0404', '0500', '0505']):
+    def parse(self, recordtypes=['0100', '0101', '0102', '0200','0205','0400', '0402', '0404', '0500', '0505']):
         self._starttime = datetime.now()
         pt = threading.Thread(target=self.parse_t,args=(recordtypes,))
         pt.start()
         return True
 
-    def parse_t(self, thingswewant=['0100', '0101', '0102', '0200', '0205', '0400', '0404', '0500', '0505']):
+    def parse_t(self, thingswewant=['0100', '0101', '0102', '0200', '0205', '0400', '0402', '0404', '0500', '0505']):
         # TODO: make this multiple threads (per record-type?)
         self._state = self.STATE_PARSING
         self.THREAD_COUNT += 1
@@ -176,6 +176,8 @@ class RACF:
                             self.USCON.append(irrmodel)
                         if r == '0400':
                             self.DSBD.append(irrmodel)
+                        if r == '0402':
+                            self.DSCACC.append(irrmodel)                                                 
                         if r == '0404':
                             self.DSACC.append(irrmodel)  
                         if r == '0500': 
@@ -196,10 +198,12 @@ class RACF:
             self._connects = pd.DataFrame.from_dict(self.GPMEM)
         if "0400" in thingswewant:
             self._datasets = pd.DataFrame.from_dict(self.DSBD)
-        if "0500" in thingswewant:
-            self._generics = pd.DataFrame.from_dict(self.GRBD)
+        if "0402" in thingswewant:
+            self._datasetPermit = pd.DataFrame.from_dict(self.DSBD)
         if "0404" in thingswewant:
             self._datasetAccess = pd.DataFrame.from_dict(self.DSACC)
+        if "0500" in thingswewant:
+            self._generics = pd.DataFrame.from_dict(self.GRBD)
         if "0505" in thingswewant:
             self._genericAccess = pd.DataFrame.from_dict(self.GRACC)
         
@@ -260,6 +264,12 @@ class RACF:
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._datasets
+
+    @property
+    def datasetPermit(self):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._datasetPermit
 
     @property
     def connects(self):
