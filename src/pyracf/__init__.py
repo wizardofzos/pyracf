@@ -206,7 +206,7 @@ class RACF:
         if "0205" in thingswewant:
             self._connectData = pd.DataFrame.from_dict(self.USCON)                      
         if "0220" in thingswewant:
-            self._userOMVS = pd.DataFrame.from_dict(self.USTSO)          
+            self._userTSO = pd.DataFrame.from_dict(self.USTSO)          
         if "0270" in thingswewant:
             self._userOMVS = pd.DataFrame.from_dict(self.USOMVS)                        
         if "0400" in thingswewant:
