@@ -133,13 +133,13 @@ class RACF:
                 return json.loads(json.dumps(self._offsets[offset]))
         return False
 
-    def parse(self, recordtypes=['0100', '0101', '0102', '0200','0205','0400', '0402', '0404', '0500', '0505']):
+    def parse(self, recordtypes=['0100', '0101', '0102', '0120', '0200', '0205', '0220', '0270', '0400', '0402', '0404', '0500', '0505']):
         self._starttime = datetime.now()
         pt = threading.Thread(target=self.parse_t,args=(recordtypes,))
         pt.start()
         return True
 
-    def parse_t(self, thingswewant=['0100', '0101', '0102', '0200', '0205', '0400', '0402', '0404', '0500', '0505']):
+    def parse_t(self, thingswewant=['0100', '0101', '0102', '0120', '0200', '0205', '0220', '0270', '0400', '0402', '0404', '0500', '0505']):
         # TODO: make this multiple threads (per record-type?)
         self._state = self.STATE_PARSING
         self.THREAD_COUNT += 1
@@ -170,10 +170,16 @@ class RACF:
                             self.GPSGRP.append(irrmodel)
                         if r == '0102':
                             self.GPMEM.append(irrmodel)
+                        if r == '0120':
+                            self.GPOMVS.append(irrmodel)    
                         if r == '0200':
                             self.USBD.append(irrmodel)   
                         if r == '0205':
                             self.USCON.append(irrmodel)
+                        if r == '0220':
+                            self.USTSO.append(irrmodel)                            
+                        if r == '0270':
+                            self.USOMVS.append(irrmodel)                            
                         if r == '0400':
                             self.DSBD.append(irrmodel)
                         if r == '0402':
@@ -186,16 +192,23 @@ class RACF:
                             self.GRACC.append(irrmodel)       
                     self._records[r]['parsed'] += 1
         # all models parsed :)
-        if "0200" in thingswewant:
-            self._users = pd.DataFrame.from_dict(self.USBD)     
-        if "0205" in thingswewant:
-            self._connectData = pd.DataFrame.from_dict(self.USCON)
+
         if "0100" in thingswewant:
             self._groups = pd.DataFrame.from_dict(self.GPBD)
         if "0101" in thingswewant:
             self._subgroups = pd.DataFrame.from_dict(self.GPSGRP)
         if "0102" in thingswewant:
             self._connects = pd.DataFrame.from_dict(self.GPMEM)
+        if "0120" in thingswewant:
+            self._groupOMVS = pd.DataFrame.from_dict(self.GPOMVS)  
+        if "0200" in thingswewant:
+            self._users = pd.DataFrame.from_dict(self.USBD)     
+        if "0205" in thingswewant:
+            self._connectData = pd.DataFrame.from_dict(self.USCON)                      
+        if "0220" in thingswewant:
+            self._userOMVS = pd.DataFrame.from_dict(self.USTSO)          
+        if "0270" in thingswewant:
+            self._userOMVS = pd.DataFrame.from_dict(self.USOMVS)                        
         if "0400" in thingswewant:
             self._datasets = pd.DataFrame.from_dict(self.DSBD)
         if "0402" in thingswewant:
@@ -305,6 +318,24 @@ class RACF:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._genericAccess
     
+    @property
+    def userOMVS(self, query=None):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._userOMVS
+
+    @property
+    def groupOMVS(self, query=None):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._groupOMVS        
+
+    @property
+    def userTSO(self, query=None):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._userTSO    
+        
     @property
     def orphans(self):
         self._datasetAccess = self._datasetAccess.assign(inGroups=self._datasetAccess.DSACC_AUTH_ID.isin(self._groups.GPBD_NAME))
