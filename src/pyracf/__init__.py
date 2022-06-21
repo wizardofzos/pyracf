@@ -28,6 +28,9 @@ class RACF:
     STATE_PARSING =  1
     STATE_READY   =  2
 
+    # Our static values :)
+    USBD_RECORDTYPE = '0200'
+
     def __init__(self, irrdbu00=None):
 
         self._state = self.STATE_INIT
@@ -133,7 +136,7 @@ class RACF:
                 return json.loads(json.dumps(self._offsets[offset]))
         return False
 
-    def parse(self, recordtypes=['0100', '0101', '0102', '0120', '0200', '0205', '0220', '0270', '0400', '0402', '0404', '0500', '0505']):
+    def parse(self, recordtypes=['0100', '0101', '0102', '0120', USBD_RECORDTYPE, '0205', '0220', '0270', '0400', '0402', '0404', '0500', '0505']):
         self._starttime = datetime.now()
         pt = threading.Thread(target=self.parse_t,args=(recordtypes,))
         pt.start()
@@ -172,7 +175,7 @@ class RACF:
                             self.GPMEM.append(irrmodel)
                         if r == '0120':
                             self.GPOMVS.append(irrmodel)    
-                        if r == '0200':
+                        if r == self.USBD_RECORDTYPE:
                             self.USBD.append(irrmodel)   
                         if r == '0205':
                             self.USCON.append(irrmodel)
@@ -227,11 +230,16 @@ class RACF:
         return True
 
 
+
     @property
     def users(self):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._users
+        try:
+            return self._users
+        except:
+            raise StoopidException('No USBD records parsed!')
+        
     
     def user(self, userid=None):
         if not userid:
