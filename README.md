@@ -27,7 +27,8 @@ PyRACF is a module to easily parse and query the setup of any RACF database. It 
 | groups | Returns DataFrame with all group data | mysys.groups |
 | operations | Returns a DataFrame  with all operations users | mysys.operations |
 | orphans | Returns 2 DataFrames one with orphans in dataset profile access lists, and one for generic resources | d, g = mysys.orphans |
-| parse | parses the unload. optional specify recordtypes | mysys.parse(recordtype=['0200']) |
+| parse | parses the unload. optional specify recordtypes | mysys.parse(recordtypes=['0200']) |
+| parse_fancycli | parses the unload with a fancy cli status update. optional recordtypes can be specified | mysys.parse_fancycli(recorddtypes=['0200']) |
 | revoked | Returns a DataFrame  with all revoked users | mysys.revoked |
 | specials | Returns a DataFrame  with all special users | mysys.specials |
 | status | Returns JSON with parsing status | mysys.status |
@@ -39,9 +40,9 @@ PyRACF is a module to easily parse and query the setup of any RACF database. It 
 Get all users that have not logged in (on?) since January 1st 2022. And print userID and last logon...
 
     import time
-    from pyracf import RACF
+    from pyracf import IRRDBU
 
-    mysys = RACF('/path/to/irrdbu00')
+    mysys = IRRDBU('/path/to/irrdbu00')
     mysys.parse()
     while mysys.status['status'] != 'Ready':
         time.sleep(5)
@@ -51,13 +52,16 @@ Get all users that have not logged in (on?) since January 1st 2022. And print us
 
 Create a neat XLSX
 
-    from pyracf import RACF
-    mysys = RACF('/path/to/irrdbu00')
+    from pyracf import IRRDBU
+    mysys = IRRDBU('/path/to/irrdbu00')
     mysys.parse()
     while mysys.status['status'] != 'Ready':
         time.sleep(5)
     mysys.xls('/path/to/my.xlsx')
 
+# Updates 
+
+In this version we introduced IRRRDBU as an alternative to RACF. Examples have been updated. The RACF class from previous version is still available, but you're advised to change this to IRRDBU, as future version will have another user of the RACF class.
 
 # Contribute to PyRACF
 

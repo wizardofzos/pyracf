@@ -136,6 +136,22 @@ class RACF:
                 return json.loads(json.dumps(self._offsets[offset]))
         return False
 
+    def parse_fancycli(self, recordtypes=['0100', '0101', '0102', '0120', USBD_RECORDTYPE, '0205', '0220', '0270', '0400', '0402', '0404', '0500', '0505']):
+        print("██████╗ ██╗   ██╗██████╗  █████╗  ██████╗███████╗".center(80))
+        print("██╔══██╗╚██╗ ██╔╝██╔══██╗██╔══██╗██╔════╝██╔════╝".center(80))
+        print("██████╔╝ ╚████╔╝ ██████╔╝███████║██║     █████╗  ".center(80))
+        print("██╔═══╝   ╚██╔╝  ██╔══██╗██╔══██║██║     ██╔══╝  ".center(80))
+        print("██║        ██║   ██║  ██║██║  ██║╚██████╗██║     ".center(80))
+        print("╚═╝        ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═╝     ".center(80))
+        print("                                                 ".center(80))
+        self.parse(recordtypes=recordtypes)
+        animation = "|/-\\"
+        idx = 0
+        while self._state != self.STATE_READY:
+            print(f'{animation[idx % len(animation)]} Parsing {self._irrdbu00} {animation[idx % len(animation)]}'.center(80), end="\r")
+            idx += 1
+        print('\n')
+
     def parse(self, recordtypes=['0100', '0101', '0102', '0120', USBD_RECORDTYPE, '0205', '0220', '0270', '0400', '0402', '0404', '0500', '0505']):
         self._starttime = datetime.now()
         pt = threading.Thread(target=self.parse_t,args=(recordtypes,))
@@ -471,3 +487,6 @@ class RACF:
                         worksheet.write(j, i, value, accessLevelFormats[value])
 
         writer.save()   
+
+class IRRDBU(RACF):
+    pass
