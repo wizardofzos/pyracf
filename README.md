@@ -4,9 +4,11 @@ PyRACF is a module to easily parse and query the setup of any RACF database. It 
 
 ## Updates
 
-### 0.4.1
-    - Now XLS generation has more checks (fails gracefully if not all required records parsed, works when only genericAccess parsed)
-    - Recordtype 0503 (General Resource Members/genericMembers) added
+### 0.4.2
+
+- Now XLS generation has more checks (fails gracefully if not all required records parsed, works when only genericAccess parsed)
+- Same for Orphan detection
+- Recordtype 0503 (General Resource Members/genericMembers) added
   
 ## Parsing IRRDBU00 unloads like a boss
 
