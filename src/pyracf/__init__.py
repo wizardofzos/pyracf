@@ -91,10 +91,12 @@ class RACF:
         self.USCSD  = []
         self.DSBD  = []
         self.DSACC  = []
+        self.DSCACC = []
         self.DSDFP  = []
         self.GRBD  = []
         self.GRTVOL  = []
         self.GRACC  = []
+        self.GRMEM = []
         self.CERTN  = []
 
     @property
@@ -207,6 +209,8 @@ class RACF:
                             self.DSACC.append(irrmodel)  
                         if r == '0500': 
                             self.GRBD.append(irrmodel)
+                        if r == '0503':
+                            self.GRMEM.append(irrmodel)                            
                         if r == '0505':
                             self.GRACC.append(irrmodel)       
                     self._records[r]['parsed'] += 1
@@ -236,6 +240,8 @@ class RACF:
             self._datasetAccess = pd.DataFrame.from_dict(self.DSACC)
         if "0500" in thingswewant:
             self._generics = pd.DataFrame.from_dict(self.GRBD)
+        if "0503" in thingswewant:
+            self._genericMembers = pd.DataFrame.from_dict(self.GRMEM)
         if "0505" in thingswewant:
             self._genericAccess = pd.DataFrame.from_dict(self.GRACC)
         
@@ -337,6 +343,11 @@ class RACF:
         return self._generics
 
     @property
+    def genericMembers(self, query=None):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._genericMembers        
+    @property
     def genericAccess(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
@@ -375,6 +386,10 @@ class RACF:
     def xls(self,fileName='irrdbu00.xlsx'):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+
+        if self._records['0400']['parsed'] + self._records['0400']['parsed'] == 0:
+            raise StoopidException('No dataset/generic access records parsed! (PEBKAM/ID-10T error)')
+            
         writer = pd.ExcelWriter(f'{fileName}', engine='xlsxwriter')
         accessLevelFormats = {
                     'N': writer.book.add_format({'bg_color': 'silver'}),
@@ -447,44 +462,45 @@ class RACF:
                             value = shared_strings[centry.string]
                             worksheet.write(j, i, value, accessLevelFormats[value])
 
-        ss = datetime.now()
-        profilesInClass = list(self.datasetAccess['DSACC_NAME'].unique())
-        authIDsInClass = list(self.datasetAccess['DSACC_AUTH_ID'].unique())
-        authids = 0
-        longestProfile = 0
-        for p in profilesInClass:
-            if len(p) > longestProfile:
-                longestProfile = len(p)
-        newdata = {}
-        newdata['Profiles'] = []
-        for id in authIDsInClass:
-                newdata[id] = [None] * len(profilesInClass)
-        profiles = self.datasetAccess.groupby(['DSACC_NAME'])
-        for i,p in enumerate(profiles.groups):
-            profiledata = profiles.get_group(p)
-            newdata['Profiles'].append(p)
-            users = profiledata.groupby(['DSACC_AUTH_ID'])
-            for u in users.groups:
-                useraccess = users.get_group(u)['DSACC_ACCESS'].values[0]
-                newdata[u][i] = accessLevels[useraccess]
+        if self._records['0400']['parsed'] > 0:
+            ss = datetime.now()
+            profilesInClass = list(self.datasetAccess['DSACC_NAME'].unique())
+            authIDsInClass = list(self.datasetAccess['DSACC_AUTH_ID'].unique())
+            authids = 0
+            longestProfile = 0
+            for p in profilesInClass:
+                if len(p) > longestProfile:
+                    longestProfile = len(p)
+            newdata = {}
+            newdata['Profiles'] = []
+            for id in authIDsInClass:
+                    newdata[id] = [None] * len(profilesInClass)
+            profiles = self.datasetAccess.groupby(['DSACC_NAME'])
+            for i,p in enumerate(profiles.groups):
+                profiledata = profiles.get_group(p)
+                newdata['Profiles'].append(p)
+                users = profiledata.groupby(['DSACC_AUTH_ID'])
+                for u in users.groups:
+                    useraccess = users.get_group(u)['DSACC_ACCESS'].values[0]
+                    newdata[u][i] = accessLevels[useraccess]
 
-        df1 = pd.DataFrame(newdata)
-        df1.to_excel(writer, sheet_name='DATASET', index=False)
-        worksheet = writer.sheets['DATASET']
-        worksheet.set_row(0, 64, format_br)
-        worksheet.set_column(1, len(authIDsInClass)+1, 2, format_center )
-        worksheet.set_column(0, 0, longestProfile + 2 )
-        worksheet.write(0, 0, 'Profile', format_nr)
+            df1 = pd.DataFrame(newdata)
+            df1.to_excel(writer, sheet_name='DATASET', index=False)
+            worksheet = writer.sheets['DATASET']
+            worksheet.set_row(0, 64, format_br)
+            worksheet.set_column(1, len(authIDsInClass)+1, 2, format_center )
+            worksheet.set_column(0, 0, longestProfile + 2 )
+            worksheet.write(0, 0, 'Profile', format_nr)
 
-        shared_strings = sorted(worksheet.str_table.string_table, key=worksheet.str_table.string_table.get)
-        for i in range(len(authIDsInClass)+1):
-            for j in range(len(profilesInClass)+1):
-                if i>0 and j>0:
-                    rdict = worksheet.table.get(j,None)
-                    centry = rdict.get(i,None)
-                    if centry:
-                        value = shared_strings[centry.string]
-                        worksheet.write(j, i, value, accessLevelFormats[value])
+            shared_strings = sorted(worksheet.str_table.string_table, key=worksheet.str_table.string_table.get)
+            for i in range(len(authIDsInClass)+1):
+                for j in range(len(profilesInClass)+1):
+                    if i>0 and j>0:
+                        rdict = worksheet.table.get(j,None)
+                        centry = rdict.get(i,None)
+                        if centry:
+                            value = shared_strings[centry.string]
+                            worksheet.write(j, i, value, accessLevelFormats[value])
 
         writer.save()   
 

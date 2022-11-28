@@ -2,6 +2,12 @@
 
 PyRACF is a module to easily parse and query the setup of any RACF database. It consumes the IRRDBU00 unload and creates "Panda DataFrames" for every 'recordtype'. See https://www.ibm.com/docs/en/zos/2.1.0?topic=records-irrdbu00-record-types and https://www.ibm.com/docs/en/zos/2.5.0?topic=records-record-formats-produced-by-database-unload-utility for a description of these records. The DataFrames will have the same 'fieldnames' as described in the docs.
 
+## Updates
+
+### 0.4.1
+    - Now XLS generation has more checks (fails gracefully if not all required records parsed, works when only genericAccess parsed)
+    - Recordtype 0503 (General Resource Members/genericMembers) added
+  
 ## Parsing IRRDBU00 unloads like a boss
 
     >>> from pyracf import RACF
