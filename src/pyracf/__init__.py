@@ -234,7 +234,7 @@ class RACF:
         if "0203" in thingswewant:
             self._groupConnect = pd.DataFrame.from_dict(self.USGCON)                      
         if "0204" in thingswewant:
-            self._Installdata = pd.DataFrame.from_dict(self.USCON)                                  
+            self._installdata = pd.DataFrame.from_dict(self.USINSTD)                                  
         if "0205" in thingswewant:
             self._connectData = pd.DataFrame.from_dict(self.USCON)                      
         if "0220" in thingswewant:
@@ -312,6 +312,18 @@ class RACF:
         return self._groups.loc[self._groups.GPBD_NAME==group]
 
     @property
+    def groupConnect(self):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._datasets
+
+    @property
+    def installdata(self):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._installdata
+
+    @property
     def datasets(self):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
@@ -332,7 +344,7 @@ class RACF:
     @property
     def subgroups(self):
         if self._state != self.STATE_READY:
-            raise StoopidExeption('Not done parsing yet! (PEBKAM/ID-10T error)')
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._subgroups
 
     @property
