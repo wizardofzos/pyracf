@@ -64,6 +64,7 @@ class RACF:
         self.USCAT  = []
         self.USCLA  = []
         self.USINSTD  = []
+        self.USGCON  = []
         self.USCERT  = []
         self.USCON = []
         self.USNMAP  = []
@@ -154,13 +155,13 @@ class RACF:
             idx += 1
         print('\n')
 
-    def parse(self, recordtypes=['0100', '0101', '0102', '0120', USBD_RECORDTYPE, '0205', '0220', '0270', '0400', '0402', '0404', '0500', '0505']):
+    def parse(self, recordtypes=['0100', '0101', '0102', '0120', USBD_RECORDTYPE, '0203', '0204', '0205', '0220', '0270', '0400', '0402', '0404', '0500', '0505']):
         self._starttime = datetime.now()
         pt = threading.Thread(target=self.parse_t,args=(recordtypes,))
         pt.start()
         return True
 
-    def parse_t(self, thingswewant=['0100', '0101', '0102', '0120', '0200', '0205', '0220', '0270', '0400', '0402', '0404', '0500', '0505']):
+    def parse_t(self, thingswewant=['0100', '0101', '0102', '0120', '0200', '0203', '0204', '0205', '0220', '0270', '0400', '0402', '0404', '0500', '0505']):
         # TODO: make this multiple threads (per record-type?)
         self._state = self.STATE_PARSING
         self.THREAD_COUNT += 1
@@ -195,6 +196,10 @@ class RACF:
                             self.GPOMVS.append(irrmodel)    
                         if r == self.USBD_RECORDTYPE:
                             self.USBD.append(irrmodel)   
+                        if r == '0203':
+                            self.USGCON.append(irrmodel)
+                        if r == '0204':
+                            self.USINSTD.append(irrmodel)
                         if r == '0205':
                             self.USCON.append(irrmodel)
                         if r == '0220':
@@ -226,6 +231,10 @@ class RACF:
             self._groupOMVS = pd.DataFrame.from_dict(self.GPOMVS)  
         if "0200" in thingswewant:
             self._users = pd.DataFrame.from_dict(self.USBD)     
+        if "0203" in thingswewant:
+            self._groupConnect = pd.DataFrame.from_dict(self.USGCON)                      
+        if "0204" in thingswewant:
+            self._installdata = pd.DataFrame.from_dict(self.USINSTD)                                  
         if "0205" in thingswewant:
             self._connectData = pd.DataFrame.from_dict(self.USCON)                      
         if "0220" in thingswewant:
@@ -303,6 +312,18 @@ class RACF:
         return self._groups.loc[self._groups.GPBD_NAME==group]
 
     @property
+    def groupConnect(self):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._datasets
+
+    @property
+    def installdata(self):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._installdata
+
+    @property
     def datasets(self):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
@@ -323,7 +344,7 @@ class RACF:
     @property
     def subgroups(self):
         if self._state != self.STATE_READY:
-            raise StoopidExeption('Not done parsing yet! (PEBKAM/ID-10T error)')
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._subgroups
 
     @property
