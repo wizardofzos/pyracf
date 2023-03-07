@@ -29,7 +29,27 @@ class RACF:
     STATE_READY   =  2
 
     # Our static values :)
-    USBD_RECORDTYPE = '0200'
+    GPBD_RECORDTYPE    = '0100'
+    GPSGRP_RECORDTYPE  = '0101'
+    GPMEM_RECORDTYPE   = '0102'
+    GPOMVS_RECORDTYPE  = '0120'
+
+    USBD_RECORDTYPE    = '0200'
+    USGCON_RECORDTYPE  = '0203'
+    USINSTD_RECORDTYPE = '0204'
+    USCON_RECORDTYPE   = '0205'
+    USTSO_RECORDTYPE   = '0220'
+    USOMVS_RECORDTYPE  = '0270'
+
+    DSBD_RECORDTYPE    = '0400'
+    DSCACC_RECORDTYPE  = '0402'
+    DSACC_RECORDTYPE   = '0404'
+
+    GRBD_RECORDTYPE    = '0500'
+    GRMEM_RECORDTYPE   = '0503'
+    GRACC_RECORDTYPE   = '0505'
+
+
 
     def __init__(self, irrdbu00=None):
 
@@ -43,6 +63,7 @@ class RACF:
         else:
             self._irrdbu00 = irrdbu00
             self._state    = self.STATE_INIT
+            self._unloadlines = sum(1 for _ in open(self._irrdbu00, errors="ignore"))
 
 
         # Running threads
@@ -131,7 +152,7 @@ class RACF:
      
 
 
-        return {'status': status, 'lines-read': seen, 'lines-parsed': parsed, 'lines-per-second': math.floor(speed), 'parse-time': parsetime}
+        return {'status': status, 'input-lines': self._unloadlines, 'lines-read': seen, 'lines-parsed': parsed, 'lines-per-second': math.floor(speed), 'parse-time': parsetime}
 
     def findOffsets(self, recordType):
         for offset in self._offsets:
@@ -139,21 +160,22 @@ class RACF:
                 return json.loads(json.dumps(self._offsets[offset]))
         return False
 
-    def parse_fancycli(self, recordtypes=['0100', '0101', '0102', '0120', USBD_RECORDTYPE, '0205', '0220', '0270', '0400', '0402', '0404', '0500', '0505']):
-        print("██████╗ ██╗   ██╗██████╗  █████╗  ██████╗███████╗".center(80))
-        print("██╔══██╗╚██╗ ██╔╝██╔══██╗██╔══██╗██╔════╝██╔════╝".center(80))
-        print("██████╔╝ ╚████╔╝ ██████╔╝███████║██║     █████╗  ".center(80))
-        print("██╔═══╝   ╚██╔╝  ██╔══██╗██╔══██║██║     ██╔══╝  ".center(80))
-        print("██║        ██║   ██║  ██║██║  ██║╚██████╗██║     ".center(80))
-        print("╚═╝        ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═╝     ".center(80))
-        print("                                                 ".center(80))
+    def parse_fancycli(self, recordtypes=['0100', '0101', '0102', '0120', USBD_RECORDTYPE, '0205', '0220', '0270', '0400', '0402', '0404', '0500', '0505'], endstats=False):
+        print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - parsing {self._irrdbu00}')
         self.parse(recordtypes=recordtypes)
-        animation = "|/-\\"
-        idx = 0
+        print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - selected recordtypes: {",".join(recordtypes)}')
         while self._state != self.STATE_READY:
-            print(f'{animation[idx % len(animation)]} Parsing {self._irrdbu00} {animation[idx % len(animation)]}'.center(80), end="\r")
-            idx += 1
-        print('\n')
+            progress =  math.floor(((sum(r['seen'] for r in self._records.values() if r)) / self._unloadlines) * 63)
+            pct = (progress/63) * 100 # not as strange as it seems:)
+            done = progress * '▉'
+            todo = (63-progress) * ' '
+            print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - progress: {done}{todo} ({pct:.2f}%)'.center(80), end="\r")
+            time.sleep(0.5)
+        # make completed line always show 100% :)
+        print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - progress: {63*"▉"} ({100:.2f}%)'.center(80))
+        for r in recordtypes:
+            print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - recordtype {r} -> {self._records[r]["parsed"]} records parsed')
+        print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - total parse time: {(self._stopttime - self._starttime).total_seconds()} seconds')
 
     def parse(self, recordtypes=['0100', '0101', '0102', '0120', USBD_RECORDTYPE, '0203', '0204', '0205', '0220', '0270', '0400', '0402', '0404', '0500', '0505']):
         self._starttime = datetime.now()
@@ -186,72 +208,72 @@ class RACF:
                             value = line[start-1:end].strip()
                             irrmodel[name] = str(value) 
                             
-                        if r == '0100':
+                        if r == self.GPBD_RECORDTYPE:
                             self.GPBD.append(irrmodel)
-                        if r == '0101':
+                        if r == self.GPSGRP_RECORDTYPE:
                             self.GPSGRP.append(irrmodel)
-                        if r == '0102':
+                        if r == self.GPMEM_RECORDTYPE:
                             self.GPMEM.append(irrmodel)
-                        if r == '0120':
+                        if r == self.GPOMVS_RECORDTYPE:
                             self.GPOMVS.append(irrmodel)    
                         if r == self.USBD_RECORDTYPE:
                             self.USBD.append(irrmodel)   
-                        if r == '0203':
+                        if r == self.USGCON_RECORDTYPE:
                             self.USGCON.append(irrmodel)
-                        if r == '0204':
+                        if r == self.USINSTD_RECORDTYPE:
                             self.USINSTD.append(irrmodel)
-                        if r == '0205':
+                        if r == self.USCON_RECORDTYPE:
                             self.USCON.append(irrmodel)
-                        if r == '0220':
+                        if r == self.USTSO_RECORDTYPE:
                             self.USTSO.append(irrmodel)                            
-                        if r == '0270':
+                        if r == self.USOMVS_RECORDTYPE:
                             self.USOMVS.append(irrmodel)                            
-                        if r == '0400':
+                        if r == self.DSBD_RECORDTYPE:
                             self.DSBD.append(irrmodel)
-                        if r == '0402':
+                        if r == self.DSCACC_RECORDTYPE:
                             self.DSCACC.append(irrmodel)                                                 
-                        if r == '0404':
+                        if r == self.DSACC_RECORDTYPE:
                             self.DSACC.append(irrmodel)  
-                        if r == '0500': 
+                        if r == self.GRBD_RECORDTYPE: 
                             self.GRBD.append(irrmodel)
-                        if r == '0503':
+                        if r == self.GRMEM_RECORDTYPE:
                             self.GRMEM.append(irrmodel)                            
-                        if r == '0505':
+                        if r == self.GRACC_RECORDTYPE:
                             self.GRACC.append(irrmodel)       
                     self._records[r]['parsed'] += 1
         # all models parsed :)
 
-        if "0100" in thingswewant:
+        if self.GPBD_RECORDTYPE in thingswewant:
             self._groups = pd.DataFrame.from_dict(self.GPBD)
-        if "0101" in thingswewant:
+        if self.GPSGRP_RECORDTYPE in thingswewant:
             self._subgroups = pd.DataFrame.from_dict(self.GPSGRP)
-        if "0102" in thingswewant:
+        if self.GPMEM_RECORDTYPE in thingswewant:
             self._connects = pd.DataFrame.from_dict(self.GPMEM)
-        if "0120" in thingswewant:
+        if self.GPOMVS_RECORDTYPE in thingswewant:
             self._groupOMVS = pd.DataFrame.from_dict(self.GPOMVS)  
-        if "0200" in thingswewant:
+        if self.USBD_RECORDTYPE in thingswewant:
             self._users = pd.DataFrame.from_dict(self.USBD)     
-        if "0203" in thingswewant:
+        if self.USGCON_RECORDTYPE in thingswewant:
             self._groupConnect = pd.DataFrame.from_dict(self.USGCON)                      
-        if "0204" in thingswewant:
+        if self.USINSTD_RECORDTYPE in thingswewant:
             self._installdata = pd.DataFrame.from_dict(self.USINSTD)                                  
-        if "0205" in thingswewant:
+        if self.USCON_RECORDTYPE in thingswewant:
             self._connectData = pd.DataFrame.from_dict(self.USCON)                      
-        if "0220" in thingswewant:
+        if self.USTSO_RECORDTYPE in thingswewant:
             self._userTSO = pd.DataFrame.from_dict(self.USTSO)          
-        if "0270" in thingswewant:
+        if self.USOMVS_RECORDTYPE in thingswewant:
             self._userOMVS = pd.DataFrame.from_dict(self.USOMVS)                        
-        if "0400" in thingswewant:
+        if self.DSBD_RECORDTYPE in thingswewant:
             self._datasets = pd.DataFrame.from_dict(self.DSBD)
-        if "0402" in thingswewant:
+        if self.DSCACC_RECORDTYPE in thingswewant:
             self._datasetPermit = pd.DataFrame.from_dict(self.DSBD)
-        if "0404" in thingswewant:
+        if self.DSACC_RECORDTYPE in thingswewant:
             self._datasetAccess = pd.DataFrame.from_dict(self.DSACC)
-        if "0500" in thingswewant:
+        if self.GRBD_RECORDTYPE in thingswewant:
             self._generics = pd.DataFrame.from_dict(self.GRBD)
-        if "0503" in thingswewant:
+        if self.GRMEM_RECORDTYPE in thingswewant:
             self._genericMembers = pd.DataFrame.from_dict(self.GRMEM)
-        if "0505" in thingswewant:
+        if self.GRACC_RECORDTYPE in thingswewant:
             self._genericAccess = pd.DataFrame.from_dict(self.GRACC)
         
         self.THREAD_COUNT -= 1
@@ -367,7 +389,8 @@ class RACF:
     def genericMembers(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._genericMembers        
+        return self._genericMembers    
+
     @property
     def genericAccess(self, query=None):
         if self._state != self.STATE_READY:

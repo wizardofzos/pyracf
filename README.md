@@ -4,6 +4,16 @@ PyRACF is a module to easily parse and query the setup of any RACF database. It 
 
 ## Updates
 
+### 0.4.4
+
+- Internal constants for all recordtypes
+- Improved 'parse_fancycli()'
+
+### 0.4.3 (Community Update, thanks @Martydog)
+
+- Add User Group Connections record 203 
+- Add User Installation Data record 204 (thanks Martydog!)
+
 ### 0.4.2
 
 - Now XLS generation has more checks (fails gracefully if not all required records parsed, works when only genericAccess parsed)
