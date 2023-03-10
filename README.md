@@ -4,6 +4,9 @@ PyRACF is a module to easily parse and query the setup of any RACF database. It 
 
 ## Updates
 
+### 0.4.5 (Fix Community Update Bug, thanks @Martydog)
+
+- Group Connections now actually usable :)
 ### 0.4.4
 
 - Internal constants for all recordtypes
@@ -12,7 +15,7 @@ PyRACF is a module to easily parse and query the setup of any RACF database. It 
 ### 0.4.3 (Community Update, thanks @Martydog)
 
 - Add User Group Connections record 203 
-- Add User Installation Data record 204 (thanks Martydog!)
+- Add User Installation Data record 204
 
 ### 0.4.2
 
@@ -42,7 +45,9 @@ PyRACF is a module to easily parse and query the setup of any RACF database. It 
 | genericAccess | Returns DataFrame with with all accesslists for generic resource profiles | mysys.genericAccess
 | generics | Returns DataFrame with with all generic resource profiles | mysys.generics 
 | group | Returns DataFrame with with one dataset profile only | mysys.group('SYS1') |
+| groupConnect | Returns DataFrame with with user group connection records (0203 recordtype) | mysys.groupConnect |
 | groups | Returns DataFrame with all group data | mysys.groups |
+| installdata | Returns DataFrame with with user installation data (0204 recordtype) | mysys.installdata |
 | operations | Returns a DataFrame  with all operations users | mysys.operations |
 | orphans | Returns 2 DataFrames one with orphans in dataset profile access lists, and one for generic resources | d, g = mysys.orphans |
 | parse | parses the unload. optional specify recordtypes | mysys.parse(recordtypes=['0200']) |

@@ -337,7 +337,7 @@ class RACF:
     def groupConnect(self):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._datasets
+        return self._groupConnect
 
     @property
     def installdata(self):
