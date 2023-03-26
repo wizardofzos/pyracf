@@ -4,6 +4,8 @@ import pandas as pd
 
 import math
 
+from varname import nameof
+
 # No mess with my header lines
 import pandas.io.formats.excel
 pandas.io.formats.excel.ExcelFormatter.header_style = None
@@ -13,6 +15,8 @@ import time
 from datetime import datetime
 
 import xlsxwriter
+
+import os
 
 
 class StoopidException(Exception):
@@ -160,7 +164,7 @@ class RACF:
                 return json.loads(json.dumps(self._offsets[offset]))
         return False
 
-    def parse_fancycli(self, recordtypes=['0100', '0101', '0102', '0120', USBD_RECORDTYPE, '0205', '0220', '0270', '0400', '0402', '0404', '0500', '0505'], endstats=False):
+    def parse_fancycli(self, recordtypes=[GPBD_RECORDTYPE, GPSGRP_RECORDTYPE, GPMEM_RECORDTYPE, GPOMVS_RECORDTYPE, USBD_RECORDTYPE, USCON_RECORDTYPE, '0220', USOMVS_RECORDTYPE, '0400', DSCACC_RECORDTYPE, DSACC_RECORDTYPE, GRBD_RECORDTYPE, GRACC_RECORDTYPE], save_pickles=False, prefix=''):
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - parsing {self._irrdbu00}')
         self.parse(recordtypes=recordtypes)
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - selected recordtypes: {",".join(recordtypes)}')
@@ -176,14 +180,17 @@ class RACF:
         for r in recordtypes:
             print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - recordtype {r} -> {self._records[r]["parsed"]} records parsed')
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - total parse time: {(self._stopttime - self._starttime).total_seconds()} seconds')
+        if save_pickles:
+            self.save_pickles(path=save_pickles,prefix=prefix)
+            print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - Pickle files saved to {save_pickles}')
 
-    def parse(self, recordtypes=['0100', '0101', '0102', '0120', USBD_RECORDTYPE, '0203', '0204', '0205', '0220', '0270', '0400', '0402', '0404', '0500', '0505']):
+    def parse(self, recordtypes=[GPBD_RECORDTYPE, GPSGRP_RECORDTYPE, GPMEM_RECORDTYPE, GPOMVS_RECORDTYPE, USBD_RECORDTYPE, USGCON_RECORDTYPE , USINSTD_RECORDTYPE, USCON_RECORDTYPE, USTSO_RECORDTYPE, USOMVS_RECORDTYPE, DSBD_RECORDTYPE, DSCACC_RECORDTYPE, DSACC_RECORDTYPE, GRBD_RECORDTYPE, GRACC_RECORDTYPE]):
         self._starttime = datetime.now()
         pt = threading.Thread(target=self.parse_t,args=(recordtypes,))
         pt.start()
         return True
 
-    def parse_t(self, thingswewant=['0100', '0101', '0102', '0120', '0200', '0203', '0204', '0205', '0220', '0270', '0400', '0402', '0404', '0500', '0505']):
+    def parse_t(self, thingswewant=[GPBD_RECORDTYPE, GPSGRP_RECORDTYPE, GPMEM_RECORDTYPE, GPOMVS_RECORDTYPE, USBD_RECORDTYPE, USGCON_RECORDTYPE , USINSTD_RECORDTYPE, USCON_RECORDTYPE, USTSO_RECORDTYPE, USOMVS_RECORDTYPE, DSBD_RECORDTYPE, DSCACC_RECORDTYPE, DSACC_RECORDTYPE, GRBD_RECORDTYPE, GRACC_RECORDTYPE]):
         # TODO: make this multiple threads (per record-type?)
         self._state = self.STATE_PARSING
         self.THREAD_COUNT += 1
@@ -282,7 +289,56 @@ class RACF:
             self._stopttime = datetime.now()
         return True
 
+    def save_pickle(self, df='', dfname='', path='', prefix=''):
+        # Sanity check
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        
+        df.to_pickle(f'{path}/{prefix}{dfname}.pickle')
 
+
+    def save_pickles(self, path='/tmp', prefix=''):
+        # Sanity check
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        # Is Path there ?
+        if not os.path.exists(path):
+            madedir = os.system(f'mkdir -p {path}')
+            if madedir != 0:
+                raise StoopidException(f'{path} does not exist, and cannot create')
+        # Let's save the pickles
+        if len(self.GPBD) > 0:
+            self.save_pickle(df=self._groups, dfname='GPBD', path=path, prefix=prefix)
+        if len(self.GPSGRP) > 0:
+            self.save_pickle(df=self._subgroups, dfname='GPSGRP', path=path, prefix=prefix)
+        if len(self.GPMEM) > 0:
+            self.save_pickle(df=self._connects, dfname='GPMEM', path=path, prefix=prefix)
+        if len(self.GPOMVS) > 0:
+            self.save_pickle(df=self._groupOMVS, dfname='GPOMVS', path=path, prefix=prefix)  
+        if len(self.USBD) > 0:
+            self.save_pickle(df=self._users, dfname='USBD', path=path, prefix=prefix)     
+        if len(self.USGCON) > 0:
+            self.save_pickle(df=self._groupConnect, dfname='USGCON', path=path, prefix=prefix)                      
+        if len(self.USINSTD) > 0:
+            self.save_pickle(df=self._installdata, dfname='USINSTD', path=path, prefix=prefix)                                  
+        if len(self.USCON) > 0:
+            self.save_pickle(df=self._connectData, dfname='USCON', path=path, prefix=prefix)                      
+        if len(self.USTSO) > 0:
+            self.save_pickle(df=self._userTSO, dfname='USTSO', path=path, prefix=prefix)          
+        if len(self.USOMVS) > 0:
+            self.save_pickle(df=self._userOMVS, dfname='USOMVS', path=path, prefix=prefix)                        
+        if len(self.DSBD) > 0:
+            self.save_pickle(df=self._datasets, dfname='DSBD', path=path, prefix=prefix)
+        if len(self.DSCACC) > 0:
+            self.save_pickle(df=self._datasetPermit, dfname='DSBD', path=path, prefix=prefix)
+        if len(self.DSACC) > 0:
+            self.save_pickle(df=self._datasetAccess, dfname='DSACC', path=path, prefix=prefix)
+        if len(self.GRBD) > 0:
+            self.save_pickle(df=self._generics, dfname='GRBD', path=path, prefix=prefix)
+        if len(self.GRMEM) > 0:
+            self.save_pickle(df=self._genericMembers, dfname='GRMEM', path=path, prefix=prefix)
+        if len(self.GRACC) > 0:
+            self.save_pickle(df=self._genericAccess, dfname='GRACC', path=path, prefix=prefix)
 
     @property
     def users(self):
@@ -418,18 +474,18 @@ class RACF:
     @property
     def orphans(self):
         
-        if self._records['0404']['parsed'] + self._records['0505']['parsed'] == 0:
+        if self._records[DSACC_RECORDTYPE]['parsed'] + self._records[GRACC_RECORDTYPE]['parsed'] == 0:
             raise StoopidException('No dataset/generic access records parsed! (PEBKAM/ID-10T error)')
             
         datasetOrphans = None
         genericOrphans = None
 
-        if self._records['0404']['parsed'] > 0:
+        if self._records[DSACC_RECORDTYPE]['parsed'] > 0:
             self._datasetAccess = self._datasetAccess.assign(inGroups=self._datasetAccess.DSACC_AUTH_ID.isin(self._groups.GPBD_NAME))
             self._datasetAccess = self._datasetAccess.assign(inUsers=self._datasetAccess.DSACC_AUTH_ID.isin(self._users.USBD_NAME))
             datasetOrphans = self._datasetAccess.loc[(self._datasetAccess['inGroups'] == False) & (self._datasetAccess['inUsers'] == False) & (self._datasetAccess['DSACC_AUTH_ID'] != "*") & (self._datasetAccess['DSACC_AUTH_ID'] != "&RACUID")]
         
-        if self._records['0505']['parsed'] > 0:
+        if self._records[GRACC_RECORDTYPE]['parsed'] > 0:
                 self._genericAccess = self._genericAccess.assign(inGroups=self._genericAccess.GRACC_AUTH_ID.isin(self._groups.GPBD_NAME))
                 self._genericAccess = self._genericAccess.assign(inUsers=self._genericAccess.GRACC_AUTH_ID.isin(self._users.USBD_NAME))
                 genericOrphans =  self._genericAccess.loc[(self._genericAccess['inGroups'] == False) & (self._genericAccess['inUsers'] == False) & (self._genericAccess['GRACC_AUTH_ID'] != "*") & (self._genericAccess['GRACC_AUTH_ID'] != "&RACUID")]
@@ -440,7 +496,7 @@ class RACF:
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
 
-        if self._records['0404']['parsed'] + self._records['0505']['parsed'] == 0:
+        if self._records[DSACC_RECORDTYPE]['parsed'] + self._records[GRACC_RECORDTYPE]['parsed'] == 0:
             raise StoopidException('No dataset/generic access records parsed! (PEBKAM/ID-10T error)')
 
         writer = pd.ExcelWriter(f'{fileName}', engine='xlsxwriter')
@@ -515,7 +571,7 @@ class RACF:
                             value = shared_strings[centry.string]
                             worksheet.write(j, i, value, accessLevelFormats[value])
 
-        if self._records['0400']['parsed'] > 0:
+        if self._records[DSBD_RECORDTYPE]['parsed'] > 0:
             ss = datetime.now()
             profilesInClass = list(self.datasetAccess['DSACC_NAME'].unique())
             authIDsInClass = list(self.datasetAccess['DSACC_AUTH_ID'].unique())
