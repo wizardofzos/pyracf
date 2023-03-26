@@ -17,6 +17,7 @@ from datetime import datetime
 import xlsxwriter
 
 import os
+import glob
 
 
 class StoopidException(Exception):
@@ -55,75 +56,111 @@ class RACF:
 
 
 
-    def __init__(self, irrdbu00=None):
+    def __init__(self, irrdbu00=None, pickles=None, prefix=''):
 
         self._state = self.STATE_INIT
 
         with importlib.resources.open_text("pyracf", "offsets.json") as file:
             self._offsets = json.load(file)      
 
-        if not irrdbu00:
+        if not irrdbu00 and not pickles:
             self._state = self.STATE_BAD
         else:
-            self._irrdbu00 = irrdbu00
-            self._state    = self.STATE_INIT
-            self._unloadlines = sum(1 for _ in open(self._irrdbu00, errors="ignore"))
+            if not pickles:
+                self._irrdbu00 = irrdbu00
+                self._state    = self.STATE_INIT
+                self._unloadlines = sum(1 for _ in open(self._irrdbu00, errors="ignore"))
 
+        if pickles:
+            # Read from pickles dir
+            picklefiles = glob.glob(f'{pickles}/{prefix}*.pickle')
+            self._starttime = datetime.now()
+            self._records = {}
+            self._unloadlines = 0
+            for pickle in picklefiles:
+                fname = os.path.basename(pickle)
+                recordtype = fname.replace(prefix,'').split('.')[0]
+                lookup = {
+                    'GPBD': ['_groups','0100'],
+                    'GPSGRP': ['_subgroups','0101'],
+                    'GPMEM': ['_connects','0102'],
+                    'GPOMVS': ['_groupOMVS','0120'],
+                    'USBD': ['_users','0200'],
+                    'USGCON': ['_groupConnect','0203'],
+                    'USINSTD': ['_installdata','0204'],
+                    'USCON': ['_connectData','0205'],
+                    'USTSO': ['_userTSO','0220'],
+                    'USOMVS': ['_userOMVS','0270'],
+                    'DSBD': ['_datasets','0400'],
+                    'DSCACC': ['_datasetPermit','0402'],
+                    'DSACC': ['_datasetAccess','0404'],
+                    'GRBD': ['_generics','0500'],
+                    'GRMEM': ['_genericMembers','0503'],
+                    'GRACC': ['_genericAccess','0505']
+                }
+                exec(f'self.{lookup[recordtype][0]} = pd.read_pickle("{pickle}")')
+                exec(f'self._records["{lookup[recordtype][1]}"] = ' + "{}")
+                exec(f'self._records["{lookup[recordtype][1]}"]["seen"] = len(self.{lookup[recordtype][0]})')
+                exec(f'self._records["{lookup[recordtype][1]}"]["parsed"] = len(self.{lookup[recordtype][0]})')
+                exec(f'self._unloadlines += len(self.{lookup[recordtype][0]})')
+            self._state = self.STATE_READY
+            self._stoptime = datetime.now()
 
-        # Running threads
-        self.THREAD_COUNT = 0
+        else:
+            # Running threads
+            self.THREAD_COUNT = 0
 
-        # list of parsed record-types
-        self._records = {}
+            # list of parsed record-types
+            self._records = {}
 
-        # Better be prepared for all of em :)
-        self.GPBD  = []            
-        self.GPSGRP = []
-        self.GPMEM  = []
-        self.GPDFP  = []
-        self.GPOMVS  = []
-        self.GPOVM  = []
-        self.GPTME  = []
-        self.GPCSD  = []
-        self.USBD  = []
-        self.USCAT  = []
-        self.USCLA  = []
-        self.USINSTD  = []
-        self.USGCON  = []
-        self.USCERT  = []
-        self.USCON = []
-        self.USNMAP  = []
-        self.USDMAP  = []
-        self.USDFP  = []
-        self.USTSO  = []
-        self.USCICS  = []
-        self.USCOPC  = []
-        self.USCRSL  = []
-        self.USCTSL  = []
-        self.USLAN  = []
-        self.USOPR  = []
-        self.USOPRP  = []
-        self.USWRK  = []
-        self.USOMVS  = []
-        self.USNOPC  = []
-        self.USNDOM  = []
-        self.USDCE  = []
-        self.USOVM  = []
-        self.USLNOT  = []
-        self.USDNS  = []
-        self.USKERB  = []
-        self.USPROXY  = []
-        self.USEIM  = []
-        self.USCSD  = []
-        self.DSBD  = []
-        self.DSACC  = []
-        self.DSCACC = []
-        self.DSDFP  = []
-        self.GRBD  = []
-        self.GRTVOL  = []
-        self.GRACC  = []
-        self.GRMEM = []
-        self.CERTN  = []
+            # Better be prepared for all of em :)
+            self.GPBD  = []            
+            self.GPSGRP = []
+            self.GPMEM  = []
+            self.GPDFP  = []
+            self.GPOMVS  = []
+            self.GPOVM  = []
+            self.GPTME  = []
+            self.GPCSD  = []
+            self.USBD  = []
+            self.USCAT  = []
+            self.USCLA  = []
+            self.USINSTD  = []
+            self.USGCON  = []
+            self.USCERT  = []
+            self.USCON = []
+            self.USNMAP  = []
+            self.USDMAP  = []
+            self.USDFP  = []
+            self.USTSO  = []
+            self.USCICS  = []
+            self.USCOPC  = []
+            self.USCRSL  = []
+            self.USCTSL  = []
+            self.USLAN  = []
+            self.USOPR  = []
+            self.USOPRP  = []
+            self.USWRK  = []
+            self.USOMVS  = []
+            self.USNOPC  = []
+            self.USNDOM  = []
+            self.USDCE  = []
+            self.USOVM  = []
+            self.USLNOT  = []
+            self.USDNS  = []
+            self.USKERB  = []
+            self.USPROXY  = []
+            self.USEIM  = []
+            self.USCSD  = []
+            self.DSBD  = []
+            self.DSACC  = []
+            self.DSCACC = []
+            self.DSDFP  = []
+            self.GRBD  = []
+            self.GRTVOL  = []
+            self.GRACC  = []
+            self.GRMEM = []
+            self.CERTN  = []
 
     @property
     def status(self):
@@ -149,10 +186,8 @@ class RACF:
 
         elif self._state == self.STATE_READY:
             status = "Ready"
-            start  = self._starttime
-            stop   = self._stopttime
-            speed  = seen/((self._stopttime - self._starttime).total_seconds())
-            parsetime = (self._stopttime - self._starttime).total_seconds()
+            speed  = seen/((self._stoptime - self._starttime).total_seconds())
+            parsetime = (self._stoptime - self._starttime).total_seconds()
      
 
 
