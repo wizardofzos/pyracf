@@ -4,6 +4,12 @@ PyRACF is a module to easily parse and query the setup of any RACF database. It 
 
 ## Updates
 
+### 0.5.0 (Pickle FTW!)
+
+- new function: save_pickles(path=path, prefix=prefix). Will save all parsed dataframes as pickles (/path/_prefix_*RECORDTYPE*.pickle)
+- Can now initialize RACF object from pickle-folder/prefix. To reuse earlier saves pickle files. See examples below
+- parse_fancycli now has two optional arguments (save_pickles and prefix) to also save pickle files after parsing to the directory as specified in save_pickles. The prefix argument is only useed with save_pickles isn't False
+
 ### 0.4.5 (Fix Community Update Bug, thanks @Martydog)
 
 - Group Connections now actually usable :)
@@ -33,6 +39,21 @@ PyRACF is a module to easily parse and query the setup of any RACF database. It 
     >>> mysys.status
     {'status': 'Ready', 'lines-read': 7137540, 'lines-parsed': 2248149, 'lines-per-second': 145048, 'parse-time': 49.207921}
     
+### Using Pickle Files
+
+    >>> from pyracf import RACF
+    >>> mysys = RACF('/path/to/irrdbu00')
+    >>> mysys.parse_fancycli(save_pickles='/tmp/pickles', prefix='mysys-')
+    >>> hash(mysys.groups.values.tobytes())
+    -8566685915584060910
+
+Then later, you don't need to parse the same unload again, just do:
+
+    >>> from pyracf import RACF
+    >>> mysys = RACF(pickles='/tmp/pickles', prefix='mysys-')
+    >>> hash(mysys.groups.values.tobytes())
+    -8566685915584060910
+
 
 ## All functions
 
@@ -53,6 +74,7 @@ PyRACF is a module to easily parse and query the setup of any RACF database. It 
 | parse | parses the unload. optional specify recordtypes | mysys.parse(recordtypes=['0200']) |
 | parse_fancycli | parses the unload with a fancy cli status update. optional recordtypes can be specified | mysys.parse_fancycli(recorddtypes=['0200']) |
 | revoked | Returns a DataFrame  with all revoked users | mysys.revoked |
+| save_pickles | Saves all parsed types as pickle files | mysys.save_pickles(path='/tmp', prefix='mysys-') |
 | specials | Returns a DataFrame  with all special users | mysys.specials |
 | status | Returns JSON with parsing status | mysys.status |
 | uacc_read_datasets | Returns a DataFrame  with all dataset profiles having UACC=READ | mysys.uacc_read_datasets |
