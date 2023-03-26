@@ -1,6 +1,6 @@
 # pyracf
 
-PyRACF is a module to easily parse and query the setup of any RACF database. It consumes the IRRDBU00 unload and creates "Panda DataFrames" for every 'recordtype'. See https://www.ibm.com/docs/en/zos/2.1.0?topic=records-irrdbu00-record-types and https://www.ibm.com/docs/en/zos/2.5.0?topic=records-record-formats-produced-by-database-unload-utility for a description of these records. The DataFrames will have the same 'fieldnames' as described in the docs.
+PyRACF is a powerful Python module that simplifies the parsing and querying of any RACF database. It consumes the IRRDBU00 unload and creates "Panda DataFrames" for every 'recordtype', allowing for easy manipulation and analysis of the data. With the new release, PyRACF now supports saving and loading pickle files, making it easier than ever to work with large RACF datasets. See https://www.ibm.com/docs/en/zos/2.1.0?topic=records-irrdbu00-record-types and https://www.ibm.com/docs/en/zos/2.5.0?topic=records-record-formats-produced-by-database-unload-utility for a description of these records. The DataFrames will have the same 'fieldnames' as described in the docs. Install PyRACF with pip install pyracf or check out the source code on GitHub: https://github.com/wizardofzos/pyracf/releases/latest. Get started with PyRACF today and take control of your RACF data like never before!
 
 ## Updates
 
