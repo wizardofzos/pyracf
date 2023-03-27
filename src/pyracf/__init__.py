@@ -4,8 +4,6 @@ import pandas as pd
 
 import math
 
-from varname import nameof
-
 # No mess with my header lines
 import pandas.io.formats.excel
 pandas.io.formats.excel.ExcelFormatter.header_style = None
@@ -321,7 +319,7 @@ class RACF:
         self.THREAD_COUNT -= 1
         if self.THREAD_COUNT == 0:
             self._state = self.STATE_READY         
-            self._stopttime = datetime.now()
+            self._stoptime = datetime.now()
         return True
 
     def save_pickle(self, df='', dfname='', path='', prefix=''):
