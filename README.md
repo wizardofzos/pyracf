@@ -15,6 +15,10 @@ To get started with PyRACF, install it using `pip install pyracf` or explore the
 
 ## Updates
 
+### 0.5.4 (Even more recordtypes!!)
+- new property: genericConditionalAccess. Will show GRCACC records.
+- Fixed some nasty 'default recordtypes' bugs
+  
 ### 0.5.0 (Pickle FTW!)
 
 - new function: save_pickles(path=path, prefix=prefix). Will save all parsed dataframes as pickles (/path/_prefix_*RECORDTYPE*.pickle)
