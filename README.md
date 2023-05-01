@@ -64,6 +64,7 @@ Then later, you don't need to parse the same unload again, just do:
 | datasetAccess | Returns DataFrame with all Accesslists for all dataset profiles | mysys.datasetsAccess |
 | datasets | Returns DataFrame with all datasetprofiles | mysys.datasets |
 | genericAccess | Returns DataFrame with with all accesslists for generic resource profiles | mysys.genericAccess
+| genericConditionalAccess | Returns DataFrame with with all conditional accesslists for generic resource profiles | mysys.genericConditionalAccess
 | generics | Returns DataFrame with with all generic resource profiles | mysys.generics 
 | group | Returns DataFrame with with one dataset profile only | mysys.group('SYS1') |
 | groupConnect | Returns DataFrame with with user group connection records (0203 recordtype) | mysys.groupConnect |
