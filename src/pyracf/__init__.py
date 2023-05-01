@@ -51,6 +51,7 @@ class RACF:
     GRBD_RECORDTYPE    = '0500'
     GRMEM_RECORDTYPE   = '0503'
     GRACC_RECORDTYPE   = '0505'
+    GRCACC_RECORDTYPE  = '0507'
 
     _ownertree          = None
 
@@ -95,7 +96,8 @@ class RACF:
                     'DSACC': ['_datasetAccess','0404'],
                     'GRBD': ['_generics','0500'],
                     'GRMEM': ['_genericMembers','0503'],
-                    'GRACC': ['_genericAccess','0505']
+                    'GRACC': ['_genericAccess','0505'],
+                    'GRCACC': ['_genericConditionalAccess','0507']
                 }
                 exec(f'self.{lookup[recordtype][0]} = pd.read_pickle("{pickle}")')
                 exec(f'self._records["{lookup[recordtype][1]}"] = ' + "{}")
@@ -158,6 +160,7 @@ class RACF:
             self.GRBD  = []
             self.GRTVOL  = []
             self.GRACC  = []
+            self.GRCACC = []
             self.GRMEM = []
             self.CERTN  = []
 
@@ -198,7 +201,7 @@ class RACF:
                 return json.loads(json.dumps(self._offsets[offset]))
         return False
 
-    def parse_fancycli(self, recordtypes=[GPBD_RECORDTYPE, GPSGRP_RECORDTYPE, GPMEM_RECORDTYPE, GPOMVS_RECORDTYPE, USBD_RECORDTYPE, USCON_RECORDTYPE, '0220', USOMVS_RECORDTYPE, '0400', DSCACC_RECORDTYPE, DSACC_RECORDTYPE, GRBD_RECORDTYPE, GRACC_RECORDTYPE], save_pickles=False, prefix=''):
+    def parse_fancycli(self, recordtypes=[GPBD_RECORDTYPE, GPSGRP_RECORDTYPE, GPMEM_RECORDTYPE, GPOMVS_RECORDTYPE, USBD_RECORDTYPE, USGCON_RECORDTYPE ,USCON_RECORDTYPE, USTSO_RECORDTYPE, USOMVS_RECORDTYPE, DSBD_RECORDTYPE, DSACC_RECORDTYPE, GRBD_RECORDTYPE, GRACC_RECORDTYPE], save_pickles=False, prefix=''):
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - parsing {self._irrdbu00}')
         self.parse(recordtypes=recordtypes)
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - selected recordtypes: {",".join(recordtypes)}')
@@ -218,13 +221,13 @@ class RACF:
             self.save_pickles(path=save_pickles,prefix=prefix)
             print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - Pickle files saved to {save_pickles}')
 
-    def parse(self, recordtypes=[GPBD_RECORDTYPE, GPSGRP_RECORDTYPE, GPMEM_RECORDTYPE, GPOMVS_RECORDTYPE, USBD_RECORDTYPE, USGCON_RECORDTYPE , USINSTD_RECORDTYPE, USCON_RECORDTYPE, USTSO_RECORDTYPE, USOMVS_RECORDTYPE, DSBD_RECORDTYPE, DSCACC_RECORDTYPE, DSACC_RECORDTYPE, GRBD_RECORDTYPE, GRACC_RECORDTYPE]):
+    def parse(self, recordtypes=[GPBD_RECORDTYPE, GPSGRP_RECORDTYPE, GPMEM_RECORDTYPE, GPOMVS_RECORDTYPE, USBD_RECORDTYPE, USGCON_RECORDTYPE, USCON_RECORDTYPE, USTSO_RECORDTYPE, USOMVS_RECORDTYPE, DSBD_RECORDTYPE, DSACC_RECORDTYPE, GRBD_RECORDTYPE, GRACC_RECORDTYPE]):
         self._starttime = datetime.now()
         pt = threading.Thread(target=self.parse_t,args=(recordtypes,))
         pt.start()
         return True
 
-    def parse_t(self, thingswewant=[GPBD_RECORDTYPE, GPSGRP_RECORDTYPE, GPMEM_RECORDTYPE, GPOMVS_RECORDTYPE, USBD_RECORDTYPE, USGCON_RECORDTYPE , USINSTD_RECORDTYPE, USCON_RECORDTYPE, USTSO_RECORDTYPE, USOMVS_RECORDTYPE, DSBD_RECORDTYPE, DSCACC_RECORDTYPE, DSACC_RECORDTYPE, GRBD_RECORDTYPE, GRACC_RECORDTYPE]):
+    def parse_t(self, thingswewant=[GPBD_RECORDTYPE, GPSGRP_RECORDTYPE, GPMEM_RECORDTYPE, GPOMVS_RECORDTYPE, USBD_RECORDTYPE, USGCON_RECORDTYPE, USCON_RECORDTYPE, USTSO_RECORDTYPE, USOMVS_RECORDTYPE, DSBD_RECORDTYPE, DSACC_RECORDTYPE, GRBD_RECORDTYPE, GRACC_RECORDTYPE]):
         # TODO: make this multiple threads (per record-type?)
         self._state = self.STATE_PARSING
         self.THREAD_COUNT += 1
@@ -280,7 +283,9 @@ class RACF:
                         if r == self.GRMEM_RECORDTYPE:
                             self.GRMEM.append(irrmodel)                            
                         if r == self.GRACC_RECORDTYPE:
-                            self.GRACC.append(irrmodel)       
+                            self.GRACC.append(irrmodel)    
+                        if r == self.GRCACC_RECORDTYPE:
+                            self.GRCACC.append(irrmodel)   
                     self._records[r]['parsed'] += 1
         # all models parsed :)
 
@@ -316,6 +321,8 @@ class RACF:
             self._genericMembers = pd.DataFrame.from_dict(self.GRMEM)
         if self.GRACC_RECORDTYPE in thingswewant:
             self._genericAccess = pd.DataFrame.from_dict(self.GRACC)
+        if self.GRCACC_RECORDTYPE in thingswewant:
+            self._genericConditionalAccess = pd.DataFrame.from_dict(self.GRCACC)
         
         self.THREAD_COUNT -= 1
         if self.THREAD_COUNT == 0:
@@ -373,6 +380,8 @@ class RACF:
             self.save_pickle(df=self._genericMembers, dfname='GRMEM', path=path, prefix=prefix)
         if len(self.GRACC) > 0:
             self.save_pickle(df=self._genericAccess, dfname='GRACC', path=path, prefix=prefix)
+        if len(self.GRCACC) > 0:
+            self.save_pickle(df=self._genericConditionalAccess, dfname='GRCACC', path=path, prefix=prefix)
 
     @property
     def users(self):
@@ -486,6 +495,12 @@ class RACF:
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._genericAccess
+    
+    @property
+    def genericConditionalAccess(self):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._genericConditionalAccess
     
     @property
     def userOMVS(self, query=None):
