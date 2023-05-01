@@ -52,6 +52,7 @@ class RACF:
     GRMEM_RECORDTYPE   = '0503'
     GRACC_RECORDTYPE   = '0505'
 
+    _ownertree          = None
 
 
     def __init__(self, irrdbu00=None, pickles=None, prefix=''):
@@ -646,5 +647,91 @@ class RACF:
 
         writer.save()   
 
+    def ownertree(self):
+        if self._ownertree != None:
+            return self._ownertree
+        else:
+            # get all owners... (group or user)
+            self._ownertree = {}
+            owners = self.groups.groupby('GPBD_OWNER_ID')
+            for owner in owners.groups.keys():
+                if owner not in self._ownertree:
+                    self._ownertree[owner] = []
+                    for group in owners.get_group(owner)['GPBD_NAME'].values:
+                        self._ownertree[owner].append(group)
+            # now we gotta condense it :)
+            return self._ownertree
+            for supgrp in self._ownertree:
+                for subgrp in self._ownertree[supgrp]:
+                    if subgrp in self._ownertree.values:
+                        self._ownertree[supgrp].remove(subgrp)
+                        self._ownertree[supgrp].append(self._ownertree[subgrp])
+
+
+            return self._ownertree
+
+
+
+
+    
+    def getdatsetrisk(self, profile=''):
+        '''This will produce a dict as follows:
+      
+        '''
+        try:
+            if self._records[self.GPBD_RECORDTYPE]['parsed'] == 0 or self._records[self.USCON_RECORDTYPE]['parsed'] == 0 or self._records[self.USBD_RECORDTYPE]['parsed'] == 0 or self._records[self.DSACC_RECORDTYPE]['parsed'] == 0 or  self._records[self.DSBD_RECORDTYPE]['parsed'] == 0:
+                raise StoopidException("Need to parse DSACC and DSBD first...")
+        except:
+            raise StoopidException("Need to parse DSACC, USCON, USBD, GPBD and DSBD first...")
+        
+        d = self.datasets.loc[self.datasets.DSBD_NAME==profile]
+        if len(d) == 0:
+            raise Exception('Profile not here...')
+        
+        owner = d['DSBD_OWNER_ID'].values[0]
+        accesslist = {}
+        accessmanagers = {}
+        dsacc = self.datasetAccess.groupby('DSACC_NAME')
+        peraccess = dsacc.get_group(profile).groupby('DSACC_ACCESS')
+        for access in ['NONE','EXECUTE','READ','UPDATE','CONTROL','ALTER']:
+            accesslist[access] = []
+            accessmanagers[access] = []
+            if access in peraccess.groups.keys():
+                a = peraccess.get_group(access)['DSACC_AUTH_ID'].values
+                for id in a:
+                    if len(self.user(id)) == 1:
+                        accesslist[access].append(id)
+                    else:
+                        if len(self.group(id)) == 1:
+                            g = self.connectData.loc[self.connectData.USCON_GRP_ID==id]
+                            for user,grp_special in g[['USCON_NAME','USCON_GRP_SPECIAL']].values:
+                                accesslist[access].append(user)
+                                # But suppose this user is group_special here?
+                                if grp_special=='YES':
+                                    accessmanagers[access].append(user)
+                            # And wait a minute... this groups owner, can also add people to the group?
+                            gowner = self.group(id)['GPBD_OWNER_ID'].values[0]
+                            if len(self.user(gowner)) == 1:
+                                accessmanagers[access].append(gowner)
+                            else:
+                                gg = self.connectData.loc[self.connectData.USCON_GRP_ID==gowner]
+                                for user,grp_special in gg[['USCON_NAME','USCON_GRP_SPECIAL']].values:
+                                    if grp_special=='YES':
+                                        accessmanagers[access].append(user)
+                # clean up doubles...
+            accessmanagers[access] = list(set(accessmanagers[access]))
+            accesslist[access] = list(set(accesslist[access]))
+
+        y = {
+            'owner': owner,
+            'accessmanagers': accessmanagers,
+            'uacc': d['DSBD_UACC'].values[0],
+            'permits': accesslist
+        }
+
+
+        return y
+
 class IRRDBU(RACF):
     pass
+

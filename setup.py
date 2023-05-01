@@ -26,7 +26,8 @@ setuptools.setup(
     install_requires=[
         'wheel',
         'pandas',
-        'xlsxwriter'
+        'xlsxwriter',
+        'anytree'
     ],
     python_requires=">=3.6",
 )
