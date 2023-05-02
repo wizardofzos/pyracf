@@ -113,6 +113,7 @@ Get all users that have not logged in (on?) since January 1st 2022. And print us
 
 Create a neat XLSX
 
+    import time
     from pyracf import IRRDBU
     mysys = IRRDBU('/path/to/irrdbu00')
     mysys.parse()
