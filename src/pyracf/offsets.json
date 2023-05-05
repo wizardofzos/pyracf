@@ -3618,7 +3618,7 @@
         {
           "field-desc": "Name of the class to which the general resource profile belongs.",
           "start": "253",
-          "field-name": "GRACC_CLASS_NAME",
+          "field-name": "GRCACC_CLASS_NAME",
           "end": "260",
           "type": "Char"
         },

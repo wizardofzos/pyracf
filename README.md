@@ -15,13 +15,14 @@ To get started with PyRACF, install it using `pip install pyracf` or explore the
 
 ## Updates
 
-### 0.6.0 (Bug free?)
+### 0.6.1 (Bug free?)
 - XLS generation fully functional again (also for z/VM unloads)
 - Oprhan detection working again
 - Conditional Dataset Access Records now parsing correctly
 - Conditional Dataset Access now correctly pickled :)
 - Fixed parsing of GRCACC records (had misparsed AUTH_ID)
-
+- Conditional Generic (General) Records now with correct column name (GRCACC_CLASS_NAME)
+  
 ### 0.5.4 (Even more recordtypes!!)
 - new property: genericConditionalAccess. Will show GRCACC records.
 - Fixed some nasty 'default recordtypes' bugs
