@@ -371,7 +371,7 @@ class RACF:
         if len(self.DSBD) > 0:
             self.save_pickle(df=self._datasets, dfname='DSBD', path=path, prefix=prefix)
         if len(self.DSCACC) > 0:
-            self.save_pickle(df=self._datasetConditionalAccess, dfname='DSBD', path=path, prefix=prefix)
+            self.save_pickle(df=self._datasetConditionalAccess, dfname='DSCACC', path=path, prefix=prefix)
         if len(self.DSACC) > 0:
             self.save_pickle(df=self._datasetAccess, dfname='DSACC', path=path, prefix=prefix)
         if len(self.GRBD) > 0:
