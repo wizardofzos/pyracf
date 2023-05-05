@@ -3377,7 +3377,79 @@
       }
     ]
     },
-    "dataset-conditional-access-record":{"record-type": "0402", "ref-url": "https://www.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/dsr.htm#dsr", "offsets": [{"field-desc": "Record type of the Data Set Conditional Access record (0402).", "start": "1", "field-name": "DSCACC_RECORD_TYPE", "end": "4", "type": "Int"}, {"field-desc": "Data set name as taken from the profile name.", "start": "6", "field-name": "DSCACC_NAME", "end": "49", "type": "Char"}, {"field-desc": "Volume upon which this data set resides. Blank if the profile is generic, and *MODEL if the profile is a model profile.", "start": "51", "field-name": "DSCACC_VOL", "end": "56", "type": "Char"}, {"field-desc": "The type of conditional access checking that is being performed. Valid values are APPCPORT , PROGRAM , CONSOLE , TERMINAL , JESINPUT , and SERVAUTH .", "start": "58", "field-name": "DSCACC_CATYPE", "end": "65", "type": "Char"}, {"field-desc": "The name of a conditional access element that is permitted access.", "start": "67", "field-name": "DSCACC_CANAME", "end": "74", "type": "Char"}, {"field-desc": "The user ID or group name that is authorized to the data set.", "start": "76", "field-name": "DSCACC_AUTH_ID", "end": "83", "type": "Char"}, {"field-desc": "The access of the conditional access element/user combination. Valid values are NONE , EXECUTE , READ , UPDATE , CONTROL , and ALTER .", "start": "85", "field-name": "DSCACC_ACCESS", "end": "92", "type": "Char"}, {"field-desc": "The number of times that the data set was accessed.", "start": "94", "field-name": "DSCACC_ACCESS_CNT", "end": "98", "type": "Int"}, {"field-desc": "The network name when DSCACC_CATYPE is APPCPORT.", "start": "100", "field-name": "DSCACC_NET_ID", "end": "107", "type": "Char"}, {"field-desc": "The IP name when DSCACC_CATYPE is SERVAUTH.", "start": "109", "field-name": "DSCACC_CACRITERIA", "end": "352", "type": "Char"}]},
+    "dataset-conditional-access-record":{
+      "record-type": "0402",
+      "ref-url": "https://www.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/dsr.htm#dsr",
+      "offsets": [
+        {
+          "field-desc": "Record type of the Data Set Conditional Access record (0402).",
+          "start": "1",
+          "field-name": "DSCACC_RECORD_TYPE",
+          "end": "4",
+          "type": "Int"
+        },
+        {
+          "field-desc": "Data set name as taken from the profile name.",
+          "start": "6",
+          "field-name": "DSCACC_NAME",
+          "end": "49",
+          "type": "Char"
+        },
+        {
+          "field-desc": "Volume upon which this data set resides. Blank if the profile is generic, and *MODEL if the profile is a model profile.",
+          "start": "51",
+          "field-name": "DSCACC_VOL",
+          "end": "56",
+          "type": "Char"
+        }, 
+        {
+          "field-desc": "The type of conditional access checking that is being performed. Valid values are APPCPORT , PROGRAM , CONSOLE , TERMINAL , JESINPUT , and SERVAUTH .",
+          "start": "58",
+          "field-name": "DSCACC_CATYPE",
+          "end": "65",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The name of a conditional access element that is permitted access.",
+          "start": "67", "field-name": "DSCACC_CANAME",
+          "end": "74",
+          "type": "Char"
+        }, 
+        {
+          "field-desc": "The user ID or group name that is authorized to the data set.", 
+          "start": "76",
+          "field-name": "DSCACC_AUTH_ID",
+          "end": "83",
+          "type": "Char"
+        },
+        {
+          "field-desc": "The access of the conditional access element/user combination. Valid values are NONE , EXECUTE , READ , UPDATE , CONTROL , and ALTER .",
+          "start": "85",
+          "field-name": "DSCACC_ACCESS",
+          "end": "92", "type": "Char"
+        },
+        {
+          "field-desc": "The number of times that the data set was accessed.",
+          "start": "94",
+          "field-name": "DSCACC_ACCESS_CNT",
+          "end": "98",
+          "type": "Int"
+          },
+          {
+            "field-desc": "The network name when DSCACC_CATYPE is APPCPORT.",
+            "start": "100",
+            "field-name": "DSCACC_NET_ID",
+            "end": "107",
+            "type": "Char"
+          },
+          {
+            "field-desc": "The IP name when DSCACC_CATYPE is SERVAUTH.",
+            "start": "109",
+            "field-name": "DSCACC_CACRITERIA",
+            "end": "352",
+            "type": "Char"
+            }]
+    },
     "dataset-access-record": {
       "record-type": "0404",
       "ref-url": "https://www.ibm.com/support/knowledgecenter/SSLTBW_1.13.0/com.ibm.zos.r13.icha300/dsr.htm#dsr",
@@ -3574,7 +3646,7 @@
         {
           "field-desc": "The authority of the conditional access element/user combination. Valid values are NONE, READ, UPDATE, CONTROL, and ALTER.",
           "start": "289",
-          "field-name": "GRCACC_AUTH_ID",
+          "field-name": "GRCACC_ACCESS",
           "end": "296",
           "type": "Char"
         },   
