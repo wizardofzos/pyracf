@@ -92,7 +92,7 @@ class RACF:
                     'USTSO': ['_userTSO','0220'],
                     'USOMVS': ['_userOMVS','0270'],
                     'DSBD': ['_datasets','0400'],
-                    'DSCACC': ['_datasetPermit','0402'],
+                    'DSCACC': ['_datasetConditionalAccess','0402'],
                     'DSACC': ['_datasetAccess','0404'],
                     'GRBD': ['_generics','0500'],
                     'GRMEM': ['_genericMembers','0503'],
@@ -312,7 +312,7 @@ class RACF:
         if self.DSBD_RECORDTYPE in thingswewant:
             self._datasets = pd.DataFrame.from_dict(self.DSBD)
         if self.DSCACC_RECORDTYPE in thingswewant:
-            self._datasetPermit = pd.DataFrame.from_dict(self.DSBD)
+            self._datasetConditionalAccess = pd.DataFrame.from_dict(self.DSCACC)
         if self.DSACC_RECORDTYPE in thingswewant:
             self._datasetAccess = pd.DataFrame.from_dict(self.DSACC)
         if self.GRBD_RECORDTYPE in thingswewant:
@@ -371,7 +371,7 @@ class RACF:
         if len(self.DSBD) > 0:
             self.save_pickle(df=self._datasets, dfname='DSBD', path=path, prefix=prefix)
         if len(self.DSCACC) > 0:
-            self.save_pickle(df=self._datasetPermit, dfname='DSBD', path=path, prefix=prefix)
+            self.save_pickle(df=self._datasetConditionalAccess, dfname='DSBD', path=path, prefix=prefix)
         if len(self.DSACC) > 0:
             self.save_pickle(df=self._datasetAccess, dfname='DSACC', path=path, prefix=prefix)
         if len(self.GRBD) > 0:
@@ -451,10 +451,10 @@ class RACF:
         return self._datasets
 
     @property
-    def datasetPermit(self):
+    def datasetConditionalAccess(self):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._datasetPermit
+        return self._datasetConditionalAccess
 
     @property
     def connects(self):
@@ -523,18 +523,18 @@ class RACF:
     @property
     def orphans(self):
         
-        if self._records[DSACC_RECORDTYPE]['parsed'] + self._records[GRACC_RECORDTYPE]['parsed'] == 0:
+        if self._records[self.DSACC_RECORDTYPE]['parsed'] + self._records[self.GRACC_RECORDTYPE]['parsed'] == 0:
             raise StoopidException('No dataset/generic access records parsed! (PEBKAM/ID-10T error)')
             
         datasetOrphans = None
         genericOrphans = None
 
-        if self._records[DSACC_RECORDTYPE]['parsed'] > 0:
+        if self._records[self.DSACC_RECORDTYPE]['parsed'] > 0:
             self._datasetAccess = self._datasetAccess.assign(inGroups=self._datasetAccess.DSACC_AUTH_ID.isin(self._groups.GPBD_NAME))
             self._datasetAccess = self._datasetAccess.assign(inUsers=self._datasetAccess.DSACC_AUTH_ID.isin(self._users.USBD_NAME))
             datasetOrphans = self._datasetAccess.loc[(self._datasetAccess['inGroups'] == False) & (self._datasetAccess['inUsers'] == False) & (self._datasetAccess['DSACC_AUTH_ID'] != "*") & (self._datasetAccess['DSACC_AUTH_ID'] != "&RACUID")]
         
-        if self._records[GRACC_RECORDTYPE]['parsed'] > 0:
+        if self._records[self.GRACC_RECORDTYPE]['parsed'] > 0:
                 self._genericAccess = self._genericAccess.assign(inGroups=self._genericAccess.GRACC_AUTH_ID.isin(self._groups.GPBD_NAME))
                 self._genericAccess = self._genericAccess.assign(inUsers=self._genericAccess.GRACC_AUTH_ID.isin(self._users.USBD_NAME))
                 genericOrphans =  self._genericAccess.loc[(self._genericAccess['inGroups'] == False) & (self._genericAccess['inUsers'] == False) & (self._genericAccess['GRACC_AUTH_ID'] != "*") & (self._genericAccess['GRACC_AUTH_ID'] != "&RACUID")]
@@ -545,7 +545,7 @@ class RACF:
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
 
-        if self._records[DSACC_RECORDTYPE]['parsed'] + self._records[GRACC_RECORDTYPE]['parsed'] == 0:
+        if self._records[self.DSACC_RECORDTYPE]['parsed'] + self._records[self.GRACC_RECORDTYPE]['parsed'] == 0:
             raise StoopidException('No dataset/generic access records parsed! (PEBKAM/ID-10T error)')
 
         writer = pd.ExcelWriter(f'{fileName}', engine='xlsxwriter')
@@ -620,7 +620,7 @@ class RACF:
                             value = shared_strings[centry.string]
                             worksheet.write(j, i, value, accessLevelFormats[value])
 
-        if self._records[DSBD_RECORDTYPE]['parsed'] > 0:
+        if self._records[self.DSBD_RECORDTYPE]['parsed'] > 0:
             ss = datetime.now()
             profilesInClass = list(self.datasetAccess['DSACC_NAME'].unique())
             authIDsInClass = list(self.datasetAccess['DSACC_AUTH_ID'].unique())
