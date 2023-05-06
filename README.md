@@ -121,10 +121,11 @@ Get all users that have not logged in (on?) since January 1st 2022. And print us
         time.sleep(5)
     selection = mysys.users.loc[mysys.users.USBD_LASTJOB_DATE<="2022-01-01"][['USBD_NAME','USBD_LASTJOB_DATE']]
     for user in selection.values:
-      print(f"Userid {user[0]}, last active: {user[1]})
+      print(f"Userid {user[0]}, last active: {user[1]}")
 
 Create a neat XLSX
 
+    import time
     from pyracf import IRRDBU
     mysys = IRRDBU('/path/to/irrdbu00')
     mysys.parse()
