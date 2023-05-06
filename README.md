@@ -15,6 +15,10 @@ To get started with PyRACF, install it using `pip install pyracf` or explore the
 
 ## Updates
 
+### 0.6.2 (Fix XLSX Creation)
+- With newer versions of XlsxWriter there's no more .save(). Changed to .close()
+- Pinned pandas and XlsxWriter versions in setup.py 
+
 ### 0.6.1 (Bug free?)
 - XLS generation fully functional again (also for z/VM unloads)
 - Oprhan detection working again

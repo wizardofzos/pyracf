@@ -660,7 +660,7 @@ class RACF:
                             value = shared_strings[centry.string]
                             worksheet.write(j, i, value, accessLevelFormats[value])
 
-        writer.save()   
+        writer.close()   
 
     def ownertree(self):
         if self._ownertree != None:
@@ -681,14 +681,8 @@ class RACF:
                     if subgrp in self._ownertree.values:
                         self._ownertree[supgrp].remove(subgrp)
                         self._ownertree[supgrp].append(self._ownertree[subgrp])
-
-
             return self._ownertree
 
-
-
-
-    
     def getdatsetrisk(self, profile=''):
         '''This will produce a dict as follows:
       
