@@ -552,7 +552,51 @@
           "type": "char",
           "start": "592",
           "end": "603"
-        }                   
+        },
+        {
+          "field-name": "USBD_LEG_PWDHIST_CT",
+          "type": "int",
+          "start": "605",
+          "end": "607"
+        },
+        {
+          "field-name": "USBD_XPW_PWDHIST_CT",
+          "type": "int",
+          "start": "609",
+          "end": "611"
+        },
+        {
+          "field-name": "USBD_PHR_ALG",
+          "type": "char",
+          "start": "613",
+          "end": "624"
+        },
+        {
+          "field-name": "USBD_LEG_PHRHIST_CT",
+          "type": "int",
+          "start": "626",
+          "end": "628"
+        },
+        {
+          "field-name": "USBD_XPW_PHRHIST_CT",
+          "type": "int",
+          "start": "630",
+          "end": "632"
+        },
+        {
+          "field-name": "USBD_ROAUDIT",
+          "type": "char",
+          "start": "634",
+          "end": "637"
+        },
+        {
+          "field-name": "USBD_MFA_FALLBACK",
+          "type": "char",
+          "start": "639",
+          "end": "641"
+        }
+
+
       ]
     },
     "user-categories-record": {
