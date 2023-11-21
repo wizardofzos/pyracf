@@ -15,6 +15,12 @@ To get started with PyRACF, install it using `pip install pyracf` or explore the
 
 ## Updates
 
+### 0.6.4 (Add 0209)
+- Added 0209 recordtype to parser. (userDistributedMapping)
+
+### 0.6.3 (Add fields)
+- Added missing USBD_LEG_PWDHIST_CT, USBD_XPW_PWDHIST_CT, USBD_PHR_ALG, USBD_LEG_PHRHIST_CT, USBD_XPW_PHRHIST_CT, USBD_ROAUDIT and USBD_MFA_FALLBACK to Users dataframe
+
 ### 0.6.2 (Fix XLSX Creation)
 - With newer versions of XlsxWriter there's no more .save(). Changed to .close()
 - Pinned pandas and XlsxWriter versions in setup.py 

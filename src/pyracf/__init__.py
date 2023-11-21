@@ -41,6 +41,7 @@ class RACF:
     USGCON_RECORDTYPE  = '0203'
     USINSTD_RECORDTYPE = '0204'
     USCON_RECORDTYPE   = '0205'
+    USDMAP_RECORDTYPE  = '0209'
     USTSO_RECORDTYPE   = '0220'
     USOMVS_RECORDTYPE  = '0270'
 
@@ -89,6 +90,7 @@ class RACF:
                     'USGCON': ['_groupConnect','0203'],
                     'USINSTD': ['_installdata','0204'],
                     'USCON': ['_connectData','0205'],
+                    'USDMAP': ['_userDistributedMapping','0209'],
                     'USTSO': ['_userTSO','0220'],
                     'USOMVS': ['_userOMVS','0270'],
                     'DSBD': ['_datasets','0400'],
@@ -128,6 +130,7 @@ class RACF:
             self.USCLA  = []
             self.USINSTD  = []
             self.USGCON  = []
+            self.USDCON = []
             self.USCERT  = []
             self.USCON = []
             self.USNMAP  = []
@@ -268,6 +271,8 @@ class RACF:
                             self.USINSTD.append(irrmodel)
                         if r == self.USCON_RECORDTYPE:
                             self.USCON.append(irrmodel)
+                        if r == self.USDMAP_RECORDTYPE:
+                            self.USDMAP.append(irrmodel)
                         if r == self.USTSO_RECORDTYPE:
                             self.USTSO.append(irrmodel)                            
                         if r == self.USOMVS_RECORDTYPE:
@@ -304,7 +309,9 @@ class RACF:
         if self.USINSTD_RECORDTYPE in thingswewant:
             self._installdata = pd.DataFrame.from_dict(self.USINSTD)                                  
         if self.USCON_RECORDTYPE in thingswewant:
-            self._connectData = pd.DataFrame.from_dict(self.USCON)                      
+            self._connectData = pd.DataFrame.from_dict(self.USCON)    
+        if self.USDMAP_RECORDTYPE in thingswewant:
+            self._userDistributedMapping = pd.DataFrame.from_dict(self.USDMAP)                  
         if self.USTSO_RECORDTYPE in thingswewant:
             self._userTSO = pd.DataFrame.from_dict(self.USTSO)          
         if self.USOMVS_RECORDTYPE in thingswewant:
@@ -363,7 +370,9 @@ class RACF:
         if len(self.USINSTD) > 0:
             self.save_pickle(df=self._installdata, dfname='USINSTD', path=path, prefix=prefix)                                  
         if len(self.USCON) > 0:
-            self.save_pickle(df=self._connectData, dfname='USCON', path=path, prefix=prefix)                      
+            self.save_pickle(df=self._connectData, dfname='USCON', path=path, prefix=prefix)                
+        if len(self.USDMAP) > 0:
+            self.save_pickle(df=self._userDistributedMapping, dfname='USDMAP', path=path, prefix=prefix)             
         if len(self.USTSO) > 0:
             self.save_pickle(df=self._userTSO, dfname='USTSO', path=path, prefix=prefix)          
         if len(self.USOMVS) > 0:
@@ -403,6 +412,16 @@ class RACF:
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._connectData
+
+    @property
+    def userDistributedMapping(self):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._userDistributedMapping
+
+
+
+
 
     @property
     def specials(self):
