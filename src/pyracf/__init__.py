@@ -24,6 +24,19 @@ class StoopidException(Exception):
         self.message = message
         super().__init__(self.message)
 
+def deprecated(func,oldname):
+    ''' Wrapper routine to add (old) alias name to new routine (func), supports methods and properties. 
+        Inspired by functools.partial() '''
+    def newfunc(*arg,**keywords):
+        if hasattr(func,"__name__"):  # normal function object
+            newroutine = func
+        else:  # property object
+            newroutine = func.fget
+        warnings.warn(f"{oldname} is deprecated and will be removed, use {newroutine.__name__} instead.")
+        return newroutine(*arg,**keywords)
+    newfunc.func = func
+    return newfunc
+
 class RACF:
     
     # Our states
@@ -56,9 +69,9 @@ class RACF:
 
     _recordname_type = {}    # {'GPBD': '0100', ....}
     _recordname_df = {}      # {'GPBD': '_groups', ....}
-    for (rtype,rlist) in _recordtype_info.items():
-        _recordname_type.update({rlist['name']: rtype})
-        _recordname_df.update({rlist['name']: rlist['df']})
+    for (rtype,rinfo) in _recordtype_info.items():
+        _recordname_type.update({rinfo['name']: rtype})
+        _recordname_df.update({rinfo['name']: rinfo['df']})
     
     # load irrdbu00 field definitions, save offsets in _recordtype_info
     # strictly speaking only needed for parse() function, but also not limited to one instance.
@@ -95,8 +108,8 @@ class RACF:
                 if recordname in RACF._recordname_type:
                     recordtype = RACF._recordname_type[recordname]
                     dfname = RACF._recordname_df[recordname]
-                    setattr(self, f"{dfname}", pd.read_pickle(f"{pickle}"))
-                    recordsRetrieved = len(getattr(self, f"{dfname}"))
+                    setattr(self, dfname, pd.read_pickle(pickle))
+                    recordsRetrieved = len(getattr(self, dfname))
                     self._records[recordtype] = {
                       "seen": recordsRetrieved,
                       "parsed": recordsRetrieved
@@ -138,12 +151,12 @@ class RACF:
             status = "Still parsing your unload"
             start  = self._starttime
             speed  = math.floor(seen/((datetime.now() -self._starttime).total_seconds()))
-
         elif self._state == self.STATE_READY:
             status = "Ready"
             speed  = math.floor(seen/((self._stoptime - self._starttime).total_seconds()))
             parsetime = (self._stoptime - self._starttime).total_seconds()
-     
+        else:
+            self._state == "Limbo"     
         return {'status': status, 'input-lines': self._unloadlines, 'lines-read': seen, 'lines-parsed': parsed, 'lines-per-second': speed, 'parse-time': parsetime}
 
     def parse_fancycli(self, recordtypes=_recordtype_info.keys(), save_pickles=False, prefix=''):
@@ -201,7 +214,7 @@ class RACF:
 
         for (rtype,rinfo) in RACF._recordtype_info.items():
             if rtype in thingswewant:
-                setattr(self, f"{rinfo['df']}", pd.DataFrame.from_dict(self._parsed[rtype]))
+                setattr(self, rinfo['df'], pd.DataFrame.from_dict(self._parsed[rtype]))
 
         self.THREAD_COUNT -= 1
         if self.THREAD_COUNT == 0:
@@ -210,7 +223,7 @@ class RACF:
         return True
 
     def parsed(self, rname):
-        """ how many records from this name (type) were parsed """
+        """ how many records with this name (type) were parsed """
         return self._records[RACF._recordname_type[rname]]['parsed']
         
     def save_pickle(self, df='', dfname='', path='', prefix=''):
@@ -232,8 +245,8 @@ class RACF:
                 raise StoopidException(f'{path} does not exist, and cannot create')
         # Let's save the pickles
         for (rtype,rinfo) in RACF._recordtype_info.items():
-            if self._records[rtype]['parsed']>0:
-                self.save_pickle(df=getattr(self, f"{rinfo['df']}"), dfname=rinfo['name'], path=path, prefix=prefix)
+            if rtype in self._records and self._records[rtype]['parsed']>0:
+                self.save_pickle(df=getattr(self, rinfo['df']), dfname=rinfo['name'], path=path, prefix=prefix)
             else:
                 # todo: ensure consistent data, delete old pickles that were not saved
                 pass
@@ -252,10 +265,7 @@ class RACF:
         if not userid:
             raise StoopidException('userid not specified...')
         return self._users.loc[self._users.USBD_NAME==userid]
-    
-    
-    def deprecated(seld, oldname='', newname=''):
-        warnings.warn(f'The method `{oldname} is deprecated and will be removed in 0.8.0. Please amend your code to use `{newname}` instead.')
+
 
     @property
     def connectData(self):
@@ -268,9 +278,6 @@ class RACF:
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._userDistributedMapping
-
-
-
 
 
     @property
@@ -293,7 +300,6 @@ class RACF:
     def groups(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        
         return self._groups
     
     def group(self, group=None):
@@ -347,51 +353,37 @@ class RACF:
     def uacc_read_datasets(self):
         return self._datasets.loc[self._datasets.DSBD_UACC=="READ"]
 
-
-
-    @property
-    def generics(self, query=None):
-        self.deprecated(oldname='generics', newname='generals')
-        return self.generals
-    
     @property
     def generals(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._generals
 
-    @property 
-    def genericMembers(self, query=None):
-        self.deprecated(oldname='genericMemebers', newname='generalMembers')
-        return self.generalMembers
-    
+    generics = property(deprecated(generals,"generics"))
+
     @property
     def generalMembers(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._generalMembers    
 
-    @property
-    def genericAccess(self, query=None):
-        self.deprecated(oldname='genericAccess', newname='generalAccess')
-        return self.generalAccess 
-    
+    genericMembers = property(deprecated(generalMembers,"genericMembers"))
+
     @property
     def generalAccess(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._generalAccess
-    
-    @property
-    def genericConditionalAccess(self):
-        self.deprecated(oldname='genericConditionalAccess', newname='generalConditionalAccess')
-        return self.generalConditionalAccess
+
+    genericAccess = property(deprecated(generalAccess,"genericAccess"))
     
     @property
     def generalConditionalAccess(self):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._generalConditionalAccess
+
+    genericConditionalAccess = property(deprecated(generalConditionalAccess,"genericConditionalAccess"))
     
     @property
     def userOMVS(self, query=None):
@@ -628,7 +620,6 @@ class RACF:
             'uacc': d['DSBD_UACC'].values[0],
             'permits': accesslist
         }
-
 
         return y
 
