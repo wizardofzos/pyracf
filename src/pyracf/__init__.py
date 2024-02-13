@@ -17,6 +17,7 @@ import xlsxwriter
 import os
 import glob
 
+import warnings 
 
 class StoopidException(Exception):
     def __init__(self, message):
@@ -251,6 +252,10 @@ class RACF:
         if not userid:
             raise StoopidException('userid not specified...')
         return self._users.loc[self._users.USBD_NAME==userid]
+    
+    
+    def deprecated(seld, oldname='', newname=''):
+        warnings.warn(f'The method `{oldname} is deprecated and will be removed in 0.8.0. Please amend your code to use `{newname}` instead.')
 
     @property
     def connectData(self):
@@ -342,12 +347,24 @@ class RACF:
     def uacc_read_datasets(self):
         return self._datasets.loc[self._datasets.DSBD_UACC=="READ"]
 
+
+
+    @property
+    def generics(self, query=None):
+        self.deprecated(oldname='generics', newname='generals')
+        return self.generals
+    
     @property
     def generals(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._generals
 
+    @property 
+    def genericMembers(self, query=None):
+        self.deprecated(oldname='genericMemebers', newname='generalMembers')
+        return self.generalMembers
+    
     @property
     def generalMembers(self, query=None):
         if self._state != self.STATE_READY:
@@ -355,10 +372,20 @@ class RACF:
         return self._generalMembers    
 
     @property
+    def genericAccess(self, query=None):
+        self.deprecated(oldname='genericAccess', newname='generalAccess')
+        return self.generalAccess 
+    
+    @property
     def generalAccess(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._generalAccess
+    
+    @property
+    def genericConditionalAccess(self):
+        self.deprecated(oldname='genericConditionalAccess', newname='generalConditionalAccess')
+        return self.generalConditionalAccess
     
     @property
     def generalConditionalAccess(self):
