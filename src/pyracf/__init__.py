@@ -156,7 +156,7 @@ class RACF:
             speed  = math.floor(seen/((self._stoptime - self._starttime).total_seconds()))
             parsetime = (self._stoptime - self._starttime).total_seconds()
         else:
-            self._state == "Limbo"     
+            status = "Limbo"     
         return {'status': status, 'input-lines': self._unloadlines, 'lines-read': seen, 'lines-parsed': parsed, 'lines-per-second': speed, 'parse-time': parsetime}
 
     def parse_fancycli(self, recordtypes=_recordtype_info.keys(), save_pickles=False, prefix=''):
