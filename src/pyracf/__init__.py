@@ -82,6 +82,8 @@ class RACF:
         if rtype in _recordtype_info.keys():
           _recordtype_info[rtype].update({"offsets": _offsets[offset]["offsets"]})
 
+    _ownertree          = None
+
 
     def __init__(self, irrdbu00=None, pickles=None, prefix=''):
 
@@ -216,6 +218,8 @@ class RACF:
             if rtype in thingswewant:
                 setattr(self, rinfo['df'], pd.DataFrame.from_dict(self._parsed[rtype]))
 
+        # TODO: Reduce memory use, delete self._parsed after dataframes are made
+
         self.THREAD_COUNT -= 1
         if self.THREAD_COUNT == 0:
             self._state = self.STATE_READY         
@@ -248,7 +252,7 @@ class RACF:
             if rtype in self._records and self._records[rtype]['parsed']>0:
                 self.save_pickle(df=getattr(self, rinfo['df']), dfname=rinfo['name'], path=path, prefix=prefix)
             else:
-                # todo: ensure consistent data, delete old pickles that were not saved
+                # TODO: ensure consistent data, delete old pickles that were not saved
                 pass
 
     @property
@@ -559,9 +563,10 @@ class RACF:
                         self._ownertree[owner].append(group)
             # now we gotta condense it :)
             return self._ownertree
+            # initially, anchor can be a user (like IBMUSER) or a group
             for supgrp in self._ownertree:
                 for subgrp in self._ownertree[supgrp]:
-                    if subgrp in self._ownertree.values:
+                    if subgrp in self._ownertree.keys():
                         self._ownertree[supgrp].remove(subgrp)
                         self._ownertree[supgrp].append(self._ownertree[subgrp])
             return self._ownertree
@@ -570,6 +575,7 @@ class RACF:
         '''This will produce a dict as follows:
       
         '''
+        # TODO should this function have an extra A getdatAsetrisk?
         try:
             if self.parsed("GPBD") == 0 or self.parsed("USCON") == 0 or self.parsed("USBD") == 0 or self.parsed("DSACC") == 0 or self.parsed("DSBD") == 0:
                 raise StoopidException("Need to parse DSACC and DSBD first...")
@@ -610,6 +616,8 @@ class RACF:
                                 for user,grp_special in gg[['USCON_NAME','USCON_GRP_SPECIAL']].values:
                                     if grp_special=='YES':
                                         accessmanagers[access].append(user)
+                                # TODO follow group tree up, group special on any of the owning groups also has group special here
+                            # TODO connect authority CONNECT or JOIN means you can connect users to the group
                 # clean up doubles...
             accessmanagers[access] = list(set(accessmanagers[access]))
             accesslist[access] = list(set(accesslist[access]))
