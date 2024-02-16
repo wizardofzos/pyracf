@@ -82,6 +82,7 @@ class RACF:
         if rtype in _recordtype_info.keys():
           _recordtype_info[rtype].update({"offsets": _offsets[offset]["offsets"]})
 
+    _grouptree          = None
     _ownertree          = None
 
 
@@ -549,33 +550,51 @@ class RACF:
 
         writer.close()   
 
-    def ownertree(self):
-        if self._ownertree != None:
-            return self._ownertree
-        else:
-            # get all owners... (group or user)
-            self._ownertree = {}
-            owners = self.groups.groupby('GPBD_OWNER_ID')
-            for owner in owners.groups.keys():
-                if owner not in self._ownertree:
-                    self._ownertree[owner] = []
-                    for group in owners.get_group(owner)['GPBD_NAME'].values:
-                        self._ownertree[owner].append(group)
-            # now we gotta condense it :)
-            return self._ownertree
-            # initially, anchor can be a user (like IBMUSER) or a group
-            for supgrp in self._ownertree:
-                for subgrp in self._ownertree[supgrp]:
-                    if subgrp in self._ownertree.keys():
-                        self._ownertree[supgrp].remove(subgrp)
-                        self._ownertree[supgrp].append(self._ownertree[subgrp])
-            return self._ownertree
+    def tree(self,tree,linkup_field="GPBD_SUPGRP_ID"):
+        if tree == None:
+            # get all owners... (group or user) or all superior groups
+            tree = {}
+            where_is = {}
+            higher_ups = self.groups.groupby(linkup_field)
+            for higher_up in higher_ups.groups.keys():
+                if higher_up not in tree:
+                    tree[higher_up] = []
+                    for group in higher_ups.get_group(higher_up)['GPBD_NAME'].values:
+                        tree[higher_up].append(group)
+                        where_is[group] = tree[higher_up]
+            # initially, for an owner tree, anchor can be a user (like IBMUSER) or a group
+            # now we gotta condense it, so only IBMUSER and other group owning users are at top level
+            # for group tree, we should end up with SYS1, and a list of groups
+            deletes = []
+            for anchor in tree:
+                if anchor in where_is:
+                    supgrpMembers = where_is[anchor]
+                    supgrpMembers.remove(anchor)
+                    supgrpMembers.append({anchor: tree[anchor]})
+                    deletes.append(anchor)
+            for anchor in deletes:
+                tree.pop(anchor)
+        return tree
 
-    def getdatsetrisk(self, profile=''):
+    def ownertree(self):
+        ''' 
+        create dict with the user IDs that own groups as key, and a list of their owned groups as values.
+        if a group in this list owns group, the list is replaced by a dict.
+        '''
+        return self.tree(self._ownertree,"GPBD_OWNER_ID")
+
+    def grouptree(self):
+        ''' 
+        create dict starting with SYS1, and a list of groups owned by SYS1 as values.
+        if a group in this list owns group, the list is replaced by a dict.
+        because SYS1's superior group is blank/missing, we return the first group that is owned by "".
+        '''
+        return self.tree(self._grouptree,"GPBD_SUPGRP_ID")[""][0]
+
+    def getdatasetrisk(self, profile=''):
         '''This will produce a dict as follows:
       
         '''
-        # TODO should this function have an extra A getdatAsetrisk?
         try:
             if self.parsed("GPBD") == 0 or self.parsed("USCON") == 0 or self.parsed("USBD") == 0 or self.parsed("DSACC") == 0 or self.parsed("DSBD") == 0:
                 raise StoopidException("Need to parse DSACC and DSBD first...")
@@ -593,7 +612,7 @@ class RACF:
         peraccess = dsacc.get_group(profile).groupby('DSACC_ACCESS')
         for access in ['NONE','EXECUTE','READ','UPDATE','CONTROL','ALTER']:
             accesslist[access] = []
-            accessmanagers[access] = []
+            accessmanagers = []
             if access in peraccess.groups.keys():
                 a = peraccess.get_group(access)['DSACC_AUTH_ID'].values
                 for id in a:
@@ -606,20 +625,26 @@ class RACF:
                                 accesslist[access].append(user)
                                 # But suppose this user is group_special here?
                                 if grp_special=='YES':
-                                    accessmanagers[access].append(user)
+                                    accessmanagers.append(user)
                             # And wait a minute... this groups owner, can also add people to the group?
-                            gowner = self.group(id)['GPBD_OWNER_ID'].values[0]
+                            [gowner,gsupgroup] = self.group(id)[['GPBD_OWNER_ID','GPBD_SUPGRP_ID']].values[0]
                             if len(self.user(gowner)) == 1:
-                                accessmanagers[access].append(gowner)
+                                accessmanagers.append(gowner)
                             else:
-                                gg = self.connectData.loc[self.connectData.USCON_GRP_ID==gowner]
-                                for user,grp_special in gg[['USCON_NAME','USCON_GRP_SPECIAL']].values:
-                                    if grp_special=='YES':
-                                        accessmanagers[access].append(user)
-                                # TODO follow group tree up, group special on any of the owning groups also has group special here
-                            # TODO connect authority CONNECT or JOIN means you can connect users to the group
+                                # group special propages up
+                                while gowner==gsupgrp:
+                                    gg = self.connectData.loc[self.connectData.USCON_GRP_ID==gowner]
+                                    for user,grp_special in gg[['USCON_NAME','USCON_GRP_SPECIAL']].values:
+                                        if grp_special=='YES':
+                                            accessmanagers.append(user)
+                                    [gowner,gsupgroup] = self.group(gowner)[['GPBD_OWNER_ID','GPBD_SUPGRP_ID']].values[0]
+                            # connect authority CONNECT/JOIN allows modification of member list
+                            g = self.connects.loc[self.connects.GPMEM_NAME==id]
+                            for user,grp_auth in g[['GPMEM_MEMBER_ID','GPMEM_AUTH']].values:
+                                if grp_auth in ('CONNECT','JOIN'):
+                                    accessmanagers.append(user)
                 # clean up doubles...
-            accessmanagers[access] = list(set(accessmanagers[access]))
+            accessmanagers = list(set(accessmanagers))
             accesslist[access] = list(set(accesslist[access]))
 
         y = {
