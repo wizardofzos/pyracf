@@ -24,6 +24,19 @@ class StoopidException(Exception):
         self.message = message
         super().__init__(self.message)
 
+def deprecated(func,oldname):
+    ''' Wrapper routine to add (deprecated) alias name to new routine (func), supports methods and properties. 
+        Inspired by functools.partial() '''
+    def deprecated_func(*arg,**keywords):
+        if hasattr(func,"__name__"):  # normal function object
+            newroutine = func
+        else:  # property object
+            newroutine = func.fget
+        warnings.warn(f"{oldname} is deprecated and will be removed, use {newroutine.__name__} instead.")
+        return newroutine(*arg,**keywords)
+    deprecated_func.func = func
+    return deprecated_func
+
 class RACF:
     
     # Our states
@@ -56,9 +69,9 @@ class RACF:
 
     _recordname_type = {}    # {'GPBD': '0100', ....}
     _recordname_df = {}      # {'GPBD': '_groups', ....}
-    for (rtype,rlist) in _recordtype_info.items():
-        _recordname_type.update({rlist['name']: rtype})
-        _recordname_df.update({rlist['name']: rlist['df']})
+    for (rtype,rinfo) in _recordtype_info.items():
+        _recordname_type.update({rinfo['name']: rtype})
+        _recordname_df.update({rinfo['name']: rinfo['df']})
     
     # load irrdbu00 field definitions, save offsets in _recordtype_info
     # strictly speaking only needed for parse() function, but also not limited to one instance.
@@ -68,6 +81,9 @@ class RACF:
         rtype = _offsets[offset]['record-type']
         if rtype in _recordtype_info.keys():
           _recordtype_info[rtype].update({"offsets": _offsets[offset]["offsets"]})
+
+    _grouptree          = None
+    _ownertree          = None
 
 
     def __init__(self, irrdbu00=None, pickles=None, prefix=''):
@@ -95,8 +111,8 @@ class RACF:
                 if recordname in RACF._recordname_type:
                     recordtype = RACF._recordname_type[recordname]
                     dfname = RACF._recordname_df[recordname]
-                    setattr(self, f"{dfname}", pd.read_pickle(f"{pickle}"))
-                    recordsRetrieved = len(getattr(self, f"{dfname}"))
+                    setattr(self, dfname, pd.read_pickle(pickle))
+                    recordsRetrieved = len(getattr(self, dfname))
                     self._records[recordtype] = {
                       "seen": recordsRetrieved,
                       "parsed": recordsRetrieved
@@ -138,12 +154,12 @@ class RACF:
             status = "Still parsing your unload"
             start  = self._starttime
             speed  = math.floor(seen/((datetime.now() -self._starttime).total_seconds()))
-
         elif self._state == self.STATE_READY:
             status = "Ready"
             speed  = math.floor(seen/((self._stoptime - self._starttime).total_seconds()))
             parsetime = (self._stoptime - self._starttime).total_seconds()
-     
+        else:
+            status = "Limbo"     
         return {'status': status, 'input-lines': self._unloadlines, 'lines-read': seen, 'lines-parsed': parsed, 'lines-per-second': speed, 'parse-time': parsetime}
 
     def parse_fancycli(self, recordtypes=_recordtype_info.keys(), save_pickles=False, prefix=''):
@@ -201,7 +217,9 @@ class RACF:
 
         for (rtype,rinfo) in RACF._recordtype_info.items():
             if rtype in thingswewant:
-                setattr(self, f"{rinfo['df']}", pd.DataFrame.from_dict(self._parsed[rtype]))
+                setattr(self, rinfo['df'], pd.DataFrame.from_dict(self._parsed[rtype]))
+
+        # TODO: Reduce memory use, delete self._parsed after dataframes are made
 
         self.THREAD_COUNT -= 1
         if self.THREAD_COUNT == 0:
@@ -210,7 +228,7 @@ class RACF:
         return True
 
     def parsed(self, rname):
-        """ how many records from this name (type) were parsed """
+        """ how many records with this name (type) were parsed """
         return self._records[RACF._recordname_type[rname]]['parsed']
         
     def save_pickle(self, df='', dfname='', path='', prefix=''):
@@ -232,10 +250,10 @@ class RACF:
                 raise StoopidException(f'{path} does not exist, and cannot create')
         # Let's save the pickles
         for (rtype,rinfo) in RACF._recordtype_info.items():
-            if self._records[rtype]['parsed']>0:
-                self.save_pickle(df=getattr(self, f"{rinfo['df']}"), dfname=rinfo['name'], path=path, prefix=prefix)
+            if rtype in self._records and self._records[rtype]['parsed']>0:
+                self.save_pickle(df=getattr(self, rinfo['df']), dfname=rinfo['name'], path=path, prefix=prefix)
             else:
-                # todo: ensure consistent data, delete old pickles that were not saved
+                # TODO: ensure consistent data, delete old pickles that were not saved
                 pass
 
     @property
@@ -252,10 +270,7 @@ class RACF:
         if not userid:
             raise StoopidException('userid not specified...')
         return self._users.loc[self._users.USBD_NAME==userid]
-    
-    
-    def deprecated(seld, oldname='', newname=''):
-        warnings.warn(f'The method `{oldname} is deprecated and will be removed in 0.8.0. Please amend your code to use `{newname}` instead.')
+
 
     @property
     def connectData(self):
@@ -268,9 +283,6 @@ class RACF:
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._userDistributedMapping
-
-
-
 
 
     @property
@@ -293,7 +305,6 @@ class RACF:
     def groups(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        
         return self._groups
     
     def group(self, group=None):
@@ -347,51 +358,37 @@ class RACF:
     def uacc_read_datasets(self):
         return self._datasets.loc[self._datasets.DSBD_UACC=="READ"]
 
-
-
-    @property
-    def generics(self, query=None):
-        self.deprecated(oldname='generics', newname='generals')
-        return self.generals
-    
     @property
     def generals(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._generals
 
-    @property 
-    def genericMembers(self, query=None):
-        self.deprecated(oldname='genericMemebers', newname='generalMembers')
-        return self.generalMembers
-    
+    generics = property(deprecated(generals,"generics"))
+
     @property
     def generalMembers(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._generalMembers    
 
-    @property
-    def genericAccess(self, query=None):
-        self.deprecated(oldname='genericAccess', newname='generalAccess')
-        return self.generalAccess 
-    
+    genericMembers = property(deprecated(generalMembers,"genericMembers"))
+
     @property
     def generalAccess(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._generalAccess
-    
-    @property
-    def genericConditionalAccess(self):
-        self.deprecated(oldname='genericConditionalAccess', newname='generalConditionalAccess')
-        return self.generalConditionalAccess
+
+    genericAccess = property(deprecated(generalAccess,"genericAccess"))
     
     @property
     def generalConditionalAccess(self):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._generalConditionalAccess
+
+    genericConditionalAccess = property(deprecated(generalConditionalAccess,"genericConditionalAccess"))
     
     @property
     def userOMVS(self, query=None):
@@ -553,28 +550,48 @@ class RACF:
 
         writer.close()   
 
-    def ownertree(self):
-        if self._ownertree != None:
-            return self._ownertree
-        else:
-            # get all owners... (group or user)
-            self._ownertree = {}
-            owners = self.groups.groupby('GPBD_OWNER_ID')
-            for owner in owners.groups.keys():
-                if owner not in self._ownertree:
-                    self._ownertree[owner] = []
-                    for group in owners.get_group(owner)['GPBD_NAME'].values:
-                        self._ownertree[owner].append(group)
-            # now we gotta condense it :)
-            return self._ownertree
-            for supgrp in self._ownertree:
-                for subgrp in self._ownertree[supgrp]:
-                    if subgrp in self._ownertree.values:
-                        self._ownertree[supgrp].remove(subgrp)
-                        self._ownertree[supgrp].append(self._ownertree[subgrp])
-            return self._ownertree
+    def tree(self,tree,linkup_field="GPBD_SUPGRP_ID"):
+        if tree == None:
+            # get all owners... (group or user) or all superior groups
+            tree = {}
+            where_is = {}
+            higher_ups = self.groups.groupby(linkup_field)
+            for higher_up in higher_ups.groups.keys():
+                if higher_up not in tree:
+                    tree[higher_up] = []
+                    for group in higher_ups.get_group(higher_up)['GPBD_NAME'].values:
+                        tree[higher_up].append(group)
+                        where_is[group] = tree[higher_up]
+            # initially, for an owner tree, anchor can be a user (like IBMUSER) or a group
+            # now we gotta condense it, so only IBMUSER and other group owning users are at top level
+            # for group tree, we should end up with SYS1, and a list of groups
+            deletes = []
+            for anchor in tree:
+                if anchor in where_is:
+                    supgrpMembers = where_is[anchor]
+                    supgrpMembers.remove(anchor)
+                    supgrpMembers.append({anchor: tree[anchor]})
+                    deletes.append(anchor)
+            for anchor in deletes:
+                tree.pop(anchor)
+        return tree
 
-    def getdatsetrisk(self, profile=''):
+    def ownertree(self):
+        ''' 
+        create dict with the user IDs that own groups as key, and a list of their owned groups as values.
+        if a group in this list owns group, the list is replaced by a dict.
+        '''
+        return self.tree(self._ownertree,"GPBD_OWNER_ID")
+
+    def grouptree(self):
+        ''' 
+        create dict starting with SYS1, and a list of groups owned by SYS1 as values.
+        if a group in this list owns group, the list is replaced by a dict.
+        because SYS1's superior group is blank/missing, we return the first group that is owned by "".
+        '''
+        return self.tree(self._grouptree,"GPBD_SUPGRP_ID")[""][0]
+
+    def getdatasetrisk(self, profile=''):
         '''This will produce a dict as follows:
       
         '''
@@ -595,7 +612,7 @@ class RACF:
         peraccess = dsacc.get_group(profile).groupby('DSACC_ACCESS')
         for access in ['NONE','EXECUTE','READ','UPDATE','CONTROL','ALTER']:
             accesslist[access] = []
-            accessmanagers[access] = []
+            accessmanagers = []
             if access in peraccess.groups.keys():
                 a = peraccess.get_group(access)['DSACC_AUTH_ID'].values
                 for id in a:
@@ -608,18 +625,26 @@ class RACF:
                                 accesslist[access].append(user)
                                 # But suppose this user is group_special here?
                                 if grp_special=='YES':
-                                    accessmanagers[access].append(user)
+                                    accessmanagers.append(user)
                             # And wait a minute... this groups owner, can also add people to the group?
-                            gowner = self.group(id)['GPBD_OWNER_ID'].values[0]
+                            [gowner,gsupgroup] = self.group(id)[['GPBD_OWNER_ID','GPBD_SUPGRP_ID']].values[0]
                             if len(self.user(gowner)) == 1:
-                                accessmanagers[access].append(gowner)
+                                accessmanagers.append(gowner)
                             else:
-                                gg = self.connectData.loc[self.connectData.USCON_GRP_ID==gowner]
-                                for user,grp_special in gg[['USCON_NAME','USCON_GRP_SPECIAL']].values:
-                                    if grp_special=='YES':
-                                        accessmanagers[access].append(user)
+                                # group special propages up
+                                while gowner==gsupgrp:
+                                    gg = self.connectData.loc[self.connectData.USCON_GRP_ID==gowner]
+                                    for user,grp_special in gg[['USCON_NAME','USCON_GRP_SPECIAL']].values:
+                                        if grp_special=='YES':
+                                            accessmanagers.append(user)
+                                    [gowner,gsupgroup] = self.group(gowner)[['GPBD_OWNER_ID','GPBD_SUPGRP_ID']].values[0]
+                            # connect authority CONNECT/JOIN allows modification of member list
+                            g = self.connects.loc[self.connects.GPMEM_NAME==id]
+                            for user,grp_auth in g[['GPMEM_MEMBER_ID','GPMEM_AUTH']].values:
+                                if grp_auth in ('CONNECT','JOIN'):
+                                    accessmanagers.append(user)
                 # clean up doubles...
-            accessmanagers[access] = list(set(accessmanagers[access]))
+            accessmanagers = list(set(accessmanagers))
             accesslist[access] = list(set(accesslist[access]))
 
         y = {
@@ -628,7 +653,6 @@ class RACF:
             'uacc': d['DSBD_UACC'].values[0],
             'permits': accesslist
         }
-
 
         return y
 

@@ -17,7 +17,7 @@ model = {}
 for url in urls:
   w_html = requests.get(url)
   w = BeautifulSoup(w_html.text, "html.parser")
-
+  
   for wtype in w.find_all(["h2","h3"]):
     try:
       [rdesc,rtype,*_] = re.split("[\(\)]",wtype.string)
@@ -26,16 +26,20 @@ for url in urls:
     else:
       rdesc = re.sub("\s"," ",rdesc)  # newlines in description...
       print(rtype,":",rdesc)
+      rdesc = rdesc.strip().lower().replace(" ","-")
       wtable = wtype.find_next_sibling().find("tbody")
       rfields = []
       for wrow in wtable.find_all("tr"):
         wfields = wrow.find_all("td")
+        # some <td>s contain <svg> tags for changes, so the string is not the only descendant of <td> and we have to resort to strings
+        wf = [re.sub("\W","",str(list(wfields[i].strings)[0])) for i in range(4)]  # remove strash that could crash parsing
+        wf.append(re.sub("[\s\u00ae]"," ",str(list(wfields[4].strings)[0])))  # remove newlines and (R) in long description
         rfields.append({
-          "field-name": wfields[0].string,
-          "type": wfields[1].string,
-          "start": wfields[2].string,
-          "end": wfields[3].string,
-          "field-desc": wfields[4].string
+            "field-name": wf[0] if wf[0]!="" else "RESERVED",
+            "type": wf[1],
+            "start": wf[2],
+            "end": wf[3],
+            "field-desc": wf[4]
         })
       model.update({
         rdesc: {
