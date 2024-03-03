@@ -60,7 +60,7 @@ class RACF:
     '0201': {'name':'USCAT', 'df':'_userCategories'},
     '0202': {'name':'USCLA', 'df':'_userClasses'},
     '0203': {'name':'USGCON', 'df':'_groupConnect', "index":["USGCON_GRP_ID","USGCON_NAME"]},
-    '0204': {'name':'USINSTD', 'df':'_usrUSRDATA'},
+    '0204': {'name':'USINSTD', 'df':'_userUSRDATA'},
     '0205': {'name':'USCON', 'df':'_connectData', "index":["USCON_GRP_ID","USCON_NAME"]},
     '0206': {'name':'USRSF', 'df':'_userRRSFdata'},
     '0207': {'name':'USCERT', 'df':'_userCERTname'},
@@ -427,7 +427,7 @@ class RACF:
     def installdata(self):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._installdata
+        return self._userUSRDATA
 
     @property
     def datasets(self):
