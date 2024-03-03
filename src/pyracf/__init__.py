@@ -49,22 +49,101 @@ class RACF:
     _recordtype_info = {
     '0100': {'name':'GPBD', 'df':'_groups'},
     '0101': {'name':'GPSGRP', 'df':'_subgroups'},
-    '0102': {'name':'GPMEM', 'df':'_connects'},
+    '0102': {'name':'GPMEM', 'df':'_connects', "index":["GPMEM_NAME","GPMEM_MEMBER_ID"]},
+    '0103': {'name':'GPINSTD', 'df':'_groupUSRDATA'},
+    '0110': {'name':'GPDFP', 'df':'_groupDFP'},
     '0120': {'name':'GPOMVS', 'df':'_groupOMVS'},
+    '0130': {'name':'GPOVM', 'df':'_groupOVM'},
+    '0141': {'name':'GPTME', 'df':'_groupTME'},
+    '0151': {'name':'GPCSD', 'df':'_groupCSDATA'},
     '0200': {'name':'USBD', 'df':'_users'},
-    '0203': {'name':'USGCON', 'df':'_groupConnect'},
-    '0204': {'name':'USINSTD', 'df':'_installdata'},
-    '0205': {'name':'USCON', 'df':'_connectData'},
+    '0201': {'name':'USCAT', 'df':'_userCategories'},
+    '0202': {'name':'USCLA', 'df':'_userClasses'},
+    '0203': {'name':'USGCON', 'df':'_groupConnect', "index":["USGCON_GRP_ID","USGCON_NAME"]},
+    '0204': {'name':'USINSTD', 'df':'_usrUSRDATA'},
+    '0205': {'name':'USCON', 'df':'_connectData', "index":["USCON_GRP_ID","USCON_NAME"]},
+    '0206': {'name':'USRSF', 'df':'_userRRSFdata'},
+    '0207': {'name':'USCERT', 'df':'_userCERTname'},
+    '0208': {'name':'USNMAP', 'df':'_userAssociatedMappings'},
     '0209': {'name':'USDMAP', 'df':'_userDistributedMapping'},
+    '020A': {'name':'USMFA', 'df':'_userMFAfactor'},
+    '020B': {'name':'USMPOL', 'df':'_userMFApolicies'},
+    '0210': {'name':'USDFP', 'df':'_userDFP'},
     '0220': {'name':'USTSO', 'df':'_userTSO'},
+    '0230': {'name':'USCICS', 'df':'_userCICS'},
+    '0231': {'name':'USCOPC', 'df':'_userCICSoperatorClasses'},
+    '0232': {'name':'USCRSL', 'df':'_userCICSrslKeys'},
+    '0233': {'name':'USCTSL', 'df':'_userCICStslKeys'},
+    '0240': {'name':'USLAN', 'df':'_userLANGUAGE'},
+    '0250': {'name':'USOPR', 'df':'_userOPERPARM'},
+    '0251': {'name':'USOPRP', 'df':'_userOPERPARMscope'},
+    '0260': {'name':'USWRK', 'df':'_userWORKATTR'},
     '0270': {'name':'USOMVS', 'df':'_userOMVS'},
+    '0280': {'name':'USNETV', 'df':'_userNETVIEW'},
+    '0281': {'name':'USNOPC', 'df':'_userNETVIEWopclass'},
+    '0282': {'name':'USNDOM', 'df':'_userNETVIEWdomains'},
+    '0290': {'name':'USDCE', 'df':'_userDCE'},
+    '02A0': {'name':'USOVM', 'df':'_userOVM'},
+    '02B0': {'name':'USLNOT', 'df':'_userLNOTES'},
+    '02C0': {'name':'USNDS', 'df':'_userNDS'},
+    '02D0': {'name':'USKERB', 'df':'_userKERB'},
+    '02E0': {'name':'USPROXY', 'df':'_userPROXY'},
+    '02F0': {'name':'USEIM', 'df':'_userEIM'},
+    '02G1': {'name':'USCSD', 'df':'_userCSDATA'},
+    '1210': {'name':'USMFAC', 'df':'_user-MFAfactorTags'},
     '0400': {'name':'DSBD', 'df':'_datasets'},
+    '0401': {'name':'DSCAT', 'df':'_datasetCategories'},
     '0402': {'name':'DSCACC', 'df':'_datasetConditionalAccess'},
+    '0403': {'name':'DSVOL', 'df':'_datasetVolumes'},
     '0404': {'name':'DSACC', 'df':'_datasetAccess'},
+    '0405': {'name':'DSINSTD', 'df':'_datasetUSRDATA'},
+    '0406': {'name':'DSMEM', 'df':'_datasetMember'},
+    '0410': {'name':'DSDFP', 'df':'_datasetDFP'},
+    '0421': {'name':'DSTME', 'df':'_datasetTME'},
+    '0431': {'name':'DSCSD', 'df':'_datasetCSDATA'},
     '0500': {'name':'GRBD', 'df':'_generals'},
+    '0501': {'name':'GRTVOL', 'df':'_generalTAPEvolume'},
+    '0502': {'name':'GRCAT', 'df':'_generalCategories'},
     '0503': {'name':'GRMEM', 'df':'_generalMembers'},
+    '0504': {'name':'GRVOL', 'df':'_generalVolumes'},
     '0505': {'name':'GRACC', 'df':'_generalAccess'},
-    '0507': {'name':'GRCACC', 'df':'_generalConditionalAccess'}
+    '0506': {'name':'GRINSTD', 'df':'_generalUSRDATA'},
+    '0507': {'name':'GRCACC', 'df':'_generalConditionalAccess'},
+    '0508': {'name':'GRFLTR', 'df':'_generalFILTER'},
+    '0509': {'name':'GRDMAP', 'df':'_generalDistributedMapping'},
+    '0510': {'name':'GRSES', 'df':'_generalSESSION'},
+    '0511': {'name':'GRSESE', 'df':'_generalSESSIONentities'},
+    '0520': {'name':'GRDLF', 'df':'_generalDLF'},
+    '0521': {'name':'GRDLFJ', 'df':'_generalDLFjob-names'},
+    '0530': {'name':'GRSIGN', 'df':'_generalSSIGNON'},
+    '0540': {'name':'GRST', 'df':'_generalSTARTED'},
+    '0550': {'name':'GRSV', 'df':'_generalSYSTEMVIEW'},
+    '0560': {'name':'GRCERT', 'df':'_generalCERT'},
+    '0561': {'name':'CERTR', 'df':'_generalCERTreferences'},
+    '0562': {'name':'KEYR', 'df':'_general-KEYRING'},
+    '0570': {'name':'GRTME', 'df':'_generalTME'},
+    '0571': {'name':'GRTMEC', 'df':'_generalTMEchild'},
+    '0572': {'name':'GRTMER', 'df':'_generalTMEresource'},
+    '0573': {'name':'GRTMEG', 'df':'_generalTMEgroup'},
+    '0574': {'name':'GRTMEE', 'df':'_generalTMErole'},
+    '0580': {'name':'GRKERB', 'df':'_generalKERB'},
+    '0590': {'name':'GRPROXY', 'df':'_generalPROXY'},
+    '05A0': {'name':'GREIM', 'df':'_generalEIM'},
+    '05B0': {'name':'GRALIAS', 'df':'_generalALIAS'},
+    '05C0': {'name':'GRCDT', 'df':'_generalCDTINFO'},
+    '05D0': {'name':'GRICTX', 'df':'_generalICTX'},
+    '05E0': {'name':'GRCFDEF', 'df':'_generalCFDEF', "index":["GRCFDEF_CLASS","GRCFDEF_NAME"]},
+    '05F0': {'name':'GRSIG', 'df':'_generalSIGVER'},
+    '05G0': {'name':'GRCSF', 'df':'_generalICSF'},
+    '05G1': {'name':'GRCSFK', 'df':'_generalICSFkeylabel'},
+    '05G2': {'name':'GRCSFC', 'df':'_generalICSFcertificateIdentifier'},
+    '05H0': {'name':'GRMFA', 'df':'_generalMFAfactor'},
+    '05I0': {'name':'GRMFP', 'df':'_generalMFApolicy'},
+    '05I1': {'name':'GRMPF', 'df':'_generalMFApolicyFactors'},
+    '05J1': {'name':'GRCSD', 'df':'_generalCSDATA'},
+    '05K0': {'name':'GRIDTP', 'df':'_generalIDTFPARMS'},
+    '05L0': {'name':'GRJES', 'df':'_generalJESDATA'},
+    '1560': {'name':'CERTN', 'df':'_generalCERTNAME'}
     }
 
     _recordname_type = {}    # {'GPBD': '0100', ....}
@@ -229,7 +308,29 @@ class RACF:
 
     def parsed(self, rname):
         """ how many records with this name (type) were parsed """
-        return self._records[RACF._recordname_type[rname]]['parsed']
+        rtype = RACF._recordname_type[rname]
+        return self._records[rtype]['parsed'] if rtype in self._records else 0
+        
+    def correlate(self, thingswewant=_recordtype_info.keys()):
+        """ construct tables that combine the raw dataframes for improved processing """
+        self._ownertree = self.ownertree()
+        self._grouptree = self.grouptree()
+
+        if self.parsed("GPMEM") == 0 or self.parsed("USCON") == 0:
+            raise StoopidException("Need to parse GPMEM and USCON first...")
+
+        # set consistent index columns for existing dfs: profile key, connect group+user, of profile class+key (for G.R.)
+        for (rtype,rinfo) in RACF._recordtype_info.items():
+            if rtype in thingswewant and rtype in self._records and self._records[rtype]['parsed']>0:
+                if "index" in rinfo:
+                    keys = rinfo["index"]
+                elif rtype[1]=="5":  # general resources
+                    keys = [rinfo["name"]+"_CLASS_NAME",rinfo["name"]+"_NAME"]
+                else:
+                    keys = rinfo["name"]+"_NAME"
+                getattr(self,rinfo['df']).set_index(keys,drop=False,inplace=True)
+        
+        
         
     def save_pickle(self, df='', dfname='', path='', prefix=''):
         # Sanity check
@@ -550,30 +651,29 @@ class RACF:
 
         writer.close()   
 
-    def tree(self,tree,linkup_field="GPBD_SUPGRP_ID"):
-        if tree == None:
-            # get all owners... (group or user) or all superior groups
-            tree = {}
-            where_is = {}
-            higher_ups = self.groups.groupby(linkup_field)
-            for higher_up in higher_ups.groups.keys():
-                if higher_up not in tree:
-                    tree[higher_up] = []
-                    for group in higher_ups.get_group(higher_up)['GPBD_NAME'].values:
-                        tree[higher_up].append(group)
-                        where_is[group] = tree[higher_up]
-            # initially, for an owner tree, anchor can be a user (like IBMUSER) or a group
-            # now we gotta condense it, so only IBMUSER and other group owning users are at top level
-            # for group tree, we should end up with SYS1, and a list of groups
-            deletes = []
-            for anchor in tree:
-                if anchor in where_is:
-                    supgrpMembers = where_is[anchor]
-                    supgrpMembers.remove(anchor)
-                    supgrpMembers.append({anchor: tree[anchor]})
-                    deletes.append(anchor)
-            for anchor in deletes:
-                tree.pop(anchor)
+    def tree(self,linkup_field="GPBD_SUPGRP_ID"):
+        # get all owners... (group or user) or all superior groups
+        tree = {}
+        where_is = {}
+        higher_ups = self.groups.groupby(linkup_field)
+        for higher_up in higher_ups.groups.keys():
+            if higher_up not in tree:
+                tree[higher_up] = []
+                for group in higher_ups.get_group(higher_up)['GPBD_NAME'].values:
+                    tree[higher_up].append(group)
+                    where_is[group] = tree[higher_up]
+        # initially, for an owner tree, anchor can be a user (like IBMUSER) or a group
+        # now we gotta condense it, so only IBMUSER and other group owning users are at top level
+        # for group tree, we should end up with SYS1, and a list of groups
+        deletes = []
+        for anchor in tree:
+            if anchor in where_is:
+                supgrpMembers = where_is[anchor]
+                ix = supgrpMembers.index(anchor)
+                supgrpMembers[ix] = {anchor: tree[anchor]}
+                deletes.append(anchor)
+        for anchor in deletes:
+            tree.pop(anchor)
         return tree
 
     def ownertree(self):
@@ -581,15 +681,15 @@ class RACF:
         create dict with the user IDs that own groups as key, and a list of their owned groups as values.
         if a group in this list owns group, the list is replaced by a dict.
         '''
-        return self.tree(self._ownertree,"GPBD_OWNER_ID")
+        return self._ownertree if self._ownertree else self.tree("GPBD_OWNER_ID")
 
     def grouptree(self):
         ''' 
         create dict starting with SYS1, and a list of groups owned by SYS1 as values.
         if a group in this list owns group, the list is replaced by a dict.
-        because SYS1's superior group is blank/missing, we return the first group that is owned by "".
+        because SYS1s superior group is blank/missing, we return the first group that is owned by "".
         '''
-        return self.tree(self._grouptree,"GPBD_SUPGRP_ID")[""][0]
+        return self._grouptree if self._grouptree else self.tree("GPBD_SUPGRP_ID")[""][0]
 
     def getdatasetrisk(self, profile=''):
         '''This will produce a dict as follows:
@@ -612,7 +712,7 @@ class RACF:
         peraccess = dsacc.get_group(profile).groupby('DSACC_ACCESS')
         for access in ['NONE','EXECUTE','READ','UPDATE','CONTROL','ALTER']:
             accesslist[access] = []
-            accessmanagers = []
+            accessmanagers[access] = []
             if access in peraccess.groups.keys():
                 a = peraccess.get_group(access)['DSACC_AUTH_ID'].values
                 for id in a:
@@ -625,36 +725,35 @@ class RACF:
                                 accesslist[access].append(user)
                                 # But suppose this user is group_special here?
                                 if grp_special=='YES':
-                                    accessmanagers.append(user)
+                                    accessmanagers[access].append(user)
                             # And wait a minute... this groups owner, can also add people to the group?
                             [gowner,gsupgroup] = self.group(id)[['GPBD_OWNER_ID','GPBD_SUPGRP_ID']].values[0]
                             if len(self.user(gowner)) == 1:
-                                accessmanagers.append(gowner)
+                                accessmanagers[access].append(gowner)
                             else:
                                 # group special propages up
-                                while gowner==gsupgrp:
-                                    gg = self.connectData.loc[self.connectData.USCON_GRP_ID==gowner]
-                                    for user,grp_special in gg[['USCON_NAME','USCON_GRP_SPECIAL']].values:
+                                while gowner==gsupgroup:
+                                    g = self.connectData.loc[self.connectData.USCON_GRP_ID==gowner]
+                                    for user,grp_special in g[['USCON_NAME','USCON_GRP_SPECIAL']].values:
                                         if grp_special=='YES':
-                                            accessmanagers.append(user)
+                                            accessmanagers[access].append(user)
                                     [gowner,gsupgroup] = self.group(gowner)[['GPBD_OWNER_ID','GPBD_SUPGRP_ID']].values[0]
                             # connect authority CONNECT/JOIN allows modification of member list
                             g = self.connects.loc[self.connects.GPMEM_NAME==id]
                             for user,grp_auth in g[['GPMEM_MEMBER_ID','GPMEM_AUTH']].values:
                                 if grp_auth in ('CONNECT','JOIN'):
-                                    accessmanagers.append(user)
+                                    accessmanagers[access].append(user)
                 # clean up doubles...
-            accessmanagers = list(set(accessmanagers))
-            accesslist[access] = list(set(accesslist[access]))
+                accesslist[access] = list(set(accesslist[access]))
+                accessmanagers[access] = list(set(accessmanagers[access]))
 
-        y = {
+        return {
             'owner': owner,
-            'accessmanagers': accessmanagers,
             'uacc': d['DSBD_UACC'].values[0],
+            'accessmanagers': accessmanagers,
             'permits': accesslist
         }
 
-        return y
 
 class IRRDBU(RACF):
     pass
