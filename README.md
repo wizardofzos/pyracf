@@ -148,6 +148,7 @@ Get all users that have not logged in (on?) since January 1st 2022. And print us
     mysys.parse()
     while mysys.status['status'] != 'Ready':
         time.sleep(5)
+    mysys.correlate()
     selection = mysys.users.loc[mysys.users.USBD_LASTJOB_DATE<="2022-01-01"][['USBD_NAME','USBD_LASTJOB_DATE']]
     for user in selection.values:
       print(f"Userid {user[0]}, last active: {user[1]}")
@@ -160,6 +161,7 @@ Create a neat XLSX
     mysys.parse()
     while mysys.status['status'] != 'Ready':
         time.sleep(5)
+    mysys.correlate()
     mysys.xls('/path/to/my.xlsx')
 
 # Updates 
