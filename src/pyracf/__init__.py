@@ -324,13 +324,15 @@ class RACF:
             if rtype in thingswewant and rtype in self._records and self._records[rtype]['parsed']>0:
                 if "index" in rinfo:
                     keys = rinfo["index"]
+                    names = [keys[i].replace(rinfo["name"]+"_","") for i in range(len(keys))]
                 elif rtype[1]=="5":  # general resources
                     keys = [rinfo["name"]+"_CLASS_NAME",rinfo["name"]+"_NAME"]
+                    names = ["CLASS_NAME","NAME"]
                 else:
                     keys = rinfo["name"]+"_NAME"
-                none_mask = None if type(keys)==str else [None,None,None][0:len(keys)]
+                    names = "NAME"
                 getattr(self,rinfo['df']).set_index(keys,drop=False,inplace=True)
-                getattr(self,rinfo['df']).rename_axis(none_mask,inplace=True)  # prevent ambigous index / column names 
+                getattr(self,rinfo['df']).rename_axis(names,inplace=True)  # prevent ambiguous index / column names 
         
         
         
