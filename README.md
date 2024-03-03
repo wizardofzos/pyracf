@@ -27,6 +27,10 @@ To get started with PyRACF, install it using `pip install pyracf` or explore the
 - fixed: record type '0260' in offset.json was malformed
 - updated offsets.json from https://www.ibm.com/docs/en/SSLTBW_3.1.0/com.ibm.zos.v3r1.icha300/format.htm etc
 - getOffsets.py to update the json model
+- fixed: RACF documentation contains incorrect record type 05k0
+- all known record types parsed and loaded into DataFrames
+- index columns assigned to all DataFrames, assigned by new correlate() method
+- new method correlate() to increase speed of subsequent data access, use after parse() or loading of pickles
 
 ### 0.6.4 (Add 0209)
 - Added 0209 recordtype to parser. (userDistributedMapping)
@@ -107,6 +111,7 @@ Then later, you don't need to parse the same unload again, just do:
 |---|---|---|
 | auditors | Returns DataFrame with all user having the auditor bit switched on | mysys.auditors |
 | connects | Returns DataFrame with all user to group connects | mysys.connects |
+| correlate | assigns index columns and prepares data structures for faster reporting | mysys.correlate() |
 | datasetAccess | Returns DataFrame with all Accesslists for all dataset profiles | mysys.datasetsAccess |
 | datasets | Returns DataFrame with all datasetprofiles | mysys.datasets |
 | generalAccess | Returns DataFrame with with all accesslists for general resource profiles | mysys.generalAccess
@@ -115,9 +120,11 @@ Then later, you don't need to parse the same unload again, just do:
 | group | Returns DataFrame with with one dataset profile only | mysys.group('SYS1') |
 | groupConnect | Returns DataFrame with with user group connection records (0203 recordtype) | mysys.groupConnect |
 | groups | Returns DataFrame with all group data | mysys.groups |
+| grouptree | Returns dict with groups arranged by superior group | mysys.grouptree() |
 | installdata | Returns DataFrame with with user installation data (0204 recordtype) | mysys.installdata |
 | operations | Returns a DataFrame  with all operations users | mysys.operations |
 | orphans | Returns 2 DataFrames one with orphans in dataset profile access lists, and one for general resources | d, g = mysys.orphans |
+| ownertree | Returns dict with groups arranged by owner group or user ID | mysys.ownertree() |
 | parse | parses the unload. optional specify recordtypes | mysys.parse(recordtypes=['0200']) |
 | parse_fancycli | parses the unload with a fancy cli status update. optional recordtypes can be specified | mysys.parse_fancycli(recorddtypes=['0200']) |
 | revoked | Returns a DataFrame  with all revoked users | mysys.revoked |
