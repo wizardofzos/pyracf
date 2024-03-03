@@ -104,6 +104,9 @@ Then later, you don't need to parse the same unload again, just do:
     >>> hash(mysys.groups.values.tobytes())
     -8566685915584060910
 
+### Prepare internal data structures for later processing
+
+    >>> mysys.correlate()
 
 ## All functions
 
