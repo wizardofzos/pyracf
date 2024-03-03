@@ -328,7 +328,9 @@ class RACF:
                     keys = [rinfo["name"]+"_CLASS_NAME",rinfo["name"]+"_NAME"]
                 else:
                     keys = rinfo["name"]+"_NAME"
+                none_mask = None if type(keys)==str else [None,None,None][0:len(keys)]
                 getattr(self,rinfo['df']).set_index(keys,drop=False,inplace=True)
+                getattr(self,rinfo['df']).rename_axis(none_mask,inplace=True)  # prevent ambigous index / column names 
         
         
         
