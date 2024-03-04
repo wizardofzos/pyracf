@@ -120,9 +120,11 @@ Then later, you don't need to parse the same unload again, just do:
 | generalAccess | Returns DataFrame with with all accesslists for general resource profiles | mysys.generalAccess
 | generalConditionalAccess | Returns DataFrame with with all conditional accesslists for general resource profiles | mysys.generalConditionalAccess
 | generals | Returns DataFrame with with all general resource profiles | mysys.generals 
+| getdatasetrisk | Returns dict with users that have access or administrative authority on a profile | mysys.getdatasetrisk('SYS1.**') |
 | group | Returns DataFrame with with one dataset profile only | mysys.group('SYS1') |
 | groupConnect | Returns DataFrame with with user group connection records (0203 recordtype) | mysys.groupConnect |
 | groups | Returns DataFrame with all group data | mysys.groups |
+| groupsWithoutUsers | Returns DataFrame with groups that have no connected users | mysys.groupsWithoutUsers |
 | grouptree | Returns dict with groups arranged by superior group | mysys.grouptree() |
 | installdata | Returns DataFrame with with user installation data (0204 recordtype) | mysys.installdata |
 | operations | Returns a DataFrame  with all operations users | mysys.operations |

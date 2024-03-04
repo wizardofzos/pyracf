@@ -45,7 +45,7 @@ class RACF:
     STATE_PARSING =  1
     STATE_READY   =  2
 
-    # keep track of names used for a record type
+    # keep track of names used for a record type, "index" must be a list of field names
     _recordtype_info = {
     '0100': {'name':'GPBD', 'df':'_groups'},
     '0101': {'name':'GPSGRP', 'df':'_subgroups'},
@@ -64,7 +64,7 @@ class RACF:
     '0205': {'name':'USCON', 'df':'_connectData', "index":["USCON_GRP_ID","USCON_NAME"]},
     '0206': {'name':'USRSF', 'df':'_userRRSFdata'},
     '0207': {'name':'USCERT', 'df':'_userCERTname'},
-    '0208': {'name':'USNMAP', 'df':'_userAssociatedMappings'},
+    '0208': {'name':'USNMAP', 'df':'_userAssociationMappings'},
     '0209': {'name':'USDMAP', 'df':'_userDistributedMapping'},
     '020A': {'name':'USMFA', 'df':'_userMFAfactor'},
     '020B': {'name':'USMPOL', 'df':'_userMFApolicies'},
@@ -374,7 +374,11 @@ class RACF:
     def user(self, userid=None):
         if not userid:
             raise StoopidException('userid not specified...')
-        return self._users.loc[self._users.USBD_NAME==userid]
+        try:
+            return self._users.loc[[userid]]
+        except:
+            return []
+        # return self._users.loc[self._users.USBD_NAME==userid]
 
 
     @property
@@ -415,31 +419,23 @@ class RACF:
     def group(self, group=None):
         if not group:
             raise StoopidException('group not specified...')
-        return self._groups.loc[self._groups.GPBD_NAME==group]
+        try:
+            return self._groups.loc[[group]]
+        except:
+            return []
+        # return self._groups.loc[self._groups.GPBD_NAME==group]
 
+    @property
+    def groupsWithoutUsers(self):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._groups.loc[-self.groups.GPBD_NAME.isin(self._connectData.USCON_GRP_ID)]
+    
     @property
     def groupConnect(self):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._groupConnect
-
-    @property
-    def installdata(self):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._userUSRDATA
-
-    @property
-    def datasets(self):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._datasets
-
-    @property
-    def datasetConditionalAccess(self):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._datasetConditionalAccess
 
     @property
     def connects(self):
@@ -452,6 +448,42 @@ class RACF:
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._subgroups
+
+    @property
+    def installdata(self):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._userUSRDATA
+
+    @property
+    def userOMVS(self, query=None):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._userOMVS
+
+    @property
+    def groupOMVS(self, query=None):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._groupOMVS        
+
+    @property
+    def userTSO(self, query=None):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._userTSO    
+        
+    @property
+    def datasets(self):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._datasets
+
+    @property
+    def datasetConditionalAccess(self):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._datasetConditionalAccess
 
     @property
     def datasetAccess(self):
@@ -495,24 +527,6 @@ class RACF:
 
     genericConditionalAccess = property(deprecated(generalConditionalAccess,"genericConditionalAccess"))
     
-    @property
-    def userOMVS(self, query=None):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._userOMVS
-
-    @property
-    def groupOMVS(self, query=None):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._groupOMVS        
-
-    @property
-    def userTSO(self, query=None):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._userTSO    
-        
     @property
     def orphans(self):
         
@@ -705,9 +719,12 @@ class RACF:
         except:
             raise StoopidException("Need to parse DSACC, USCON, USBD, GPBD and DSBD first...")
         
-        d = self.datasets.loc[self.datasets.DSBD_NAME==profile]
-        if len(d) == 0:
-            raise Exception('Profile not here...')
+        try:
+            d = self.datasets.loc[[profile]]
+        except KeyError:
+            d = pd.DataFrame()
+        if d.empty:
+            raise StoopidException(f'Profile {profile} not found...')
         
         owner = d['DSBD_OWNER_ID'].values[0]
         accesslist = {}
@@ -720,31 +737,31 @@ class RACF:
             if access in peraccess.groups.keys():
                 a = peraccess.get_group(access)['DSACC_AUTH_ID'].values
                 for id in a:
-                    if len(self.user(id)) == 1:
+                    if id in self.users.index:
                         accesslist[access].append(id)
                     else:
-                        if len(self.group(id)) == 1:
-                            g = self.connectData.loc[self.connectData.USCON_GRP_ID==id]
-                            for user,grp_special in g[['USCON_NAME','USCON_GRP_SPECIAL']].values:
+                        if id in self.groups.index:
+                            g = self.connectData.loc[id][['USCON_NAME','USCON_GRP_SPECIAL']].values
+                            for user,grp_special in g:
                                 accesslist[access].append(user)
                                 # But suppose this user is group_special here?
                                 if grp_special=='YES':
                                     accessmanagers[access].append(user)
                             # And wait a minute... this groups owner, can also add people to the group?
                             [gowner,gsupgroup] = self.group(id)[['GPBD_OWNER_ID','GPBD_SUPGRP_ID']].values[0]
-                            if len(self.user(gowner)) == 1:
+                            if gowner in self.users.index:
                                 accessmanagers[access].append(gowner)
                             else:
                                 # group special propages up
                                 while gowner==gsupgroup:
-                                    g = self.connectData.loc[self.connectData.USCON_GRP_ID==gowner]
-                                    for user,grp_special in g[['USCON_NAME','USCON_GRP_SPECIAL']].values:
+                                    g = self.connectData.loc[gowner][['USCON_NAME','USCON_GRP_SPECIAL']].values
+                                    for user,grp_special in g:
                                         if grp_special=='YES':
                                             accessmanagers[access].append(user)
                                     [gowner,gsupgroup] = self.group(gowner)[['GPBD_OWNER_ID','GPBD_SUPGRP_ID']].values[0]
                             # connect authority CONNECT/JOIN allows modification of member list
-                            g = self.connects.loc[self.connects.GPMEM_NAME==id]
-                            for user,grp_auth in g[['GPMEM_MEMBER_ID','GPMEM_AUTH']].values:
+                            g = self.connects.loc[id][['GPMEM_MEMBER_ID','GPMEM_AUTH']].values
+                            for user,grp_auth in g:
                                 if grp_auth in ('CONNECT','JOIN'):
                                     accessmanagers[access].append(user)
                 # clean up doubles...
