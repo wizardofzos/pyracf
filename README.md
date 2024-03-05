@@ -31,6 +31,7 @@ To get started with PyRACF, install it using `pip install pyracf` or explore the
 - all known record types parsed and loaded into DataFrames
 - index columns assigned to all DataFrames, assigned by new correlate() method
 - new method correlate() to increase speed of subsequent data access, use after parse() or loading of pickles
+- selection and reporting methods dataset(), group(), general() and user(), accept 
 
 ### 0.6.4 (Add 0209)
 - Added 0209 recordtype to parser. (userDistributedMapping)
@@ -116,12 +117,14 @@ Then later, you don't need to parse the same unload again, just do:
 | connects | Returns DataFrame with all user to group connects | mysys.connects |
 | correlate | assigns index columns and prepares data structures for faster reporting | mysys.correlate() |
 | datasetAccess | Returns DataFrame with all Accesslists for all dataset profiles | mysys.datasetsAccess |
+| dataset | Returns DataFrame with selected datasetprofiles | mysys.dataset('SYS1.**','GEN') |
 | datasets | Returns DataFrame with all datasetprofiles | mysys.datasets |
 | generalAccess | Returns DataFrame with with all accesslists for general resource profiles | mysys.generalAccess
 | generalConditionalAccess | Returns DataFrame with with all conditional accesslists for general resource profiles | mysys.generalConditionalAccess
+| general | Returns DataFrame with selected general resource profiles | mysys.general('FACI*','BPX.**','GEN') |
 | generals | Returns DataFrame with with all general resource profiles | mysys.generals 
 | getdatasetrisk | Returns dict with users that have access or administrative authority on a profile | mysys.getdatasetrisk('SYS1.**') |
-| group | Returns DataFrame with with one dataset profile only | mysys.group('SYS1') |
+| group | Returns DataFrame with with group profiles matching selection | mysys.group('SYS1'), or msys.group('SYS*','G') |
 | groupConnect | Returns DataFrame with with user group connection records (0203 recordtype) | mysys.groupConnect |
 | groups | Returns DataFrame with all group data | mysys.groups |
 | groupsWithoutUsers | Returns DataFrame with groups that have no connected users | mysys.groupsWithoutUsers |
@@ -137,6 +140,8 @@ Then later, you don't need to parse the same unload again, just do:
 | specials | Returns a DataFrame  with all special users | mysys.specials |
 | status | Returns JSON with parsing status | mysys.status |
 | uacc_read_datasets | Returns a DataFrame  with all dataset profiles having UACC=READ | mysys.uacc_read_datasets |
+| user | Returns DataFrame with with user profiles matching selection | mysys.user('IBM*'), or msys.user('SYS.*','REGEX') |
+| users | Returns DataFrame with all user base data | mysys.users |
 | xls | Creates an XLSX with all permits per class | mysys.xls(fileName='myxls.xlsx') |
 
 # Example use-case
@@ -165,6 +170,18 @@ Create a neat XLSX
         time.sleep(5)
     mysys.correlate()
     mysys.xls('/path/to/my.xlsx')
+
+Print z/OS UNIX profiles
+
+    import time
+    from pyracf import IRRDBU
+    mysys = IRRDBU('/path/to/irrdbu00')
+    mysys.parse()
+    while mysys.status['status'] != 'Ready':
+        time.sleep(5)
+    mysys.correlate()
+    mysys.general('FAC*', 'BPX.**', 'G')
+    mysys.general('UNIXPRIV', '**', 'G') # print all in UNIXPRIV
 
 # Updates 
 

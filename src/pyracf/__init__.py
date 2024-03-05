@@ -361,6 +361,49 @@ class RACF:
                 # TODO: ensure consistent data, delete old pickles that were not saved
                 pass
 
+    def generic2regex(self, selection, lenient='%&*'):
+        ''' Change a RACF generic pattern into regex to match with text strings in pandas cells.  use lenient="" to match with dsnames/resources '''
+        if selection in ('**',''):
+            return '.*$'
+        else:
+            return selection.replace('*.**','`dot``ast`').replace('.**','\`dot``dot``ast`').replace('*','[\w@#$`lenient`]`ast`').replace('%','[\w@#$]')\
+                      .replace('.','\.').replace('`dot`','.').replace('`ast`','*').replace('`lenient`',lenient)+'$'
+
+    def giveMeProfiles(self, df, selection=None, option=None):
+        ''' Search profiles using the index fields.  selection can be str or tuple.  Tuples check for group + user id in connects, or class + profile key in generals.
+        option controls how selection is interpreted, and how data must be returned:
+        None is for (expensive) backward compatibility, returns a df with 1 profile.
+        LIST returns a series for 1 profile, much faster and easier to process.
+        REGEX returns a df for profile matching selection, starting at beginning of profile name, (general) class, or class+profile, (connect) group, or group+user ID.
+        GENERIC takes the generic pattern for the selection, turns it into regex, and returns a df.
+        '''
+        if not selection:
+            raise StoopidException('profile criteria not specified...')
+        if option in ('REGEX','R','GENERIC','GEN','G'):
+            if type(selection)==str:
+                if option in ('GENERIC','GEN','G'):
+                    selection = self.generic2regex(selection)
+                return df.loc[df.index.get_level_values(0).str.match(selection)]
+            elif type(selection)==tuple and len(selection)==2:
+                return df.loc[
+                    df.index.get_level_values(0).str.match(selection[0] if option in ('REGEX','R') else self.generic2regex(selection[0])) &
+                    df.index.get_level_values(1).str.match(selection[1] if option in ('REGEX','R') else self.generic2regex(selection[1])) ]
+            else:
+                raise StoopidException(f'specify patterns for profile, (group,userid) or (class,profile), not {selection}')
+        if option in ('LIST','L'):  # return Series for 1 profile
+            try:
+                return df.loc[selection]
+            except KeyError:
+                return []
+        if option == None:  # return DataFrame for 1 profile
+            try:
+                return df.loc[[selection]]
+            except KeyError:
+                return pd.DataFrame()
+        else:
+            raise StoopidException(f'unexpected last parameter {option}')
+
+
     @property
     def users(self):
         if self._state != self.STATE_READY:
@@ -369,9 +412,11 @@ class RACF:
             return self._users
         except:
             raise StoopidException('No USBD records parsed!')
-        
     
-    def user(self, userid=None):
+    def user(self, userid=None, pattern=None):
+        return self.giveMeProfiles(self._users, userid, pattern)
+
+    def OLDuser(self, userid=None):
         if not userid:
             raise StoopidException('userid not specified...')
         try:
@@ -416,7 +461,10 @@ class RACF:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._groups
     
-    def group(self, group=None):
+    def group(self, group=None, pattern=None):
+        return self.giveMeProfiles(self._groups, group, pattern)
+
+    def OLDgroup(self, group=None):
         if not group:
             raise StoopidException('group not specified...')
         try:
@@ -479,6 +527,9 @@ class RACF:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._datasets
 
+    def dataset(self, profile=None, pattern=None):
+        return self.giveMeProfiles(self._datasets, profile, pattern)
+
     @property
     def datasetConditionalAccess(self):
         if self._state != self.STATE_READY:
@@ -502,6 +553,9 @@ class RACF:
         return self._generals
 
     generics = property(deprecated(generals,"generics"))
+
+    def general(self, resclass=None, profile=None, pattern=None):
+        return self.giveMeProfiles(self._generals, (resclass,profile), pattern)
 
     @property
     def generalMembers(self, query=None):
