@@ -115,7 +115,7 @@ Then later, you don't need to parse the same unload again, just do:
 | Function/Property | Explanation | Example |
 |---|---|---|
 | auditors | Returns DataFrame with all user having the auditor bit switched on | mysys.auditors |
-| connect | Returns DataFrame with selected user to group connects | mysys.connect('SYS1',None) or mysys.connect('**','IBM*','G') |
+| connect | Returns DataFrame with selected user to group connects | mysys.connect('SYS1',None,'G') or mysys.connect('**','IBM*','G') |
 | connects | Returns DataFrame with all user to group connects | mysys.connects |
 | correlate | assigns index columns and prepares data structures for faster reporting | mysys.correlate() |
 | datasetAccess | Returns DataFrame with all Accesslists for all dataset profiles | mysys.datasetsAccess |
