@@ -31,7 +31,8 @@ To get started with PyRACF, install it using `pip install pyracf` or explore the
 - all known record types parsed and loaded into DataFrames
 - index columns assigned to all DataFrames, assigned by new correlate() method
 - new method correlate() to increase speed of subsequent data access, use after parse() or loading of pickles
-- selection and reporting methods dataset(), group(), general() and user(), accept 
+- selection and reporting methods dataset(), group(), general(), user() and connect(), accepts GENERIC and regex patterns 
+- added GPMEM_AUTH to connectData frame, consolidating all connect info into one line 
 
 ### 0.6.4 (Add 0209)
 - Added 0209 recordtype to parser. (userDistributedMapping)
@@ -114,6 +115,7 @@ Then later, you don't need to parse the same unload again, just do:
 | Function/Property | Explanation | Example |
 |---|---|---|
 | auditors | Returns DataFrame with all user having the auditor bit switched on | mysys.auditors |
+| connect | Returns DataFrame with selected user to group connects | mysys.connect('SYS1',None) or mysys.connect('**','IBM*','G') |
 | connects | Returns DataFrame with all user to group connects | mysys.connects |
 | correlate | assigns index columns and prepares data structures for faster reporting | mysys.correlate() |
 | datasetAccess | Returns DataFrame with all Accesslists for all dataset profiles | mysys.datasetsAccess |
@@ -173,15 +175,17 @@ Create a neat XLSX
 
 Print z/OS UNIX profiles
 
-    import time
-    from pyracf import IRRDBU
-    mysys = IRRDBU('/path/to/irrdbu00')
-    mysys.parse()
-    while mysys.status['status'] != 'Ready':
-        time.sleep(5)
     mysys.correlate()
     mysys.general('FAC*', 'BPX.**', 'G')
     mysys.general('UNIXPRIV', '**', 'G') # print all in UNIXPRIV
+
+Show group information
+
+    mysys.correlate()
+    mysys.connect('SYS*', None, 'G')    # users connected to SYSxxxxx groups
+    mysys.general('**', 'IBMUSER', 'G') # connects of user IBMUSER
+
+
 
 # Updates 
 

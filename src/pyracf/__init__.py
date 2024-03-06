@@ -316,9 +316,6 @@ class RACF:
         self._ownertree = self.ownertree()
         self._grouptree = self.grouptree()
 
-        if self.parsed("GPMEM") == 0 or self.parsed("USCON") == 0:
-            raise StoopidException("Need to parse GPMEM and USCON first...")
-
         # set consistent index columns for existing dfs: profile key, connect group+user, of profile class+key (for G.R.)
         for (rtype,rinfo) in RACF._recordtype_info.items():
             if rtype in thingswewant and rtype in self._records and self._records[rtype]['parsed']>0:
@@ -334,6 +331,11 @@ class RACF:
                 getattr(self,rinfo['df']).set_index(keys,drop=False,inplace=True)
                 getattr(self,rinfo['df']).rename_axis(names,inplace=True)  # prevent ambiguous index / column names 
         
+        # copy group auth (USE,CREATE,CONNECT,JOIN) to complete the connectData list, using index alignment
+        if self.parsed("GPMEM") == 0 or self.parsed("USCON") == 0:
+            raise StoopidException("Need to parse GPMEM and USCON first...")
+        else: 
+            self.connectData["GPMEM_AUTH"]=self.connects["GPMEM_AUTH"]
         
         
     def save_pickle(self, df='', dfname='', path='', prefix=''):
@@ -361,13 +363,22 @@ class RACF:
                 # TODO: ensure consistent data, delete old pickles that were not saved
                 pass
 
+
     def generic2regex(self, selection, lenient='%&*'):
         ''' Change a RACF generic pattern into regex to match with text strings in pandas cells.  use lenient="" to match with dsnames/resources '''
         if selection in ('**',''):
             return '.*$'
         else:
-            return selection.replace('*.**','`dot``ast`').replace('.**','\`dot``dot``ast`').replace('*','[\w@#$`lenient`]`ast`').replace('%','[\w@#$]')\
-                      .replace('.','\.').replace('`dot`','.').replace('`ast`','*').replace('`lenient`',lenient)+'$'
+            return selection.replace('*.**','`dot``ast`')\
+                    .replace('.**','\`dot``dot``ast`')\
+                    .replace('*','[\w@#$`lenient`]`ast`')\
+                    .replace('%','[\w@#$]')\
+                    .replace('.','\.')\
+                    .replace('`dot`','.')\
+                    .replace('`ast`','*')\
+                    .replace('`lenient`',lenient)\
+                    +'$'
+
 
     def giveMeProfiles(self, df, selection=None, option=None):
         ''' Search profiles using the index fields.  selection can be str or tuple.  Tuples check for group + user id in connects, or class + profile key in generals.
@@ -379,27 +390,27 @@ class RACF:
         '''
         if not selection:
             raise StoopidException('profile criteria not specified...')
-        if option in ('REGEX','R','GENERIC','GEN','G'):
-            if type(selection)==str:
-                if option in ('GENERIC','GEN','G'):
-                    selection = self.generic2regex(selection)
-                return df.loc[df.index.get_level_values(0).str.match(selection)]
-            elif type(selection)==tuple and len(selection)==2:
-                return df.loc[
-                    df.index.get_level_values(0).str.match(selection[0] if option in ('REGEX','R') else self.generic2regex(selection[0])) &
-                    df.index.get_level_values(1).str.match(selection[1] if option in ('REGEX','R') else self.generic2regex(selection[1])) ]
-            else:
-                raise StoopidException(f'specify patterns for profile, (group,userid) or (class,profile), not {selection}')
-        if option in ('LIST','L'):  # return Series for 1 profile
-            try:
-                return df.loc[selection]
-            except KeyError:
-                return []
         if option == None:  # return DataFrame for 1 profile
             try:
                 return df.loc[[selection]]
             except KeyError:
                 return pd.DataFrame()
+        elif option in ('LIST','L'):  # return Series for 1 profile
+            try:
+                return df.loc[selection]
+            except KeyError:
+                return []
+        elif option in ('REGEX','R','GENERIC','GEN','G'):
+            if type(selection)==str:
+                return df.loc[df.index.get_level_values(0).str.match(selection if option in ('REGEX','R') else self.generic2regex(selection))]
+            elif type(selection)==tuple:
+                locs = True
+                for s in range(len(selection)):
+                    if selection[s] not in (None,'**'):
+                        locs &= (df.index.get_level_values(s).str.match(selection[s] if option in ('REGEX','R') else self.generic2regex(selection[s])))
+                return df.loc[locs]
+            else:
+                raise StoopidException(f'specify patterns for profile, (group,userid) or (class,profile), not {selection}')
         else:
             raise StoopidException(f'unexpected last parameter {option}')
 
@@ -431,6 +442,10 @@ class RACF:
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._connectData
+        
+    def connect(self, group=None, userid=None, pattern=None):
+        return self.giveMeProfiles(self._connectData, (group,userid), pattern)
+
 
     @property
     def userDistributedMapping(self):
