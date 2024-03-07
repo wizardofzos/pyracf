@@ -122,10 +122,14 @@ Then later, you don't need to parse the same unload again, just do:
 | correlate | assigns index columns and prepares data structures for faster reporting | mysys.correlate() |
 | datasetAccess | Returns DataFrame with all Accesslists for all dataset profiles | mysys.datasetsAccess |
 | dataset | Returns DataFrame with selected datasetprofiles | mysys.dataset('SYS1.**','GEN') |
+| datasetPermit | Returns DataFrame with selected permits on datasetprofiles | mysys.datasetPermit(profile=, id=, access=, pattern='G') |
+| datasetConditionalPermit | Returns DataFrame with selected "PERMIT WHEN()" on datasetprofiles | mysys.datasetConditionalPermit(profile=, id=, access=, pattern='G') |
 | datasets | Returns DataFrame with all datasetprofiles | mysys.datasets |
 | generalAccess | Returns DataFrame with with all accesslists for general resource profiles | mysys.generalAccess
 | generalConditionalAccess | Returns DataFrame with with all conditional accesslists for general resource profiles | mysys.generalConditionalAccess
 | general | Returns DataFrame with selected general resource profiles | mysys.general('FACI*','BPX.**','GEN') |
+| generalPermit | Returns DataFrame with selected permits on resource profiles | mysys.generalPermit(resclass=, profile=, id=, access=, pattern='G') |
+| generalConditionalPermit | Returns DataFrame with selected "PERMIT WHEN()" on resource profiles | mysys.generalConditionalPermit(resclass=, profile=, id=, access=, pattern='G') |
 | generals | Returns DataFrame with with all general resource profiles | mysys.generals 
 | getdatasetrisk | Returns dict with users that have access or administrative authority on a profile | mysys.getdatasetrisk('SYS1.**') |
 | group | Returns DataFrame with with group profiles matching selection | mysys.group('SYS1'), or msys.group('SYS*','G') |
@@ -186,12 +190,14 @@ Show group information
     mysys.correlate()
     mysys.connect('SYS*', None, 'G')    # users connected to SYSxxxxx groups
     mysys.general('**', 'IBMUSER', 'G') # connects of user IBMUSER
+    mysys.general(user='IBMUSER', pattern='G') # connects of user IBMUSER
 
 Show access list information
 
     mysys.correlate()
     mysys.datasetPermit('SYS1.**')    # IDs permitted on SYS1.**
-    mysys.datasetPermit('SYS1.**', None, 'ALTER', pattern='G')    # IDs ALTER access on any SYS1 dataset profile
+    mysys.datasetPermit(id='IBMUSER', pattern='GENERIC')    # where is IBMUSER permitted
+    mysys.datasetPermit('SYS1.**', access='ALTER', pattern='G')    # IDs ALTER access on any SYS1 dataset profile
     mysys.generalPermit('XFAC*', 'CKR.**', pattern='G') # permits on zSecure Admin/Audit profile
 
 
