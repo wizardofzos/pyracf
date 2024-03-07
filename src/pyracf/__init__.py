@@ -93,9 +93,9 @@ class RACF:
     '1210': {'name':'USMFAC', 'df':'_user-MFAfactorTags'},
     '0400': {'name':'DSBD', 'df':'_datasets'},
     '0401': {'name':'DSCAT', 'df':'_datasetCategories'},
-    '0402': {'name':'DSCACC', 'df':'_datasetConditionalAccess'},
+    '0402': {'name':'DSCACC', 'df':'_datasetConditionalAccess', "index":["DSCACC_NAME","DSCACC_AUTH_ID","DSCACC_ACCESS"]},
     '0403': {'name':'DSVOL', 'df':'_datasetVolumes'},
-    '0404': {'name':'DSACC', 'df':'_datasetAccess'},
+    '0404': {'name':'DSACC', 'df':'_datasetAccess', "index":["DSACC_NAME","DSACC_AUTH_ID","DSACC_ACCESS"]},
     '0405': {'name':'DSINSTD', 'df':'_datasetUSRDATA'},
     '0406': {'name':'DSMEM', 'df':'_datasetMember'},
     '0410': {'name':'DSDFP', 'df':'_datasetDFP'},
@@ -106,9 +106,9 @@ class RACF:
     '0502': {'name':'GRCAT', 'df':'_generalCategories'},
     '0503': {'name':'GRMEM', 'df':'_generalMembers'},
     '0504': {'name':'GRVOL', 'df':'_generalVolumes'},
-    '0505': {'name':'GRACC', 'df':'_generalAccess'},
+    '0505': {'name':'GRACC', 'df':'_generalAccess', "index":["GRACC_CLASS_NAME","GRACC_NAME","GRACC_AUTH_ID","GRACC_ACCESS"]},
     '0506': {'name':'GRINSTD', 'df':'_generalUSRDATA'},
-    '0507': {'name':'GRCACC', 'df':'_generalConditionalAccess'},
+    '0507': {'name':'GRCACC', 'df':'_generalConditionalAccess', "index":["GRCACC_CLASS_NAME","GRCACC_NAME","GRCACC_AUTH_ID","GRCACC_ACCESS"]},
     '0508': {'name':'GRFLTR', 'df':'_generalFILTER'},
     '0509': {'name':'GRDMAP', 'df':'_generalDistributedMapping'},
     '0510': {'name':'GRSES', 'df':'_generalSESSION'},
@@ -390,16 +390,41 @@ class RACF:
         '''
         if not selection:
             raise StoopidException('profile criteria not specified...')
-        if option == None:  # return DataFrame for 1 profile
-            try:
-                return df.loc[[selection]]
-            except KeyError:
-                return pd.DataFrame()
-        elif option in ('LIST','L'):  # return Series for 1 profile
-            try:
-                return df.loc[selection]
-            except KeyError:
-                return []
+        if option in (None,'LIST','L'):  # return 1 profile
+            # 1 string, several strings in a tuple, or a mix of strings and None, but the latter must be tested with get_level_values
+            if type(selection)==str: pass
+            elif type(selection)==tuple:
+                selections = len(selection)
+                strings = [type(selection[i])==str for i in range(selections)]
+                if all(strings): pass
+                else:
+                    found = False
+                    for i in range(selections):
+                        if all(strings[0:i]) and not any(strings[i+1:]):
+                            if i==0:
+                                selection = selection[0]
+                            else:    
+                                selection = tuple(selection[j] for j in range(i+1))
+                            found = True
+                            break
+                    if not found:
+                        locs = True
+                        for s in range(selections):
+                            if selection[s] not in (None,'**'):
+                                locs &= (df.index.get_level_values(s)==selection[s])
+                        selection = locs
+            else:
+                raise StoopidException(f'specify patterns for profile, (group,userid) or (class,profile), not {selection}')
+            if option == None:  # return DataFrame for 1 profile
+                try:
+                    return df.loc[[selection]]
+                except KeyError:
+                    return pd.DataFrame()
+            elif option in ('LIST','L'):  # return Series for 1 profile
+                try:
+                    return df.loc[selection]
+                except KeyError:
+                    return []
         elif option in ('REGEX','R','GENERIC','GEN','G'):
             if type(selection)==str:
                 return df.loc[df.index.get_level_values(0).str.match(selection if option in ('REGEX','R') else self.generic2regex(selection))]
@@ -551,11 +576,17 @@ class RACF:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._datasetConditionalAccess
 
+    def datasetConditionalPermit(self, profile=None, id=None, access=None, pattern=None):
+        return self.giveMeProfiles(self._datasetConditionalAccess, (profile,id,access), pattern)
+
     @property
     def datasetAccess(self):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._datasetAccess
+
+    def datasetPermit(self, profile=None, id=None, access=None, pattern=None):
+        return self.giveMeProfiles(self._datasetAccess, (profile,id,access), pattern)
 
     @property
     def uacc_read_datasets(self):
@@ -588,6 +619,10 @@ class RACF:
 
     genericAccess = property(deprecated(generalAccess,"genericAccess"))
     
+    def generalPermit(self, resclass=None, profile=None, id=None, access=None, pattern=None):
+        return self.giveMeProfiles(self._generalAccess, (resclass,profile,id,access), pattern)
+    
+    
     @property
     def generalConditionalAccess(self):
         if self._state != self.STATE_READY:
@@ -595,6 +630,9 @@ class RACF:
         return self._generalConditionalAccess
 
     genericConditionalAccess = property(deprecated(generalConditionalAccess,"genericConditionalAccess"))
+    
+    def generalConditionalPermit(self, resclass=None, profile=None, id=None, access=None, pattern=None):
+        return self.giveMeProfiles(self._generalConditionalAccess, (resclass,profile,id,access), pattern)
     
     @property
     def orphans(self):

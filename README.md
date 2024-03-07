@@ -32,6 +32,8 @@ To get started with PyRACF, install it using `pip install pyracf` or explore the
 - index columns assigned to all DataFrames, assigned by new correlate() method
 - new method correlate() to increase speed of subsequent data access, use after parse() or loading of pickles
 - selection and reporting methods dataset(), group(), general(), user() and connect(), accepts GENERIC and regex patterns 
+- also datasetPermit and datasetConditionalPermit, with parameters profile(mask), id(mask) and access(mask) 
+- also generalPermit and generalConditionalPermit, with parameters resclass(mask), profile(mask), id(mask) and access(mask)
 - added GPMEM_AUTH to connectData frame, consolidating all connect info into one line 
 
 ### 0.6.4 (Add 0209)
@@ -185,6 +187,12 @@ Show group information
     mysys.connect('SYS*', None, 'G')    # users connected to SYSxxxxx groups
     mysys.general('**', 'IBMUSER', 'G') # connects of user IBMUSER
 
+Show access list information
+
+    mysys.correlate()
+    mysys.datasetPermit('SYS1.**')    # IDs permitted on SYS1.**
+    mysys.datasetPermit('SYS1.**', None, 'ALTER', pattern='G')    # IDs ALTER access on any SYS1 dataset profile
+    mysys.generalPermit('XFAC*', 'CKR.**', pattern='G') # permits on zSecure Admin/Audit profile
 
 
 # Updates 
