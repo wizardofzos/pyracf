@@ -15,7 +15,7 @@ To get started with PyRACF, install it using `pip install pyracf` or explore the
 
 ## Updates
 
-### 0.7.0 (General instead of Generic)
+### 0.7.1 (General instead of Generic)
 - fixed: Generic should be General resource profiles, variables and methods renamed
 - Mapping between IRRDBU00 record types and variables centralized in a dict
 - global constants related to record types removed
