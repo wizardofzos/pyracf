@@ -43,7 +43,7 @@ for url in urls:
         })
       model.update({
         rdesc: {
-          "record-type": rtype,
+          "record-type": rtype.upper(),  # 05k0 is in fact 05K0
           "ref-url": url,
           "offsets": rfields
       }})

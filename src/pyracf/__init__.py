@@ -45,26 +45,105 @@ class RACF:
     STATE_PARSING =  1
     STATE_READY   =  2
 
-    # keep track of names used for a record type
+    # keep track of names used for a record type, "index" must be a list of field names
     _recordtype_info = {
     '0100': {'name':'GPBD', 'df':'_groups'},
     '0101': {'name':'GPSGRP', 'df':'_subgroups'},
-    '0102': {'name':'GPMEM', 'df':'_connects'},
+    '0102': {'name':'GPMEM', 'df':'_connects', "index":["GPMEM_NAME","GPMEM_MEMBER_ID"]},
+    '0103': {'name':'GPINSTD', 'df':'_groupUSRDATA'},
+    '0110': {'name':'GPDFP', 'df':'_groupDFP'},
     '0120': {'name':'GPOMVS', 'df':'_groupOMVS'},
+    '0130': {'name':'GPOVM', 'df':'_groupOVM'},
+    '0141': {'name':'GPTME', 'df':'_groupTME'},
+    '0151': {'name':'GPCSD', 'df':'_groupCSDATA'},
     '0200': {'name':'USBD', 'df':'_users'},
-    '0203': {'name':'USGCON', 'df':'_groupConnect'},
-    '0204': {'name':'USINSTD', 'df':'_installdata'},
-    '0205': {'name':'USCON', 'df':'_connectData'},
+    '0201': {'name':'USCAT', 'df':'_userCategories'},
+    '0202': {'name':'USCLA', 'df':'_userClasses'},
+    '0203': {'name':'USGCON', 'df':'_groupConnect', "index":["USGCON_GRP_ID","USGCON_NAME"]},
+    '0204': {'name':'USINSTD', 'df':'_userUSRDATA'},
+    '0205': {'name':'USCON', 'df':'_connectData', "index":["USCON_GRP_ID","USCON_NAME"]},
+    '0206': {'name':'USRSF', 'df':'_userRRSFdata'},
+    '0207': {'name':'USCERT', 'df':'_userCERTname'},
+    '0208': {'name':'USNMAP', 'df':'_userAssociationMappings'},
     '0209': {'name':'USDMAP', 'df':'_userDistributedMapping'},
+    '020A': {'name':'USMFA', 'df':'_userMFAfactor'},
+    '020B': {'name':'USMPOL', 'df':'_userMFApolicies'},
+    '0210': {'name':'USDFP', 'df':'_userDFP'},
     '0220': {'name':'USTSO', 'df':'_userTSO'},
+    '0230': {'name':'USCICS', 'df':'_userCICS'},
+    '0231': {'name':'USCOPC', 'df':'_userCICSoperatorClasses'},
+    '0232': {'name':'USCRSL', 'df':'_userCICSrslKeys'},
+    '0233': {'name':'USCTSL', 'df':'_userCICStslKeys'},
+    '0240': {'name':'USLAN', 'df':'_userLANGUAGE'},
+    '0250': {'name':'USOPR', 'df':'_userOPERPARM'},
+    '0251': {'name':'USOPRP', 'df':'_userOPERPARMscope'},
+    '0260': {'name':'USWRK', 'df':'_userWORKATTR'},
     '0270': {'name':'USOMVS', 'df':'_userOMVS'},
+    '0280': {'name':'USNETV', 'df':'_userNETVIEW'},
+    '0281': {'name':'USNOPC', 'df':'_userNETVIEWopclass'},
+    '0282': {'name':'USNDOM', 'df':'_userNETVIEWdomains'},
+    '0290': {'name':'USDCE', 'df':'_userDCE'},
+    '02A0': {'name':'USOVM', 'df':'_userOVM'},
+    '02B0': {'name':'USLNOT', 'df':'_userLNOTES'},
+    '02C0': {'name':'USNDS', 'df':'_userNDS'},
+    '02D0': {'name':'USKERB', 'df':'_userKERB'},
+    '02E0': {'name':'USPROXY', 'df':'_userPROXY'},
+    '02F0': {'name':'USEIM', 'df':'_userEIM'},
+    '02G1': {'name':'USCSD', 'df':'_userCSDATA'},
+    '1210': {'name':'USMFAC', 'df':'_user-MFAfactorTags'},
     '0400': {'name':'DSBD', 'df':'_datasets'},
-    '0402': {'name':'DSCACC', 'df':'_datasetConditionalAccess'},
-    '0404': {'name':'DSACC', 'df':'_datasetAccess'},
+    '0401': {'name':'DSCAT', 'df':'_datasetCategories'},
+    '0402': {'name':'DSCACC', 'df':'_datasetConditionalAccess', "index":["DSCACC_NAME","DSCACC_AUTH_ID","DSCACC_ACCESS"]},
+    '0403': {'name':'DSVOL', 'df':'_datasetVolumes'},
+    '0404': {'name':'DSACC', 'df':'_datasetAccess', "index":["DSACC_NAME","DSACC_AUTH_ID","DSACC_ACCESS"]},
+    '0405': {'name':'DSINSTD', 'df':'_datasetUSRDATA'},
+    '0406': {'name':'DSMEM', 'df':'_datasetMember'},
+    '0410': {'name':'DSDFP', 'df':'_datasetDFP'},
+    '0421': {'name':'DSTME', 'df':'_datasetTME'},
+    '0431': {'name':'DSCSD', 'df':'_datasetCSDATA'},
     '0500': {'name':'GRBD', 'df':'_generals'},
+    '0501': {'name':'GRTVOL', 'df':'_generalTAPEvolume'},
+    '0502': {'name':'GRCAT', 'df':'_generalCategories'},
     '0503': {'name':'GRMEM', 'df':'_generalMembers'},
-    '0505': {'name':'GRACC', 'df':'_generalAccess'},
-    '0507': {'name':'GRCACC', 'df':'_generalConditionalAccess'}
+    '0504': {'name':'GRVOL', 'df':'_generalVolumes'},
+    '0505': {'name':'GRACC', 'df':'_generalAccess', "index":["GRACC_CLASS_NAME","GRACC_NAME","GRACC_AUTH_ID","GRACC_ACCESS"]},
+    '0506': {'name':'GRINSTD', 'df':'_generalUSRDATA'},
+    '0507': {'name':'GRCACC', 'df':'_generalConditionalAccess', "index":["GRCACC_CLASS_NAME","GRCACC_NAME","GRCACC_AUTH_ID","GRCACC_ACCESS"]},
+    '0508': {'name':'GRFLTR', 'df':'_generalFILTER'},
+    '0509': {'name':'GRDMAP', 'df':'_generalDistributedMapping'},
+    '0510': {'name':'GRSES', 'df':'_generalSESSION'},
+    '0511': {'name':'GRSESE', 'df':'_generalSESSIONentities'},
+    '0520': {'name':'GRDLF', 'df':'_generalDLF'},
+    '0521': {'name':'GRDLFJ', 'df':'_generalDLFjob-names'},
+    '0530': {'name':'GRSIGN', 'df':'_generalSSIGNON'},
+    '0540': {'name':'GRST', 'df':'_generalSTARTED'},
+    '0550': {'name':'GRSV', 'df':'_generalSYSTEMVIEW'},
+    '0560': {'name':'GRCERT', 'df':'_generalCERT'},
+    '0561': {'name':'CERTR', 'df':'_generalCERTreferences'},
+    '0562': {'name':'KEYR', 'df':'_general-KEYRING'},
+    '0570': {'name':'GRTME', 'df':'_generalTME'},
+    '0571': {'name':'GRTMEC', 'df':'_generalTMEchild'},
+    '0572': {'name':'GRTMER', 'df':'_generalTMEresource'},
+    '0573': {'name':'GRTMEG', 'df':'_generalTMEgroup'},
+    '0574': {'name':'GRTMEE', 'df':'_generalTMErole'},
+    '0580': {'name':'GRKERB', 'df':'_generalKERB'},
+    '0590': {'name':'GRPROXY', 'df':'_generalPROXY'},
+    '05A0': {'name':'GREIM', 'df':'_generalEIM'},
+    '05B0': {'name':'GRALIAS', 'df':'_generalALIAS'},
+    '05C0': {'name':'GRCDT', 'df':'_generalCDTINFO'},
+    '05D0': {'name':'GRICTX', 'df':'_generalICTX'},
+    '05E0': {'name':'GRCFDEF', 'df':'_generalCFDEF', "index":["GRCFDEF_CLASS","GRCFDEF_NAME"]},
+    '05F0': {'name':'GRSIG', 'df':'_generalSIGVER'},
+    '05G0': {'name':'GRCSF', 'df':'_generalICSF'},
+    '05G1': {'name':'GRCSFK', 'df':'_generalICSFkeylabel'},
+    '05G2': {'name':'GRCSFC', 'df':'_generalICSFcertificateIdentifier'},
+    '05H0': {'name':'GRMFA', 'df':'_generalMFAfactor'},
+    '05I0': {'name':'GRMFP', 'df':'_generalMFApolicy'},
+    '05I1': {'name':'GRMPF', 'df':'_generalMFApolicyFactors'},
+    '05J1': {'name':'GRCSD', 'df':'_generalCSDATA'},
+    '05K0': {'name':'GRIDTP', 'df':'_generalIDTFPARMS'},
+    '05L0': {'name':'GRJES', 'df':'_generalJESDATA'},
+    '1560': {'name':'CERTN', 'df':'_generalCERTNAME'}
     }
 
     _recordname_type = {}    # {'GPBD': '0100', ....}
@@ -229,7 +308,35 @@ class RACF:
 
     def parsed(self, rname):
         """ how many records with this name (type) were parsed """
-        return self._records[RACF._recordname_type[rname]]['parsed']
+        rtype = RACF._recordname_type[rname]
+        return self._records[rtype]['parsed'] if rtype in self._records else 0
+        
+    def correlate(self, thingswewant=_recordtype_info.keys()):
+        """ construct tables that combine the raw dataframes for improved processing """
+        self._ownertree = self.ownertree()
+        self._grouptree = self.grouptree()
+
+        # set consistent index columns for existing dfs: profile key, connect group+user, of profile class+key (for G.R.)
+        for (rtype,rinfo) in RACF._recordtype_info.items():
+            if rtype in thingswewant and rtype in self._records and self._records[rtype]['parsed']>0:
+                if "index" in rinfo:
+                    keys = rinfo["index"]
+                    names = [keys[i].replace(rinfo["name"]+"_","") for i in range(len(keys))]
+                elif rtype[1]=="5":  # general resources
+                    keys = [rinfo["name"]+"_CLASS_NAME",rinfo["name"]+"_NAME"]
+                    names = ["CLASS_NAME","NAME"]
+                else:
+                    keys = rinfo["name"]+"_NAME"
+                    names = "NAME"
+                getattr(self,rinfo['df']).set_index(keys,drop=False,inplace=True)
+                getattr(self,rinfo['df']).rename_axis(names,inplace=True)  # prevent ambiguous index / column names 
+        
+        # copy group auth (USE,CREATE,CONNECT,JOIN) to complete the connectData list, using index alignment
+        if self.parsed("GPMEM") == 0 or self.parsed("USCON") == 0:
+            raise StoopidException("Need to parse GPMEM and USCON first...")
+        else: 
+            self.connectData["GPMEM_AUTH"]=self.connects["GPMEM_AUTH"]
+        
         
     def save_pickle(self, df='', dfname='', path='', prefix=''):
         # Sanity check
@@ -256,6 +363,83 @@ class RACF:
                 # TODO: ensure consistent data, delete old pickles that were not saved
                 pass
 
+
+    def generic2regex(self, selection, lenient='%&*'):
+        ''' Change a RACF generic pattern into regex to match with text strings in pandas cells.  use lenient="" to match with dsnames/resources '''
+        if selection in ('**',''):
+            return '.*$'
+        else:
+            return selection.replace('*.**','`dot``ast`')\
+                    .replace('.**','\`dot``dot``ast`')\
+                    .replace('*','[\w@#$`lenient`]`ast`')\
+                    .replace('%','[\w@#$]')\
+                    .replace('.','\.')\
+                    .replace('`dot`','.')\
+                    .replace('`ast`','*')\
+                    .replace('`lenient`',lenient)\
+                    +'$'
+
+
+    def giveMeProfiles(self, df, selection=None, option=None):
+        ''' Search profiles using the index fields.  selection can be str or tuple.  Tuples check for group + user id in connects, or class + profile key in generals.
+        option controls how selection is interpreted, and how data must be returned:
+        None is for (expensive) backward compatibility, returns a df with 1 profile.
+        LIST returns a series for 1 profile, much faster and easier to process.
+        REGEX returns a df for profile matching selection, starting at beginning of profile name, (general) class, or class+profile, (connect) group, or group+user ID.
+        GENERIC takes the generic pattern for the selection, turns it into regex, and returns a df.
+        '''
+        if not selection:
+            raise StoopidException('profile criteria not specified...')
+        if option in (None,'LIST','L'):  # return 1 profile
+            # 1 string, several strings in a tuple, or a mix of strings and None, but the latter must be tested with get_level_values
+            if type(selection)==str: pass
+            elif type(selection)==tuple:
+                selections = len(selection)
+                strings = [type(selection[i])==str for i in range(selections)]
+                if all(strings): pass
+                else:
+                    found = False
+                    for i in range(selections):
+                        if all(strings[0:i]) and not any(strings[i+1:]):
+                            if i==0:
+                                selection = selection[0]
+                            else:    
+                                selection = tuple(selection[j] for j in range(i+1))
+                            found = True
+                            break
+                    if not found:
+                        locs = True
+                        for s in range(selections):
+                            if selection[s] not in (None,'**'):
+                                locs &= (df.index.get_level_values(s)==selection[s])
+                        selection = locs
+            else:
+                raise StoopidException(f'specify patterns for profile, (group,userid) or (class,profile), not {selection}')
+            if option == None:  # return DataFrame for 1 profile
+                try:
+                    return df.loc[[selection]]
+                except KeyError:
+                    return pd.DataFrame()
+            elif option in ('LIST','L'):  # return Series for 1 profile
+                try:
+                    return df.loc[selection]
+                except KeyError:
+                    return []
+        elif option in ('REGEX','R','GENERIC','GEN','G'):
+            if type(selection)==str:
+                return df.loc[df.index.get_level_values(0).str.match(selection if option in ('REGEX','R') else self.generic2regex(selection))]
+            elif type(selection)==tuple:
+                locs = True
+                for s in range(len(selection)):
+                    if selection[s] not in (None,'**'):
+                        locs &= (df.index.get_level_values(s).str.match(selection[s] if option in ('REGEX','R') else self.generic2regex(selection[s])))
+                return df.loc[locs]
+            else:
+                raise StoopidException(f'specify patterns for profile, (group,userid) or (class,profile), not {selection}')
+        else:
+            raise StoopidException(f'unexpected last parameter {option}')
+
+
     @property
     def users(self):
         if self._state != self.STATE_READY:
@@ -264,12 +448,18 @@ class RACF:
             return self._users
         except:
             raise StoopidException('No USBD records parsed!')
-        
     
-    def user(self, userid=None):
+    def user(self, userid=None, pattern=None):
+        return self.giveMeProfiles(self._users, userid, pattern)
+
+    def OLDuser(self, userid=None):
         if not userid:
             raise StoopidException('userid not specified...')
-        return self._users.loc[self._users.USBD_NAME==userid]
+        try:
+            return self._users.loc[[userid]]
+        except:
+            return []
+        # return self._users.loc[self._users.USBD_NAME==userid]
 
 
     @property
@@ -277,6 +467,10 @@ class RACF:
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._connectData
+        
+    def connect(self, group=None, userid=None, pattern=None):
+        return self.giveMeProfiles(self._connectData, (group,userid), pattern)
+
 
     @property
     def userDistributedMapping(self):
@@ -307,34 +501,29 @@ class RACF:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._groups
     
-    def group(self, group=None):
+    def group(self, group=None, pattern=None):
+        return self.giveMeProfiles(self._groups, group, pattern)
+
+    def OLDgroup(self, group=None):
         if not group:
             raise StoopidException('group not specified...')
-        return self._groups.loc[self._groups.GPBD_NAME==group]
+        try:
+            return self._groups.loc[[group]]
+        except:
+            return []
+        # return self._groups.loc[self._groups.GPBD_NAME==group]
 
+    @property
+    def groupsWithoutUsers(self):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._groups.loc[-self.groups.GPBD_NAME.isin(self._connectData.USCON_GRP_ID)]
+    
     @property
     def groupConnect(self):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._groupConnect
-
-    @property
-    def installdata(self):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._installdata
-
-    @property
-    def datasets(self):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._datasets
-
-    @property
-    def datasetConditionalAccess(self):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._datasetConditionalAccess
 
     @property
     def connects(self):
@@ -349,47 +538,11 @@ class RACF:
         return self._subgroups
 
     @property
-    def datasetAccess(self):
+    def installdata(self):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._datasetAccess
+        return self._userUSRDATA
 
-    @property
-    def uacc_read_datasets(self):
-        return self._datasets.loc[self._datasets.DSBD_UACC=="READ"]
-
-    @property
-    def generals(self, query=None):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._generals
-
-    generics = property(deprecated(generals,"generics"))
-
-    @property
-    def generalMembers(self, query=None):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._generalMembers    
-
-    genericMembers = property(deprecated(generalMembers,"genericMembers"))
-
-    @property
-    def generalAccess(self, query=None):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._generalAccess
-
-    genericAccess = property(deprecated(generalAccess,"genericAccess"))
-    
-    @property
-    def generalConditionalAccess(self):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._generalConditionalAccess
-
-    genericConditionalAccess = property(deprecated(generalConditionalAccess,"genericConditionalAccess"))
-    
     @property
     def userOMVS(self, query=None):
         if self._state != self.STATE_READY:
@@ -408,6 +561,79 @@ class RACF:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._userTSO    
         
+    @property
+    def datasets(self):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._datasets
+
+    def dataset(self, profile=None, pattern=None):
+        return self.giveMeProfiles(self._datasets, profile, pattern)
+
+    @property
+    def datasetConditionalAccess(self):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._datasetConditionalAccess
+
+    def datasetConditionalPermit(self, profile=None, id=None, access=None, pattern=None):
+        return self.giveMeProfiles(self._datasetConditionalAccess, (profile,id,access), pattern)
+
+    @property
+    def datasetAccess(self):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._datasetAccess
+
+    def datasetPermit(self, profile=None, id=None, access=None, pattern=None):
+        return self.giveMeProfiles(self._datasetAccess, (profile,id,access), pattern)
+
+    @property
+    def uacc_read_datasets(self):
+        return self._datasets.loc[self._datasets.DSBD_UACC=="READ"]
+
+    @property
+    def generals(self, query=None):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._generals
+
+    generics = property(deprecated(generals,"generics"))
+
+    def general(self, resclass=None, profile=None, pattern=None):
+        return self.giveMeProfiles(self._generals, (resclass,profile), pattern)
+
+    @property
+    def generalMembers(self, query=None):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._generalMembers    
+
+    genericMembers = property(deprecated(generalMembers,"genericMembers"))
+
+    @property
+    def generalAccess(self, query=None):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._generalAccess
+
+    genericAccess = property(deprecated(generalAccess,"genericAccess"))
+    
+    def generalPermit(self, resclass=None, profile=None, id=None, access=None, pattern=None):
+        return self.giveMeProfiles(self._generalAccess, (resclass,profile,id,access), pattern)
+    
+    
+    @property
+    def generalConditionalAccess(self):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._generalConditionalAccess
+
+    genericConditionalAccess = property(deprecated(generalConditionalAccess,"genericConditionalAccess"))
+    
+    def generalConditionalPermit(self, resclass=None, profile=None, id=None, access=None, pattern=None):
+        return self.giveMeProfiles(self._generalConditionalAccess, (resclass,profile,id,access), pattern)
+    
     @property
     def orphans(self):
         
@@ -550,30 +776,29 @@ class RACF:
 
         writer.close()   
 
-    def tree(self,tree,linkup_field="GPBD_SUPGRP_ID"):
-        if tree == None:
-            # get all owners... (group or user) or all superior groups
-            tree = {}
-            where_is = {}
-            higher_ups = self.groups.groupby(linkup_field)
-            for higher_up in higher_ups.groups.keys():
-                if higher_up not in tree:
-                    tree[higher_up] = []
-                    for group in higher_ups.get_group(higher_up)['GPBD_NAME'].values:
-                        tree[higher_up].append(group)
-                        where_is[group] = tree[higher_up]
-            # initially, for an owner tree, anchor can be a user (like IBMUSER) or a group
-            # now we gotta condense it, so only IBMUSER and other group owning users are at top level
-            # for group tree, we should end up with SYS1, and a list of groups
-            deletes = []
-            for anchor in tree:
-                if anchor in where_is:
-                    supgrpMembers = where_is[anchor]
-                    supgrpMembers.remove(anchor)
-                    supgrpMembers.append({anchor: tree[anchor]})
-                    deletes.append(anchor)
-            for anchor in deletes:
-                tree.pop(anchor)
+    def tree(self,linkup_field="GPBD_SUPGRP_ID"):
+        # get all owners... (group or user) or all superior groups
+        tree = {}
+        where_is = {}
+        higher_ups = self.groups.groupby(linkup_field)
+        for higher_up in higher_ups.groups.keys():
+            if higher_up not in tree:
+                tree[higher_up] = []
+                for group in higher_ups.get_group(higher_up)['GPBD_NAME'].values:
+                    tree[higher_up].append(group)
+                    where_is[group] = tree[higher_up]
+        # initially, for an owner tree, anchor can be a user (like IBMUSER) or a group
+        # now we gotta condense it, so only IBMUSER and other group owning users are at top level
+        # for group tree, we should end up with SYS1, and a list of groups
+        deletes = []
+        for anchor in tree:
+            if anchor in where_is:
+                supgrpMembers = where_is[anchor]
+                ix = supgrpMembers.index(anchor)
+                supgrpMembers[ix] = {anchor: tree[anchor]}
+                deletes.append(anchor)
+        for anchor in deletes:
+            tree.pop(anchor)
         return tree
 
     def ownertree(self):
@@ -581,15 +806,15 @@ class RACF:
         create dict with the user IDs that own groups as key, and a list of their owned groups as values.
         if a group in this list owns group, the list is replaced by a dict.
         '''
-        return self.tree(self._ownertree,"GPBD_OWNER_ID")
+        return self._ownertree if self._ownertree else self.tree("GPBD_OWNER_ID")
 
     def grouptree(self):
         ''' 
         create dict starting with SYS1, and a list of groups owned by SYS1 as values.
         if a group in this list owns group, the list is replaced by a dict.
-        because SYS1's superior group is blank/missing, we return the first group that is owned by "".
+        because SYS1s superior group is blank/missing, we return the first group that is owned by "".
         '''
-        return self.tree(self._grouptree,"GPBD_SUPGRP_ID")[""][0]
+        return self._grouptree if self._grouptree else self.tree("GPBD_SUPGRP_ID")[""][0]
 
     def getdatasetrisk(self, profile=''):
         '''This will produce a dict as follows:
@@ -601,9 +826,12 @@ class RACF:
         except:
             raise StoopidException("Need to parse DSACC, USCON, USBD, GPBD and DSBD first...")
         
-        d = self.datasets.loc[self.datasets.DSBD_NAME==profile]
-        if len(d) == 0:
-            raise Exception('Profile not here...')
+        try:
+            d = self.datasets.loc[[profile]]
+        except KeyError:
+            d = pd.DataFrame()
+        if d.empty:
+            raise StoopidException(f'Profile {profile} not found...')
         
         owner = d['DSBD_OWNER_ID'].values[0]
         accesslist = {}
@@ -612,49 +840,48 @@ class RACF:
         peraccess = dsacc.get_group(profile).groupby('DSACC_ACCESS')
         for access in ['NONE','EXECUTE','READ','UPDATE','CONTROL','ALTER']:
             accesslist[access] = []
-            accessmanagers = []
+            accessmanagers[access] = []
             if access in peraccess.groups.keys():
                 a = peraccess.get_group(access)['DSACC_AUTH_ID'].values
                 for id in a:
-                    if len(self.user(id)) == 1:
+                    if id in self.users.index:
                         accesslist[access].append(id)
                     else:
-                        if len(self.group(id)) == 1:
-                            g = self.connectData.loc[self.connectData.USCON_GRP_ID==id]
-                            for user,grp_special in g[['USCON_NAME','USCON_GRP_SPECIAL']].values:
+                        if id in self.groups.index:
+                            g = self.connectData.loc[id][['USCON_NAME','USCON_GRP_SPECIAL']].values
+                            for user,grp_special in g:
                                 accesslist[access].append(user)
                                 # But suppose this user is group_special here?
                                 if grp_special=='YES':
-                                    accessmanagers.append(user)
+                                    accessmanagers[access].append(user)
                             # And wait a minute... this groups owner, can also add people to the group?
                             [gowner,gsupgroup] = self.group(id)[['GPBD_OWNER_ID','GPBD_SUPGRP_ID']].values[0]
-                            if len(self.user(gowner)) == 1:
-                                accessmanagers.append(gowner)
+                            if gowner in self.users.index:
+                                accessmanagers[access].append(gowner)
                             else:
                                 # group special propages up
-                                while gowner==gsupgrp:
-                                    gg = self.connectData.loc[self.connectData.USCON_GRP_ID==gowner]
-                                    for user,grp_special in gg[['USCON_NAME','USCON_GRP_SPECIAL']].values:
+                                while gowner==gsupgroup:
+                                    g = self.connectData.loc[gowner][['USCON_NAME','USCON_GRP_SPECIAL']].values
+                                    for user,grp_special in g:
                                         if grp_special=='YES':
-                                            accessmanagers.append(user)
+                                            accessmanagers[access].append(user)
                                     [gowner,gsupgroup] = self.group(gowner)[['GPBD_OWNER_ID','GPBD_SUPGRP_ID']].values[0]
                             # connect authority CONNECT/JOIN allows modification of member list
-                            g = self.connects.loc[self.connects.GPMEM_NAME==id]
-                            for user,grp_auth in g[['GPMEM_MEMBER_ID','GPMEM_AUTH']].values:
+                            g = self.connects.loc[id][['GPMEM_MEMBER_ID','GPMEM_AUTH']].values
+                            for user,grp_auth in g:
                                 if grp_auth in ('CONNECT','JOIN'):
-                                    accessmanagers.append(user)
+                                    accessmanagers[access].append(user)
                 # clean up doubles...
-            accessmanagers = list(set(accessmanagers))
-            accesslist[access] = list(set(accesslist[access]))
+                accesslist[access] = list(set(accesslist[access]))
+                accessmanagers[access] = list(set(accessmanagers[access]))
 
-        y = {
+        return {
             'owner': owner,
-            'accessmanagers': accessmanagers,
             'uacc': d['DSBD_UACC'].values[0],
+            'accessmanagers': accessmanagers,
             'permits': accesslist
         }
 
-        return y
 
 class IRRDBU(RACF):
     pass

@@ -6633,7 +6633,7 @@
         ]
     },
     "general-resource-idtparms-definition-record": {
-        "record-type": "05k0",
+        "record-type": "05K0",
         "ref-url": "https://www.ibm.com/docs/en/SSLTBW_3.1.0/com.ibm.zos.v3r1.icha300/grr.htm",
         "offsets": [
             {

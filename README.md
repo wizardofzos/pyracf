@@ -27,6 +27,14 @@ To get started with PyRACF, install it using `pip install pyracf` or explore the
 - fixed: record type '0260' in offset.json was malformed
 - updated offsets.json from https://www.ibm.com/docs/en/SSLTBW_3.1.0/com.ibm.zos.v3r1.icha300/format.htm etc
 - getOffsets.py to update the json model
+- fixed: RACF documentation contains incorrect record type 05k0
+- all known record types parsed and loaded into DataFrames
+- index columns assigned to all DataFrames, assigned by new correlate() method
+- new method correlate() to increase speed of subsequent data access, use after parse() or loading of pickles
+- selection and reporting methods dataset(), group(), general(), user() and connect(), accepts GENERIC and regex patterns 
+- also datasetPermit and datasetConditionalPermit, with parameters profile(mask), id(mask) and access(mask) 
+- also generalPermit and generalConditionalPermit, with parameters resclass(mask), profile(mask), id(mask) and access(mask)
+- added GPMEM_AUTH to connectData frame, consolidating all connect info into one line 
 
 ### 0.6.4 (Add 0209)
 - Added 0209 recordtype to parser. (userDistributedMapping)
@@ -100,24 +108,39 @@ Then later, you don't need to parse the same unload again, just do:
     >>> hash(mysys.groups.values.tobytes())
     -8566685915584060910
 
+### Prepare internal data structures for later processing
+
+    >>> mysys.correlate()
 
 ## All functions
 
 | Function/Property | Explanation | Example |
 |---|---|---|
 | auditors | Returns DataFrame with all user having the auditor bit switched on | mysys.auditors |
+| connect | Returns DataFrame with selected user to group connects | mysys.connect('SYS1',None,'G') or mysys.connect('**','IBM*','G') |
 | connects | Returns DataFrame with all user to group connects | mysys.connects |
+| correlate | assigns index columns and prepares data structures for faster reporting | mysys.correlate() |
 | datasetAccess | Returns DataFrame with all Accesslists for all dataset profiles | mysys.datasetsAccess |
+| dataset | Returns DataFrame with selected datasetprofiles | mysys.dataset('SYS1.**','GEN') |
+| datasetPermit | Returns DataFrame with selected permits on datasetprofiles | mysys.datasetPermit(profile=, id=, access=, pattern='G') |
+| datasetConditionalPermit | Returns DataFrame with selected "PERMIT WHEN()" on datasetprofiles | mysys.datasetConditionalPermit(profile=, id=, access=, pattern='G') |
 | datasets | Returns DataFrame with all datasetprofiles | mysys.datasets |
 | generalAccess | Returns DataFrame with with all accesslists for general resource profiles | mysys.generalAccess
 | generalConditionalAccess | Returns DataFrame with with all conditional accesslists for general resource profiles | mysys.generalConditionalAccess
+| general | Returns DataFrame with selected general resource profiles | mysys.general('FACI*','BPX.**','GEN') |
+| generalPermit | Returns DataFrame with selected permits on resource profiles | mysys.generalPermit(resclass=, profile=, id=, access=, pattern='G') |
+| generalConditionalPermit | Returns DataFrame with selected "PERMIT WHEN()" on resource profiles | mysys.generalConditionalPermit(resclass=, profile=, id=, access=, pattern='G') |
 | generals | Returns DataFrame with with all general resource profiles | mysys.generals 
-| group | Returns DataFrame with with one dataset profile only | mysys.group('SYS1') |
+| getdatasetrisk | Returns dict with users that have access or administrative authority on a profile | mysys.getdatasetrisk('SYS1.**') |
+| group | Returns DataFrame with with group profiles matching selection | mysys.group('SYS1'), or msys.group('SYS*','G') |
 | groupConnect | Returns DataFrame with with user group connection records (0203 recordtype) | mysys.groupConnect |
 | groups | Returns DataFrame with all group data | mysys.groups |
+| groupsWithoutUsers | Returns DataFrame with groups that have no connected users | mysys.groupsWithoutUsers |
+| grouptree | Returns dict with groups arranged by superior group | mysys.grouptree() |
 | installdata | Returns DataFrame with with user installation data (0204 recordtype) | mysys.installdata |
 | operations | Returns a DataFrame  with all operations users | mysys.operations |
 | orphans | Returns 2 DataFrames one with orphans in dataset profile access lists, and one for general resources | d, g = mysys.orphans |
+| ownertree | Returns dict with groups arranged by owner group or user ID | mysys.ownertree() |
 | parse | parses the unload. optional specify recordtypes | mysys.parse(recordtypes=['0200']) |
 | parse_fancycli | parses the unload with a fancy cli status update. optional recordtypes can be specified | mysys.parse_fancycli(recorddtypes=['0200']) |
 | revoked | Returns a DataFrame  with all revoked users | mysys.revoked |
@@ -125,6 +148,8 @@ Then later, you don't need to parse the same unload again, just do:
 | specials | Returns a DataFrame  with all special users | mysys.specials |
 | status | Returns JSON with parsing status | mysys.status |
 | uacc_read_datasets | Returns a DataFrame  with all dataset profiles having UACC=READ | mysys.uacc_read_datasets |
+| user | Returns DataFrame with with user profiles matching selection | mysys.user('IBM*'), or msys.user('SYS.*','REGEX') |
+| users | Returns DataFrame with all user base data | mysys.users |
 | xls | Creates an XLSX with all permits per class | mysys.xls(fileName='myxls.xlsx') |
 
 # Example use-case
@@ -138,6 +163,7 @@ Get all users that have not logged in (on?) since January 1st 2022. And print us
     mysys.parse()
     while mysys.status['status'] != 'Ready':
         time.sleep(5)
+    mysys.correlate()
     selection = mysys.users.loc[mysys.users.USBD_LASTJOB_DATE<="2022-01-01"][['USBD_NAME','USBD_LASTJOB_DATE']]
     for user in selection.values:
       print(f"Userid {user[0]}, last active: {user[1]}")
@@ -150,7 +176,30 @@ Create a neat XLSX
     mysys.parse()
     while mysys.status['status'] != 'Ready':
         time.sleep(5)
+    mysys.correlate()
     mysys.xls('/path/to/my.xlsx')
+
+Print z/OS UNIX profiles
+
+    mysys.correlate()
+    mysys.general('FAC*', 'BPX.**', 'G')
+    mysys.general('UNIXPRIV', '**', 'G') # print all in UNIXPRIV
+
+Show group information
+
+    mysys.correlate()
+    mysys.connect('SYS*', None, 'G')    # users connected to SYSxxxxx groups
+    mysys.general('**', 'IBMUSER', 'G') # connects of user IBMUSER
+    mysys.general(user='IBMUSER', pattern='G') # connects of user IBMUSER
+
+Show access list information
+
+    mysys.correlate()
+    mysys.datasetPermit('SYS1.**')    # IDs permitted on SYS1.**
+    mysys.datasetPermit(id='IBMUSER', pattern='GENERIC')    # where is IBMUSER permitted
+    mysys.datasetPermit('SYS1.**', access='ALTER', pattern='G')    # IDs ALTER access on any SYS1 dataset profile
+    mysys.generalPermit('XFAC*', 'CKR.**', pattern='G') # permits on zSecure Admin/Audit profile
+
 
 # Updates 
 
