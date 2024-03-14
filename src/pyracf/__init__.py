@@ -161,9 +161,12 @@ class RACF:
         if rtype in _recordtype_info.keys():
           _recordtype_info[rtype].update({"offsets": _offsets[offset]["offsets"]})
 
-    _grouptree          = None
-    _ownertree          = None
-
+    _grouptree          = None  # dict with lists
+    _ownertree          = None  # dict with lists
+    _grouptreeLines     = None  # df with all supgroups up to SYS1
+    _ownertreeLines     = None  # df with owners up to SYS1 or user ID
+    
+    accessKeywords = ['NONE','EXECUTE','READ','UPDATE','CONTROL','ALTER']
 
     def __init__(self, irrdbu00=None, pickles=None, prefix=''):
 
@@ -313,9 +316,6 @@ class RACF:
         
     def correlate(self, thingswewant=_recordtype_info.keys()):
         """ construct tables that combine the raw dataframes for improved processing """
-        self._ownertree = self.ownertree()
-        self._grouptree = self.grouptree()
-
         # set consistent index columns for existing dfs: profile key, connect group+user, of profile class+key (for G.R.)
         for (rtype,rinfo) in RACF._recordtype_info.items():
             if rtype in thingswewant and rtype in self._records and self._records[rtype]['parsed']>0:
@@ -336,6 +336,36 @@ class RACF:
             raise StoopidException("Need to parse GPMEM and USCON first...")
         else: 
             self.connectData["GPMEM_AUTH"]=self.connects["GPMEM_AUTH"]
+            
+        # dicts containing lists of groups for printing group structure
+        self._ownertree = self.ownertree()
+        self._grouptree = self.grouptree()
+
+        # frame of group + name of all superior groups until SYS1
+        self._grouptreeLines=self._groups[['GPBD_NAME','GPBD_SUPGRP_ID']]
+        grouptreeL = 0
+        while len(self._grouptreeLines)>grouptreeL:
+            nextup = self._grouptreeLines[grouptreeL:]\
+                     .loc[self._grouptreeLines.GPBD_NAME!='SYS1']\
+                     .loc[self._grouptreeLines.GPBD_SUPGRP_ID!='SYS1']\
+                     .join(self._groups[['GPBD_SUPGRP_ID']],on='GPBD_SUPGRP_ID',lsuffix='_ME')\
+                     .drop(['GPBD_SUPGRP_ID_ME'],axis=1,inplace=True)
+            grouptreeL = len(self._grouptreeLines)
+            self._grouptreeLines=pd.concat([self._grouptreeLines,nextup],ignore_index=True,sort=False)
+        self._grouptreeLines.rename(columns={'GPBD_NAME':'GROUP','GPBD_SUPGRP_ID':'PARENTS'},inplace=True)
+        
+        # frame of group + name of all owners (group or user) until SYS1 or user ID found
+        self._ownertreeLines=self._groups[['GPBD_NAME','GPBD_SUPGRP_ID','GPBD_OWNER_ID']]
+        ownersL = 0
+        while len(self._ownertreeLines)>ownersL:
+            nextup = self._ownertreeLines[ownersL:]\
+                     .query("GPBD_SUPGRP_ID==GPBD_OWNER_ID & GPBD_SUPGRP_ID!='SYS1'")\
+                     .join(self._groups[['GPBD_SUPGRP_ID','GPBD_OWNER_ID']],on='GPBD_SUPGRP_ID',lsuffix='_ME')\
+                     .drop(['GPBD_SUPGRP_ID_ME','GPBD_OWNER_ID_ME'],axis=1)
+            ownersL = len(self._ownertreeLines)
+            self._ownertreeLines=pd.concat([self._ownertreeLines,nextup],ignore_index=True,sort=False)
+        self._ownertreeLines.drop('GPBD_SUPGRP_ID',axis=1,inplace=True)
+        self._ownertreeLines.rename(columns={'GPBD_NAME':'GROUP','GPBD_OWNER_ID':'OWNER_IDS'},inplace=True)
         
         
     def save_pickle(self, df='', dfname='', path='', prefix=''):
@@ -633,6 +663,94 @@ class RACF:
     
     def generalConditionalPermit(self, resclass=None, profile=None, id=None, access=None, pattern=None):
         return self.giveMeProfiles(self._generalConditionalAccess, (resclass,profile,id,access), pattern)
+
+    def rankedAccess(self, args):
+        ''' translate access levels into integers, add 10 if permit is for the user ID. '''
+        (userid,authid,access) = args
+        accessNum = RACF.accessKeywords.index(access)
+        return accessNum+10 if userid==authid else accessNum
+
+    def acl(self, df, permits=True, explode=False, resolve=False, admin=False, sort="user"):
+        ''' transform {dataset,general}[Conditional]Access table:
+        permit=True: show normal ACL (with the groups identified in field USER_ID)
+        explode=True: replace all groups with the users connected to the groups (in field USER_ID)
+        resolve=True: show user specific permit, or the highest group permit for each user
+        admin=True: add the users that have ability to change the groups on the ACL (in field ADMIN_ID)
+            VIA identifies the group name, AUTHORITY the RACF privilege involved
+        sort=["user","access","id","admin","profile"] sort the resulting output
+        '''
+        tbName = df.columns[0].split('_')[0]
+        if tbName in ["DSACC","DSCACC"]:
+          tbProfileKeys = [tbName+"_NAME",tbName+"_VOL"]
+        elif tbName in ["GRACC","GRCACC"]:
+          tbProfileKeys = [tbName+"_CLASS_NAME",tbName+"_NAME"]
+        else:
+            raise StoopidException(f'Table {tbName} not supported for acl( ), except DSACC, DSCACC, GRACC or GRCACC.')
+        tbAuthName = tbName+"_AUTH_ID"
+        tbAccessName = tbName+"_ACCESS"
+        
+        returnFields = ['USER_ID',tbAuthName,tbAccessName]
+        if tbName == "GRCACC":
+            returnFields = returnFields+["GRCACC_CATYPE","GRCACC_CANAME","GRCACC_NET_ID","GRCACC_CACRITERIA"]
+
+        sortBy = {"user":["USER_ID"]+tbProfileKeys, "access":["RANKED_ACCESS","USER_ID"], "id":[tbAuthName]+tbProfileKeys, "admin":"ADMIN_ID", "profile":tbProfileKeys}
+        
+        if explode or resolve:  # get user IDs connected to groups into field USER_ID
+            acl = pd.merge(df, self._connectData, how="left", left_on=tbAuthName, right_on="USCON_GRP_ID")
+            acl.insert(3,"USER_ID",acl["USCON_NAME"].where(acl["USCON_NAME"].notna(),acl[tbAuthName]))
+        elif permits:  # just the userid+access from RACF, add USER_ID column for consistency
+            acl = df.copy()
+            acl.insert(3,"USER_ID",acl[tbAuthName].where(~ acl[tbAuthName].isin(self._groups.index.values),"-group-"))
+        else:
+            acl = pd.DataFrame()
+        if resolve or sort=="access":
+            acl.insert(6,'RANKED_ACCESS',acl[["USER_ID",tbAuthName,tbAccessName]]\
+               .apply(self.rankedAccess,axis=1))
+        if resolve:
+            acl=acl.loc[acl.groupby(tbProfileKeys+['USER_ID'])['RANKED_ACCESS'].idxmax()]
+        if sort=="access":
+            acl.RANKED_ACCESS = 10 - (acl.RANKED_ACCESS % 10)  # highest access first
+        
+        if admin:
+            # TODO or not TODO: add user that owns profile and group specials on owning groups of profile (not ACL).
+            # who has administrative authority to modify groups on the ACL?
+            # users who own those groups
+            admin_gowners = pd.merge(df, self._groups[["GPBD_NAME","GPBD_OWNER_ID","GPBD_SUPGRP_ID"]].query("GPBD_OWNER_ID != GPBD_SUPGRP_ID"),
+                                    how="inner", left_on=tbAuthName, right_on="GPBD_NAME")
+            admin_gowners["AUTHORITY"] = "OWNER"
+            admin_gowners.rename({"GPBD_NAME":"VIA","GPBD_OWNER_ID":"ADMIN_ID"},axis=1,inplace=True)
+            admin_gowners.drop(["GPBD_SUPGRP_ID"],axis=1,inplace=True)
+            
+            # users with group special on all owner groups up to SYS1 or user ID
+            admin_grpspec1 = pd.merge(df, self._groups[["GPBD_NAME","GPBD_OWNER_ID","GPBD_SUPGRP_ID"]].query("GPBD_OWNER_ID == GPBD_SUPGRP_ID"),
+                                      how="inner", left_on=tbAuthName, right_on="GPBD_NAME")
+            admin_grpspec1.drop(["GPBD_OWNER_ID","GPBD_SUPGRP_ID"],axis=1,inplace=True)
+            admin_grpspec2 = pd.merge(admin_grpspec1, self._ownertreeLines, how="inner", left_on=tbAuthName, right_on="GROUP")
+            admin_grpspec2.drop(["GPBD_NAME","GROUP"],axis=1,inplace=True)
+            # identify group special on ACL group and on any owning group
+            admin_grpspec1.rename({"GPBD_NAME":"OWNER_IDS"},axis=1,inplace=True)
+            admin_grpspec = pd.merge(pd.concat([admin_grpspec1,admin_grpspec2],ignore_index=True),\
+                                     self._connectData[['USCON_NAME','USCON_GRP_ID','USCON_GRP_SPECIAL']]\
+                                             .query('USCON_GRP_SPECIAL == "YES"'),
+                                     how="inner", left_on="OWNER_IDS", right_on="USCON_GRP_ID")
+            admin_grpspec["AUTHORITY"] = "GRPSPECIAL"
+            admin_grpspec.rename({"OWNER_IDS":"VIA","USCON_NAME":"ADMIN_ID"},axis=1,inplace=True)
+            admin_grpspec.drop(["USCON_GRP_ID","USCON_GRP_SPECIAL"],axis=1,inplace=True)
+
+            # CONNECT or JOIN authority on an ACL group
+            admin_grpauth = pd.merge(df, self._connects.query('GPMEM_AUTH==["CONNECT","JOIN"]'), how="inner", left_on=tbAuthName, right_on="GPMEM_NAME")
+            admin_grpauth.rename({"GPMEM_NAME":"VIA","GPMEM_MEMBER_ID":"ADMIN_ID","GPMEM_AUTH":"AUTHORITY"},axis=1,inplace=True)
+            admin_grpauth.drop(["GPMEM_RECORD_TYPE"],axis=1,inplace=True)
+            
+            admin_ids = pd.concat([admin_gowners,admin_grpspec,admin_grpauth],ignore_index=True)
+            admin_ids["USER_ID"] = "-group-"
+            acl = pd.concat([acl,admin_ids], ignore_index=True, sort=False).fillna(' ')
+            returnFields += ["ADMIN_ID","AUTHORITY","VIA"]
+            
+        return acl.reset_index().sort_values(by=sortBy[sort])[tbProfileKeys+returnFields]
+
+    # pd.core.base.PandasObject.ACL = acl
+
     
     @property
     def orphans(self):
