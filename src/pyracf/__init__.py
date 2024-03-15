@@ -316,6 +316,11 @@ class RACF:
         
     def correlate(self, thingswewant=_recordtype_info.keys()):
         """ construct tables that combine the raw dataframes for improved processing """
+        
+        # activate acl() method on our dataframes, so it get called with our instance's variables, the frame, and all optional parms
+        # e.g. msys._datasetAccess.loc[['SYS1.**']].acl(permits=True, explode=False, resolve=False, admin=False, sort="user")
+        pd.core.base.PandasObject.acl = lambda *x,**y: RACF.acl(self,*x,**y)
+
         # set consistent index columns for existing dfs: profile key, connect group+user, of profile class+key (for G.R.)
         for (rtype,rinfo) in RACF._recordtype_info.items():
             if rtype in thingswewant and rtype in self._records and self._records[rtype]['parsed']>0:
@@ -366,7 +371,7 @@ class RACF:
             self._ownertreeLines=pd.concat([self._ownertreeLines,nextup],ignore_index=True,sort=False)
         self._ownertreeLines.drop('GPBD_SUPGRP_ID',axis=1,inplace=True)
         self._ownertreeLines.rename(columns={'GPBD_NAME':'GROUP','GPBD_OWNER_ID':'OWNER_IDS'},inplace=True)
-        
+
         
     def save_pickle(self, df='', dfname='', path='', prefix=''):
         # Sanity check
@@ -694,9 +699,11 @@ class RACF:
             returnFields = returnFields+["GRCACC_CATYPE","GRCACC_CANAME","GRCACC_NET_ID","GRCACC_CACRITERIA"]
 
         sortBy = {"user":["USER_ID"]+tbProfileKeys, "access":["RANKED_ACCESS","USER_ID"], "id":[tbAuthName]+tbProfileKeys, "admin":"ADMIN_ID", "profile":tbProfileKeys}
+        if sort not in sortBy:
+            raise StoopidException(f'Sort value {sort} not supported for acl( ), use one of {",".join(sortBy.keys())}.')
         
         if explode or resolve:  # get user IDs connected to groups into field USER_ID
-            acl = pd.merge(df, self._connectData, how="left", left_on=tbAuthName, right_on="USCON_GRP_ID")
+            acl = pd.merge(df, self._connectData[["USCON_GRP_ID","USCON_NAME"]], how="left", left_on=tbAuthName, right_on="USCON_GRP_ID")
             acl.insert(3,"USER_ID",acl["USCON_NAME"].where(acl["USCON_NAME"].notna(),acl[tbAuthName]))
         elif permits:  # just the userid+access from RACF, add USER_ID column for consistency
             acl = df.copy()
@@ -748,8 +755,6 @@ class RACF:
             returnFields += ["ADMIN_ID","AUTHORITY","VIA"]
             
         return acl.reset_index().sort_values(by=sortBy[sort])[tbProfileKeys+returnFields]
-
-    # pd.core.base.PandasObject.ACL = acl
 
     
     @property
