@@ -328,6 +328,11 @@ class RACF:
         # e.g. msys._datasetAccess.loc[['SYS1.**']].acl(permits=True, explode=False, resolve=False, admin=False, sort="user")
         pd.core.base.PandasObject.acl = lambda *x,**y: RACF.acl(self,*x,**y)
 
+        # generic and regex filter on the index levels of a frame
+        pd.core.base.PandasObject.gfilter = RACF.gfilter
+        pd.core.base.PandasObject.rfilter = RACF.rfilter
+
+
         # set consistent index columns for existing dfs: profile key, connect group+user, of profile class+key (for G.R.)
         for (rtype,rinfo) in RACF._recordtype_info.items():
             if rtype in thingswewant and rtype in self._records and self._records[rtype]['parsed']>0:
@@ -412,7 +417,7 @@ class RACF:
                 pass
 
 
-    def generic2regex(self, selection, lenient='%&*'):
+    def generic2regex(selection, lenient='%&*'):
         ''' Change a RACF generic pattern into regex to match with text strings in pandas cells.  use lenient="" to match with dsnames/resources '''
         if selection in ('**',''):
             return '.*$'
@@ -475,17 +480,35 @@ class RACF:
                     return []
         elif option in ('REGEX','R','GENERIC','GEN','G'):
             if type(selection)==str:
-                return df.loc[df.index.get_level_values(0).str.match(selection if option in ('REGEX','R') else self.generic2regex(selection))]
+                return df.loc[df.index.get_level_values(0).str.match(selection if option in ('REGEX','R') else RACF.generic2regex(selection))]
             elif type(selection)==tuple:
                 locs = True
                 for s in range(len(selection)):
                     if selection[s] not in (None,'**'):
-                        locs &= (df.index.get_level_values(s).str.match(selection[s] if option in ('REGEX','R') else self.generic2regex(selection[s])))
+                        locs &= (df.index.get_level_values(s).str.match(selection[s] if option in ('REGEX','R') else RACF.generic2regex(selection[s])))
                 return df.loc[locs]
             else:
                 raise StoopidException(f'specify patterns for profile, (group,userid) or (class,profile), not {selection}')
         else:
             raise StoopidException(f'unexpected last parameter {option}')
+
+    def gfilter(df, *selection):
+        ''' Search profiles using GENERIC pattern on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
+        locs = True
+        for s in range(len(selection)):
+            if selection[s] not in (None,'**'):
+                locs &= (df.index.get_level_values(s).str.match(RACF.generic2regex(selection[s])))
+        return df.loc[locs]
+
+    def rfilter(df, *selection):
+        ''' Search profiles using refex on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
+        locs = True
+        for s in range(len(selection)):
+            if selection[s] not in (None,'**'):
+                locs &= (df.index.get_level_values(s).str.match(selection[s]))
+        return df.loc[locs]
+
+
 
 
     @property
@@ -682,11 +705,11 @@ class RACF:
     def generalConditionalPermit(self, resclass=None, profile=None, id=None, access=None, pattern=None):
         return self.giveMeProfiles(self._generalConditionalAccess, (resclass,profile,id,access), pattern)
 
-    def rankedAccess(self, args):
+    def rankedAccess(args):
         ''' translate access levels into integers, add 10 if permit is for the user ID. 
         could be used in .apply() but that will be called for each row, so very very slow '''
         (userid,authid,access) = args
-        accessNum = self.accessKeywords.index(access)
+        accessNum = RACF.accessKeywords.index(access)
         return accessNum+10 if userid==authid else accessNum
 
     def acl(self, df, permits=True, explode=False, resolve=False, admin=False, sort="profile"):
@@ -764,7 +787,7 @@ class RACF:
             
         if resolve or sort=="access":
             # map access level to number, add 10 for user permits so they override group permits in sort_values( )
-            acl.insert(6,'RANKED_ACCESS',acl["ACCESS"].map(self.accessKeywords.index))
+            acl.insert(6,'RANKED_ACCESS',acl["ACCESS"].map(RACF.accessKeywords.index))
             acl['RANKED_ACCESS'] = acl['RANKED_ACCESS'].where(acl["USER_ID"]!=acl["AUTH_ID"], acl['RANKED_ACCESS']+10)
         if resolve:
             # keep highest value of RANKED_ACCESS, this is at least twice as fast as using .iloc[].idxmax() 
