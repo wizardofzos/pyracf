@@ -168,10 +168,10 @@ class RACF:
     
     accessKeywords = ['NONE','EXECUTE','READ','UPDATE','CONTROL','ALTER','-owner-']
     
-    def accessAllowed(level=None):
+    def accessAllows(level=None):
         ''' return list of access levels that allow the given access, e.g.
-        RACF.accessAtLeast('UPDATE') returns [,'UPDATE','CONTROL','ALTER','-owner-']
-        for use in pandas .query("ACCESS in @RACF.accessAtLeast('READ')")
+        RACF.accessAllows('UPDATE') returns [,'UPDATE','CONTROL','ALTER','-owner-']
+        for use in pandas .query("ACCESS in @RACF.accessAllows('UPDATE')")
         '''
         return RACF.accessKeywords[RACF.accessKeywords.index(level):]
 
@@ -327,8 +327,11 @@ class RACF:
         # activate acl() method on our dataframes, so it get called with our instance's variables, the frame, and all optional parms
         # e.g. msys._datasetAccess.loc[['SYS1.**']].acl(permits=True, explode=False, resolve=False, admin=False, sort="user")
         pd.core.base.PandasObject.acl = lambda *x,**y: RACF.acl(self,*x,**y)
+        pd.core.base.PandasObject.ACL = lambda *x,**y: RACF.acl(self,*x,**y)
 
         # generic and regex filter on the index levels of a frame
+        pd.core.base.PandasObject.FILTER = RACF.gfilter
+        pd.core.base.PandasObject.MATCH = RACF.rfilter
         pd.core.base.PandasObject.gfilter = RACF.gfilter
         pd.core.base.PandasObject.rfilter = RACF.rfilter
 
@@ -504,7 +507,7 @@ class RACF:
         ''' Search profiles using refex on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
         locs = True
         for s in range(len(selection)):
-            if selection[s] not in (None,'**'):
+            if selection[s] not in (None,'**','.*'):
                 locs &= (df.index.get_level_values(s).str.match(selection[s]))
         return df.loc[locs]
 
@@ -707,18 +710,20 @@ class RACF:
 
     def rankedAccess(args):
         ''' translate access levels into integers, add 10 if permit is for the user ID. 
-        could be used in .apply() but that will be called for each row, so very very slow '''
+        could be used in .apply() but would be called for each row, so very very slow '''
         (userid,authid,access) = args
         accessNum = RACF.accessKeywords.index(access)
         return accessNum+10 if userid==authid else accessNum
 
-    def acl(self, df, permits=True, explode=False, resolve=False, admin=False, sort="profile"):
+    def acl(self, df, permits=True, explode=False, resolve=False, admin=False, access=None, allows=None, sort="profile"):
         ''' transform {dataset,general}[Conditional]Access table:
-        permit=True: show normal ACL (with the groups identified in field USER_ID)
+        permits=True: show normal ACL (with the groups identified in field USER_ID)
         explode=True: replace all groups with the users connected to the groups (in field USER_ID)
         resolve=True: show user specific permit, or the highest group permit for each user
         admin=True: add the users that have ability to change the groups on the ACL (in field ADMIN_ID)
             VIA identifies the group name, AUTHORITY the RACF privilege involved
+        access=access level: show entries that are equal to the level specified, access='CONTROL'
+        allows=access level: show entries that are higher or equal to the level specified, allows='UPDATE'
         sort=["user","access","id","admin","profile"] sort the resulting output
         '''
         tbName = df.columns[0].split('_')[0]
@@ -776,7 +781,7 @@ class RACF:
             acl = tbPermits
             acl.insert(3,"USER_ID",acl["AUTH_ID"].where(~ acl["AUTH_ID"].isin(self._groups.index.values),"-group-"))
         else:
-            acl = pd.DataFrame()
+            acl = pd.DataFrame(columns=tbProfileKeys+returnFields)
         if permits or explode or resolve:  # add -uacc- pseudo access
             uacc = tbProfiles.query("UACC!='NONE'").copy()
             if not uacc.empty:
@@ -787,18 +792,18 @@ class RACF:
             
         if resolve or sort=="access":
             # map access level to number, add 10 for user permits so they override group permits in sort_values( )
-            acl.insert(6,'RANKED_ACCESS',acl["ACCESS"].map(RACF.accessKeywords.index))
-            acl['RANKED_ACCESS'] = acl['RANKED_ACCESS'].where(acl["USER_ID"]!=acl["AUTH_ID"], acl['RANKED_ACCESS']+10)
+            acl["RANKED_ACCESS"] = acl["ACCESS"].map(RACF.accessKeywords.index)
+            acl["RANKED_ACCESS"] = acl["RANKED_ACCESS"].where(acl["USER_ID"]!=acl["AUTH_ID"], acl["RANKED_ACCESS"]+10)
         if resolve:
             # keep highest value of RANKED_ACCESS, this is at least twice as fast as using .iloc[].idxmax() 
             condAcc = ["CATYPE","CANAME"] if "CATYPE" in acl.columns else []
-            acl = acl.sort_values(tbProfileKeys+['USER_ID']+condAcc+['RANKED_ACCESS'])\
-                     .drop_duplicates(tbProfileKeys+['USER_ID']+condAcc, keep='last')
+            acl = acl.sort_values(tbProfileKeys+["USER_ID"]+condAcc+["RANKED_ACCESS"])\
+                     .drop_duplicates(tbProfileKeys+["USER_ID"]+condAcc, keep='last')
         if sort=="access":
             acl.RANKED_ACCESS = 10 - (acl.RANKED_ACCESS % 10)  # highest access first
         
         if admin:
-            # owner of the profile, or group special
+            # owner of the profile, or group special, or group authority
             # users who own the profiles
             profile_userowners = pd.merge(tbProfiles, self._users["USBD_NAME"],
                                           how="inner", left_on="OWNER_ID", right_index=True)\
@@ -819,7 +824,7 @@ class RACF:
             profile_groupowner1.rename({"OWNER_ID":"OWNER_IDS"},axis=1,inplace=True)
             # continue with group special processing to find admin users
 
-            # who has administrative authority to modify groups on the ACL?
+            # who has administrative authority to modify groups from the ACL?
             admin_owners = pd.merge(tbPermits, self._groups[["GPBD_NAME","GPBD_OWNER_ID","GPBD_SUPGRP_ID"]],
                                     how="inner", left_on="AUTH_ID", right_index=True)
             admin_owners["USER_ID"] = "-group-"
@@ -830,7 +835,7 @@ class RACF:
                                         .drop(["GPBD_SUPGRP_ID"],axis=1)
             admin_gowners["AUTHORITY"] = "OWNER"
             
-            # users with group special on all owner groups up to SYS1 or user ID
+            # find all owner groups + groups up to SYS1 or user ID that breaks ownership
             admin_grpspec1 = admin_owners.query("GPBD_OWNER_ID == GPBD_SUPGRP_ID")\
                                          .drop(["GPBD_OWNER_ID","GPBD_SUPGRP_ID"],axis=1)
             admin_grpspec2 = pd.merge(admin_grpspec1, self._ownertreeLines, how="inner", left_on="AUTH_ID", right_index=True)\
@@ -839,7 +844,7 @@ class RACF:
             
             # identify group special on ACL group and on any owning group
             admin_grpspec = pd.merge(pd.concat([admin_grpspec1,admin_grpspec2,profile_groupowner1,profile_groupowner2], sort=False),\
-                                     self._connectByGroup[['USCON_NAME','USCON_GRP_ID','USCON_GRP_SPECIAL']]\
+                                     self._connectByGroup[["USCON_NAME","USCON_GRP_ID","USCON_GRP_SPECIAL"]]\
                                              .query('USCON_GRP_SPECIAL == "YES"'),
                                      how="inner", left_on="OWNER_IDS", right_index=True)\
                                .rename({"USCON_NAME":"ADMIN_ID","OWNER_IDS":"VIA"},axis=1)\
@@ -857,7 +862,11 @@ class RACF:
                             ignore_index=True, sort=False).fillna(' ')
             returnFields += ["ADMIN_ID","AUTHORITY","VIA"]
             
-        return acl.sort_values(by=sortBy[sort])[tbProfileKeys+returnFields].reset_index()
+        if access:
+            acl = acl.loc[acl["ACCESS"].map(RACF.accessKeywords.index)==RACF.accessKeywords.index(access.upper())]
+        if allows:
+            acl = acl.loc[acl["ACCESS"].map(RACF.accessKeywords.index)>=RACF.accessKeywords.index(allows.upper())]
+        return acl.sort_values(by=sortBy[sort])[tbProfileKeys+returnFields].reset_index(drop=True)
 
     
     @property
