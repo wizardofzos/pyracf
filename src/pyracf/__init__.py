@@ -869,6 +869,95 @@ class RACF:
         return acl.sort_values(by=sortBy[sort])[tbProfileKeys+returnFields].reset_index(drop=True)
 
     
+    def verify(self, rules=None, domains=None):
+        ''' verify fields in profiles against the expected value, issues are returned in a df
+        rules can be passed as a list of tuples, or dict via parameter, or as function result from external module.
+        '''
+        
+        from .profileFieldRules import _domains, _rules
+        if not rules:
+            rules = _rules(self)
+        if not domains:
+            domains = _domains(self,pd)  # needs pandas
+
+        def listMe(item):
+            ''' make list in parameters optional when there is only 1 item '''
+            return item if type(item)==list else [item]
+        
+        brokenSum = pd.DataFrame(columns=['CLASS','PROFILE','FIELD_NAME','EXPECT','VALUE'])
+        for (tbNames,tbCriteria) in rules:
+            for tbName in listMe(tbNames):
+                if self.parsed(tbName)==0:
+                    continue
+                tbDF = getattr(self,RACF._recordname_df[tbName])
+                if tbDF.empty:
+                    continue
+                tbEntity = tbName[0:2]
+                tbClassName = {'DS':'dataset', 'GP':'group', 'GR':'general', 'US':'user'}[tbEntity]
+                for tbCrit in listMe(tbCriteria):
+                    locs = True
+                    matchPattern = None
+                    if 'class' in tbCrit:
+                        if tbEntity!='GR':
+                            print('only for GR')
+                        classPattern = ''
+                        for cl in listMe(tbCrit['class']):
+                            classPattern += RACF.generic2regex(cl) + "|"
+                        locs &= tbDF.index.get_level_values(0).str.match(classPattern[:-1])
+                    if 'notclass' in tbCrit:
+                        if tbEntity=='GR':
+                            classPattern = ''
+                            for cl in listMe(tbCrit['notclass']):
+                                classPattern += RACF.generic2regex(cl) + "|"
+                            locs &= ~ tbDF.index.get_level_values(0).str.match(classPattern[:-1])
+                    if 'profile' in tbCrit:
+                        ixLevel = 1 if tbEntity=='GR' else 0
+                        locs &= tbDF.index.get_level_values(ixLevel).str.match(RACF.generic2regex(tbCrit['profile']))
+                    if 'notprofile' in tbCrit:
+                        ixLevel = 1 if tbEntity=='GR' else 0
+                        locs &= ~ tbDF.index.get_level_values(ixLevel).str.match(RACF.generic2regex(tbCrit['notprofile']))
+                    if 'match' in tbCrit:
+                        matchPattern = tbCrit['match'].replace('.','\.').replace('*','\*')\
+                                                      .replace('(','(?P<').replace(')','>[0-9A-Z@#$&]*)')
+                        matched = tbDF[tbName+'_NAME'].str.extract(matchPattern)
+                    for fldCrit in listMe(tbCrit['fields']):
+                        fldName = fldCrit['name'] if matchPattern else tbName+'_'+fldCrit['name']
+                        fldExpect = fldCrit['expect'] if 'expect' in fldCrit else None
+                        if matchPattern:
+                            for fn in matched.columns:
+                                if fn==fldName:
+                                    if fldExpect:
+                                        locs &= matched[fn].gt('') & - matched[fn].isin(domains[fldExpect])
+                                    if 'or' in fldCrit:
+                                        locs &= ~ matched[fn].isin(listMe(fldCrit['or']))
+                        else:
+                            if fldExpect:
+                                locs &= tbDF[fldName].gt('') & - tbDF[fldName].isin(domains[fldExpect])
+                            if 'or' in fldCrit:
+                                locs &= ~ tbDF[fldName].isin(listMe(fldCrit['or']))
+                        if any(locs):
+                            broken = tbDF.loc[locs].copy()
+                            broken['CLASS'] = broken[tbName+'_CLASS_NAME'] if tbEntity=='GR' else tbClassName
+                            broken['PROFILE'] = broken[tbName+'_NAME']
+                            broken['FIELD_NAME'] = fldName
+                            broken['EXPECT'] = fldExpect
+                            broken['VALUE'] = matched[fldName] if matchPattern else broken[fldName]
+                            brokenSum = pd.concat([brokenSum,
+                                                    broken[['CLASS','PROFILE','FIELD_NAME','EXPECT','VALUE']]],
+                                                   sort=False, ignore_index=True)
+        return brokenSum        
+    
+
+    @property
+    def neworphans(self):
+        return self.verify(
+            rules = [
+                (['DSACC','DSCACC','GRACC','GRCACC'],
+                 {'fields': {'name':'AUTH_ID', 'expect':'ACLID'}})
+            ]
+        )
+
+
     @property
     def orphans(self):
         
