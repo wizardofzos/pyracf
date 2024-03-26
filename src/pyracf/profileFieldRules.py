@@ -17,10 +17,10 @@ def _domains(self,pd):
     }
     domains.update({'ID':self.users.index.union(self.groups.index)})
     domains.update({'ACLID':domains['SPECIAL'].union(domains['ID'])})
-    domains.update({'RACFVARS':self.generals.loc['RACFVARS'].index})
+    domains.update({'RACFVARS':self.generals.gfilter('RACFVARS').index.get_level_values(1)})
     domains.update({'CATEGORY':self.generalMembers['GRMEM_MEMBER'].gfilter('SECDATA','CATEGORY').values})
     domains.update({'SECLEVEL':self.generalMembers['GRMEM_MEMBER'].gfilter('SECDATA','SECLEVEL').values})
-    domains.update({'SECLABEL':self.generals.loc['SECLABEL'].index})
+    domains.update({'SECLABEL':self.generals.gfilter('SECLABEL').index.get_level_values(1)})
     domains.update({'USERQUAL':self.users.index.union(domains['RACFVARS'])})
     return domains
     
@@ -55,6 +55,18 @@ def _rules(self):
         ),
         # general resource profile key qualifiers
         ('GRBD',[
+         # DIGTRING is associated with a user ID
+         {'class':'DIGTRING',
+          'match':'(id).',
+          'fields':
+              {'name':'id', 'expect':'USER'}        
+         },
+         # JESSPOOL is associated with a user ID
+         {'class':'JESSPOOL',
+          'match':'&RACLNDE.(id).',
+          'fields':
+              {'name':'id', 'expect':'USERQUAL'}        
+         },
          # surrogate profiles must refer to user ID or RACFVARS
          {'class':'SURROGAT',
           'match':'(id).SUBMIT',
