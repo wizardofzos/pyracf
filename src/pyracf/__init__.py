@@ -884,20 +884,24 @@ class RACF:
             rules= yaml.safe_load(rules)
 
         def listMe(item):
-            ''' make list in parameters optional when there is only 1 item '''
+            ''' make list in parameters optional when there is only 1 item
+            also, to facilitate yaml input, "DSAC, DSCACC" is interpreter as list of str  '''
             return item if type(item)==list else item.replace(',',' ').split() if type(item)==str else [item]
         
         brokenSum = pd.DataFrame(columns=['CLASS','PROFILE','FIELD_NAME','EXPECT','VALUE'])
         for (tbNames,*tbCriteria) in rules:
             for tbName in listMe(tbNames):
-                if hasattr(self,RACF._recordname_df[tbName]):
-                    tbDF = getattr(self,RACF._recordname_df[tbName])
+                dfName = RACF._recordname_df[tbName]
+                if hasattr(self,dfName):
+                    tbDF = getattr(self,dfName)
                     if tbDF.empty:
                       continue
                 else:
                     continue
                 tbEntity = tbName[0:2]
                 tbClassName = {'DS':'dataset', 'GP':'group', 'GR':'general', 'US':'user'}[tbEntity]
+                ixLevel = 1 if tbEntity=='GR' else 0  # GR has CLASS before NAME in the index
+
                 for tbCrit in tbCriteria:
                     locs = True
                     matchPattern = None
@@ -915,10 +919,8 @@ class RACF:
                                 classPattern += RACF.generic2regex(cl) + "|"
                             locs &= ~ tbDF.index.get_level_values(0).str.match(classPattern[:-1])
                     if 'profile' in tbCrit:
-                        ixLevel = 1 if tbEntity=='GR' else 0
                         locs &= tbDF.index.get_level_values(ixLevel).str.match(RACF.generic2regex(tbCrit['profile']))
                     if '-profile' in tbCrit:
-                        ixLevel = 1 if tbEntity=='GR' else 0
                         locs &= ~ tbDF.index.get_level_values(ixLevel).str.match(RACF.generic2regex(tbCrit['-profile']))
                     if 'match' in tbCrit:
                         matchPattern = tbCrit['match'].replace('.','\.').replace('*','\*')\
