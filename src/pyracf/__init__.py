@@ -1,8 +1,8 @@
 import importlib.resources
 import json
-import pandas as pd 
-
+import yaml
 import math
+import pandas as pd 
 
 # No mess with my header lines
 import pandas.io.formats.excel
@@ -880,21 +880,25 @@ class RACF:
         if not domains:
             domains = _domains(self,pd)  # needs pandas
 
+        if type(rules)==str:
+            rules= yaml.safe_load(rules)
+
         def listMe(item):
             ''' make list in parameters optional when there is only 1 item '''
-            return item if type(item)==list else [item]
+            return item if type(item)==list else item.replace(',',' ').split() if type(item)==str else [item]
         
         brokenSum = pd.DataFrame(columns=['CLASS','PROFILE','FIELD_NAME','EXPECT','VALUE'])
-        for (tbNames,tbCriteria) in rules:
+        for (tbNames,*tbCriteria) in rules:
             for tbName in listMe(tbNames):
-                if self.parsed(tbName)==0:
-                    continue
-                tbDF = getattr(self,RACF._recordname_df[tbName])
-                if tbDF.empty:
+                if hasattr(self,RACF._recordname_df[tbName]):
+                    tbDF = getattr(self,RACF._recordname_df[tbName])
+                    if tbDF.empty:
+                      continue
+                else:
                     continue
                 tbEntity = tbName[0:2]
                 tbClassName = {'DS':'dataset', 'GP':'group', 'GR':'general', 'US':'user'}[tbEntity]
-                for tbCrit in listMe(tbCriteria):
+                for tbCrit in tbCriteria:
                     locs = True
                     matchPattern = None
                     if 'class' in tbCrit:
@@ -904,23 +908,23 @@ class RACF:
                         for cl in listMe(tbCrit['class']):
                             classPattern += RACF.generic2regex(cl) + "|"
                         locs &= tbDF.index.get_level_values(0).str.match(classPattern[:-1])
-                    if 'notclass' in tbCrit:
+                    if '-class' in tbCrit:
                         if tbEntity=='GR':
                             classPattern = ''
-                            for cl in listMe(tbCrit['notclass']):
+                            for cl in listMe(tbCrit['-class']):
                                 classPattern += RACF.generic2regex(cl) + "|"
                             locs &= ~ tbDF.index.get_level_values(0).str.match(classPattern[:-1])
                     if 'profile' in tbCrit:
                         ixLevel = 1 if tbEntity=='GR' else 0
                         locs &= tbDF.index.get_level_values(ixLevel).str.match(RACF.generic2regex(tbCrit['profile']))
-                    if 'notprofile' in tbCrit:
+                    if '-profile' in tbCrit:
                         ixLevel = 1 if tbEntity=='GR' else 0
-                        locs &= ~ tbDF.index.get_level_values(ixLevel).str.match(RACF.generic2regex(tbCrit['notprofile']))
+                        locs &= ~ tbDF.index.get_level_values(ixLevel).str.match(RACF.generic2regex(tbCrit['-profile']))
                     if 'match' in tbCrit:
                         matchPattern = tbCrit['match'].replace('.','\.').replace('*','\*')\
                                                       .replace('(','(?P<').replace(')','>[0-9A-Z@#$&]*)')
                         matched = tbDF[tbName+'_NAME'].str.extract(matchPattern)
-                    for fldCrit in listMe(tbCrit['fields']):
+                    for fldCrit in listMe(tbCrit['field']):
                         fldName = fldCrit['name'] if matchPattern else tbName+'_'+fldCrit['name']
                         fldExpect = fldCrit['expect'] if 'expect' in fldCrit else None
                         if matchPattern:
@@ -942,8 +946,7 @@ class RACF:
                             broken['FIELD_NAME'] = fldName
                             broken['EXPECT'] = fldExpect
                             broken['VALUE'] = matched[fldName] if matchPattern else broken[fldName]
-                            brokenSum = pd.concat([brokenSum,
-                                                    broken[['CLASS','PROFILE','FIELD_NAME','EXPECT','VALUE']]],
+                            brokenSum = pd.concat([brokenSum,broken[brokenSum.columns]],
                                                    sort=False, ignore_index=True)
         return brokenSum        
     
@@ -953,7 +956,7 @@ class RACF:
         return self.verify(
             rules = [
                 (['DSACC','DSCACC','GRACC','GRCACC'],
-                 {'fields': {'name':'AUTH_ID', 'expect':'ACLID'}})
+                 {'field': {'name':'AUTH_ID', 'expect':'ACLID'}})
             ]
         )
 
