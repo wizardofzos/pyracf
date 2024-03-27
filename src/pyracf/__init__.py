@@ -884,9 +884,8 @@ class RACF:
             rules= yaml.safe_load(rules)
 
         def listMe(item):
-            ''' make list in parameters optional when there is only 1 item
-            also, to facilitate yaml input, "DSAC, DSCACC" is interpreter as list of str  '''
-            return item if type(item)==list else item.replace(',',' ').split() if type(item)==str else [item]
+            ''' make list in parameters optional when there is only 1 item '''
+            return item if type(item)==list else [item]
         
         brokenSum = pd.DataFrame(columns=['CLASS','PROFILE','FIELD_NAME','EXPECT','VALUE'])
         for (tbNames,*tbCriteria) in rules:
