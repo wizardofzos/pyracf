@@ -1,8 +1,8 @@
 import importlib.resources
 import json
-import pandas as pd 
-
+import yaml
 import math
+import pandas as pd 
 
 # No mess with my header lines
 import pandas.io.formats.excel
@@ -161,9 +161,19 @@ class RACF:
         if rtype in _recordtype_info.keys():
           _recordtype_info[rtype].update({"offsets": _offsets[offset]["offsets"]})
 
-    _grouptree          = None
-    _ownertree          = None
-
+    _grouptree          = None  # dict with lists
+    _ownertree          = None  # dict with lists
+    _grouptreeLines     = None  # df with all supgroups up to SYS1
+    _ownertreeLines     = None  # df with owners up to SYS1 or user ID
+    
+    accessKeywords = ['NONE','EXECUTE','READ','UPDATE','CONTROL','ALTER','-owner-']
+    
+    def accessAllows(level=None):
+        ''' return list of access levels that allow the given access, e.g.
+        RACF.accessAllows('UPDATE') returns [,'UPDATE','CONTROL','ALTER','-owner-']
+        for use in pandas .query("ACCESS in @RACF.accessAllows('UPDATE')")
+        '''
+        return RACF.accessKeywords[RACF.accessKeywords.index(level):]
 
     def __init__(self, irrdbu00=None, pickles=None, prefix=''):
 
@@ -313,21 +323,31 @@ class RACF:
         
     def correlate(self, thingswewant=_recordtype_info.keys()):
         """ construct tables that combine the raw dataframes for improved processing """
-        self._ownertree = self.ownertree()
-        self._grouptree = self.grouptree()
+        
+        # activate acl() method on our dataframes, so it get called with our instance's variables, the frame, and all optional parms
+        # e.g. msys._datasetAccess.loc[['SYS1.**']].acl(permits=True, explode=False, resolve=False, admin=False, sort="user")
+        pd.core.base.PandasObject.acl = lambda *x,**y: RACF.acl(self,*x,**y)
+        pd.core.base.PandasObject.ACL = lambda *x,**y: RACF.acl(self,*x,**y)
+
+        # generic and regex filter on the index levels of a frame
+        pd.core.base.PandasObject.FILTER = RACF.gfilter
+        pd.core.base.PandasObject.MATCH = RACF.rfilter
+        pd.core.base.PandasObject.gfilter = RACF.gfilter
+        pd.core.base.PandasObject.rfilter = RACF.rfilter
+
 
         # set consistent index columns for existing dfs: profile key, connect group+user, of profile class+key (for G.R.)
         for (rtype,rinfo) in RACF._recordtype_info.items():
             if rtype in thingswewant and rtype in self._records and self._records[rtype]['parsed']>0:
                 if "index" in rinfo:
                     keys = rinfo["index"]
-                    names = [keys[i].replace(rinfo["name"]+"_","") for i in range(len(keys))]
+                    names = [keys[i].replace(rinfo["name"]+"_","_") for i in range(len(keys))]
                 elif rtype[1]=="5":  # general resources
                     keys = [rinfo["name"]+"_CLASS_NAME",rinfo["name"]+"_NAME"]
-                    names = ["CLASS_NAME","NAME"]
+                    names = ["_CLASS_NAME","_NAME"]
                 else:
                     keys = rinfo["name"]+"_NAME"
-                    names = "NAME"
+                    names = "_NAME"
                 getattr(self,rinfo['df']).set_index(keys,drop=False,inplace=True)
                 getattr(self,rinfo['df']).rename_axis(names,inplace=True)  # prevent ambiguous index / column names 
         
@@ -337,6 +357,42 @@ class RACF:
         else: 
             self.connectData["GPMEM_AUTH"]=self.connects["GPMEM_AUTH"]
         
+        self._connectByUser = self._connectData.set_index("USCON_NAME",drop=False).rename_axis('NAME')
+        self._connectByGroup = self._connectData.set_index("USCON_GRP_ID",drop=False).rename_axis('GRP_ID')
+            
+        # dicts containing lists of groups for printing group structure
+        self._ownertree = self.ownertree()
+        self._grouptree = self.grouptree()
+
+        # self._grouptreeLines: frame of group + name of all superior groups until SYS1
+        gtl = self._groups[['GPBD_NAME','GPBD_SUPGRP_ID']]
+        gtlLen = 0
+        while len(gtl)>gtlLen:
+            nextup = gtl[gtlLen:]\
+                     .query("GPBD_NAME!='SYS1' & GPBD_SUPGRP_ID!='SYS1'")\
+                     .join(self._groups[['GPBD_SUPGRP_ID']],on='GPBD_SUPGRP_ID',lsuffix='_ME')\
+                     .drop(['GPBD_SUPGRP_ID_ME'],axis=1,inplace=True)
+            gtlLen = len(gtl)
+            gtl=pd.concat([gtl,nextup],ignore_index=True,sort=False)
+        self._grouptreeLines = gtl.rename(columns={'GPBD_NAME':'GROUP','GPBD_SUPGRP_ID':'PARENTS'})\
+                                  .set_index("GROUP",drop=False)\
+                                  .rename_axis('GROUP_NAME')
+        
+        # self._ownertreeLines: frame of group + name of all owners (group or user) until SYS1 or user ID found
+        otl=self._groups[['GPBD_NAME','GPBD_SUPGRP_ID','GPBD_OWNER_ID']]
+        otlLen = 0
+        while len(otl)>otlLen:
+            nextup = otl[otlLen:]\
+                     .query("GPBD_SUPGRP_ID==GPBD_OWNER_ID & GPBD_SUPGRP_ID!='SYS1'")\
+                     .join(self._groups[['GPBD_SUPGRP_ID','GPBD_OWNER_ID']],on='GPBD_SUPGRP_ID',lsuffix='_ME')\
+                     .drop(['GPBD_SUPGRP_ID_ME','GPBD_OWNER_ID_ME'],axis=1)
+            otlLen = len(otl)
+            otl=pd.concat([otl,nextup],ignore_index=True,sort=False)
+        self._ownertreeLines = otl.drop('GPBD_SUPGRP_ID',axis=1)\
+                                  .rename(columns={'GPBD_NAME':'GROUP','GPBD_OWNER_ID':'OWNER_IDS'})\
+                                  .set_index("GROUP",drop=False)\
+                                  .rename_axis('GROUP_NAME')
+
         
     def save_pickle(self, df='', dfname='', path='', prefix=''):
         # Sanity check
@@ -364,7 +420,7 @@ class RACF:
                 pass
 
 
-    def generic2regex(self, selection, lenient='%&*'):
+    def generic2regex(selection, lenient='%&*'):
         ''' Change a RACF generic pattern into regex to match with text strings in pandas cells.  use lenient="" to match with dsnames/resources '''
         if selection in ('**',''):
             return '.*$'
@@ -427,17 +483,35 @@ class RACF:
                     return []
         elif option in ('REGEX','R','GENERIC','GEN','G'):
             if type(selection)==str:
-                return df.loc[df.index.get_level_values(0).str.match(selection if option in ('REGEX','R') else self.generic2regex(selection))]
+                return df.loc[df.index.get_level_values(0).str.match(selection if option in ('REGEX','R') else RACF.generic2regex(selection))]
             elif type(selection)==tuple:
                 locs = True
                 for s in range(len(selection)):
                     if selection[s] not in (None,'**'):
-                        locs &= (df.index.get_level_values(s).str.match(selection[s] if option in ('REGEX','R') else self.generic2regex(selection[s])))
+                        locs &= (df.index.get_level_values(s).str.match(selection[s] if option in ('REGEX','R') else RACF.generic2regex(selection[s])))
                 return df.loc[locs]
             else:
                 raise StoopidException(f'specify patterns for profile, (group,userid) or (class,profile), not {selection}')
         else:
             raise StoopidException(f'unexpected last parameter {option}')
+
+    def gfilter(df, *selection):
+        ''' Search profiles using GENERIC pattern on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
+        locs = True
+        for s in range(len(selection)):
+            if selection[s] not in (None,'**'):
+                locs &= (df.index.get_level_values(s).str.match(RACF.generic2regex(selection[s])))
+        return df.loc[locs]
+
+    def rfilter(df, *selection):
+        ''' Search profiles using refex on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
+        locs = True
+        for s in range(len(selection)):
+            if selection[s] not in (None,'**','.*'):
+                locs &= (df.index.get_level_values(s).str.match(selection[s]))
+        return df.loc[locs]
+
+
 
 
     @property
@@ -633,7 +707,262 @@ class RACF:
     
     def generalConditionalPermit(self, resclass=None, profile=None, id=None, access=None, pattern=None):
         return self.giveMeProfiles(self._generalConditionalAccess, (resclass,profile,id,access), pattern)
+
+    def rankedAccess(args):
+        ''' translate access levels into integers, add 10 if permit is for the user ID. 
+        could be used in .apply() but would be called for each row, so very very slow '''
+        (userid,authid,access) = args
+        accessNum = RACF.accessKeywords.index(access)
+        return accessNum+10 if userid==authid else accessNum
+
+    def acl(self, df, permits=True, explode=False, resolve=False, admin=False, access=None, allows=None, sort="profile"):
+        ''' transform {dataset,general}[Conditional]Access table:
+        permits=True: show normal ACL (with the groups identified in field USER_ID)
+        explode=True: replace all groups with the users connected to the groups (in field USER_ID)
+        resolve=True: show user specific permit, or the highest group permit for each user
+        admin=True: add the users that have ability to change the groups on the ACL (in field ADMIN_ID)
+            VIA identifies the group name, AUTHORITY the RACF privilege involved
+        access=access level: show entries that are equal to the level specified, access='CONTROL'
+        allows=access level: show entries that are higher or equal to the level specified, allows='UPDATE'
+        sort=["user","access","id","admin","profile"] sort the resulting output
+        '''
+        tbName = df.columns[0].split('_')[0]
+        tbEntity = tbName[0:2]
+        if tbName in ["DSBD","DSACC","DSCACC"]:
+            tbProfileKeys = ["NAME","VOL"]
+        elif tbName in ["GRBD","GRACC","GRCACC"]:
+            tbProfileKeys = ["CLASS_NAME","NAME"]
+        else:
+            raise StoopidException(f'Table {tbName} not supported for acl( ), except DSBD, DSACC, DSCACC, GRBD, GRACC or GRCACC.')
+
+        if tbName in ["DSBD","GRBD"]:
+            # profiles selected, add corresp. access + cond.access frames
+            tbProfiles = df[[tbName+"_"+k for k in tbProfileKeys+["OWNER_ID","UACC"]]].copy()
+            tbProfiles.columns = [tbProfiles.columns[i].replace(tbName+"_","") for i in range(len(tbProfiles.columns))]
+            tbPermits = []
+            for tb in [tbEntity+"ACC",tbEntity+"CACC"]:
+                if self.parsed(tb)>0:
+                    tbPermits.append(getattr(self,self._recordname_df[tb])\
+                                     .merge(tbProfiles["UACC"], left_index=True, right_index=True))
+                    tbPermits[-1].columns = [tbPermits[-1].columns[i].replace(tb+"_","") for i in range(len(tbPermits[-1].columns))]
+            tbPermits = pd.concat(tbPermits,sort=False)\
+                          .drop(["RECORD_TYPE","ACCESS_CNT","UACC"],axis=1)\
+                          .fillna(' ') 
+        elif tbName in ["DSACC","DSCACC","GRACC","GRCACC"]:
+            # access frame selected, add profiles from frame tbEntity+BD
+            tbPermits = df.copy()
+            tbPermits.columns = [tbPermits.columns[i].replace(tbName+"_","") for i in range(len(tbPermits.columns))]
+            tbPermits.drop(["RECORD_TYPE","ACCESS_CNT"],axis=1,inplace=True)
+            tbProfiles = getattr(self,self._recordname_df[tbEntity+"BD"])\
+                         .loc[tbPermits.droplevel([-2,-1]).index.drop_duplicates()].copy()
+            tbProfiles.columns = [tbProfiles.columns[i].replace(tbEntity+"BD_","") for i in range(len(tbProfiles.columns))]
+            tbProfiles = tbProfiles[tbProfileKeys+["OWNER_ID","UACC"]]
+        else:
+            raise StoopidException(f'Table {tbName} not supported for acl( ), except DSBD, DSACC, DSCACC, GRBD, GRACC or GRCACC.')
+          
+        # tbProfiles and tbPermits have column names without the tbName prefix
+        
+        returnFields = ["USER_ID","AUTH_ID","ACCESS"]
+        if tbName in ["DSCACC","GRCACC"]:
+            returnFields = returnFields+["CATYPE","CANAME","NET_ID","CACRITERIA"]
+
+        sortBy = {"user":["USER_ID"]+tbProfileKeys, 
+                  "access":["RANKED_ACCESS","USER_ID"],
+                  "id":["AUTH_ID"]+tbProfileKeys, 
+                  "admin":"ADMIN_ID", 
+                  "profile":tbProfileKeys+["USER_ID"]}
+        if sort not in sortBy:
+            raise StoopidException(f'Sort value {sort} not supported for acl( ), use one of {",".join(sortBy.keys())}.')
+        
+        if explode or resolve:  # get user IDs connected to groups into field USER_ID
+            acl = pd.merge(tbPermits, self._connectByGroup[["USCON_NAME"]], how="left", left_on="AUTH_ID", right_index=True)
+            acl.insert(3,"USER_ID",acl["USCON_NAME"].where(acl["USCON_NAME"].notna(),acl["AUTH_ID"]))
+        elif permits:  # just the userid+access from RACF, add USER_ID column for consistency
+            acl = tbPermits
+            acl.insert(3,"USER_ID",acl["AUTH_ID"].where(~ acl["AUTH_ID"].isin(self._groups.index.values),"-group-"))
+        else:
+            acl = pd.DataFrame(columns=tbProfileKeys+returnFields)
+        if permits or explode or resolve:  # add -uacc- pseudo access
+            uacc = tbProfiles.query("UACC!='NONE'").copy()
+            if not uacc.empty:
+                uacc["OWNER_ID"] = "-uacc-" # is renamed to AUTH_ID
+                uacc["USER_ID"] = "-uacc-"
+                uacc = uacc.rename({"OWNER_ID":"AUTH_ID","UACC":"ACCESS"},axis=1)
+                acl = pd.concat([acl,uacc], ignore_index=True, sort=False).fillna(' ') # lose index b/c concat doesn't support us
+            
+        if resolve or sort=="access":
+            # map access level to number, add 10 for user permits so they override group permits in sort_values( )
+            acl["RANKED_ACCESS"] = acl["ACCESS"].map(RACF.accessKeywords.index)
+            acl["RANKED_ACCESS"] = acl["RANKED_ACCESS"].where(acl["USER_ID"]!=acl["AUTH_ID"], acl["RANKED_ACCESS"]+10)
+        if resolve:
+            # keep highest value of RANKED_ACCESS, this is at least twice as fast as using .iloc[].idxmax() 
+            condAcc = ["CATYPE","CANAME"] if "CATYPE" in acl.columns else []
+            acl = acl.sort_values(tbProfileKeys+["USER_ID"]+condAcc+["RANKED_ACCESS"])\
+                     .drop_duplicates(tbProfileKeys+["USER_ID"]+condAcc, keep='last')
+        if sort=="access":
+            acl.RANKED_ACCESS = 10 - (acl.RANKED_ACCESS % 10)  # highest access first
+        
+        if admin:
+            # owner of the profile, or group special, or group authority
+            # users who own the profiles
+            profile_userowners = pd.merge(tbProfiles, self._users["USBD_NAME"],
+                                          how="inner", left_on="OWNER_ID", right_index=True)\
+                                   .rename({"OWNER_ID":"ADMIN_ID"},axis=1)\
+                                   .drop(["USBD_NAME","UACC"],axis=1)
+            profile_userowners["AUTHORITY"] = "OWNER"
+            profile_userowners["VIA"] = "-profile-"
+            profile_userowners["ACCESS"] = "-owner-"
+
+            # groups that own the profiles
+            profile_groupowner1 = pd.merge(tbProfiles, self._groups[["GPBD_NAME"]],
+                                           how="inner", left_on="OWNER_ID", right_index=True)\
+                                    .drop(["GPBD_NAME","UACC"],axis=1)
+            profile_groupowner1["ACCESS"] = "-owner-"
+            profile_groupowner2 = pd.merge(profile_groupowner1, self._ownertreeLines, how="inner", left_on="OWNER_ID", right_index=True)\
+                                    .drop(["GROUP","OWNER_ID"],axis=1)
+            # identify group special on owner group and on any owning group
+            profile_groupowner1.rename({"OWNER_ID":"OWNER_IDS"},axis=1,inplace=True)
+            # continue with group special processing to find admin users
+
+            # who has administrative authority to modify groups from the ACL?
+            admin_owners = pd.merge(tbPermits, self._groups[["GPBD_NAME","GPBD_OWNER_ID","GPBD_SUPGRP_ID"]],
+                                    how="inner", left_on="AUTH_ID", right_index=True)
+            admin_owners["USER_ID"] = "-group-"
+
+            # users who own those groups
+            admin_gowners = admin_owners.query("GPBD_OWNER_ID != GPBD_SUPGRP_ID")\
+                                        .rename({"GPBD_NAME":"VIA","GPBD_OWNER_ID":"ADMIN_ID"},axis=1)\
+                                        .drop(["GPBD_SUPGRP_ID"],axis=1)
+            admin_gowners["AUTHORITY"] = "OWNER"
+            
+            # find all owner groups + groups up to SYS1 or user ID that breaks ownership
+            admin_grpspec1 = admin_owners.query("GPBD_OWNER_ID == GPBD_SUPGRP_ID")\
+                                         .drop(["GPBD_OWNER_ID","GPBD_SUPGRP_ID"],axis=1)
+            admin_grpspec2 = pd.merge(admin_grpspec1, self._ownertreeLines, how="inner", left_on="AUTH_ID", right_index=True)\
+                               .drop(["GPBD_NAME","GROUP"],axis=1)
+            admin_grpspec1.rename({"GPBD_NAME":"OWNER_IDS"},axis=1,inplace=True)
+            
+            # identify group special on ACL group and on any owning group
+            admin_grpspec = pd.merge(pd.concat([admin_grpspec1,admin_grpspec2,profile_groupowner1,profile_groupowner2], sort=False),\
+                                     self._connectByGroup[["USCON_NAME","USCON_GRP_ID","USCON_GRP_SPECIAL"]]\
+                                             .query('USCON_GRP_SPECIAL == "YES"'),
+                                     how="inner", left_on="OWNER_IDS", right_index=True)\
+                               .rename({"USCON_NAME":"ADMIN_ID","OWNER_IDS":"VIA"},axis=1)\
+                               .drop(["USCON_GRP_ID","USCON_GRP_SPECIAL"],axis=1)
+            admin_grpspec["AUTHORITY"] = "GRPSPECIAL"
+
+            # CONNECT or JOIN authority on an ACL group
+            admin_grpauth = pd.merge(tbPermits, self._connectByGroup[["USCON_NAME","USCON_GRP_ID","GPMEM_AUTH"]]
+                                                 .query('GPMEM_AUTH==["CONNECT","JOIN"]'),
+                                     how="inner", left_on="AUTH_ID", right_index=True)\
+                              .rename({"USCON_NAME":"ADMIN_ID","USCON_GRP_ID":"VIA","GPMEM_AUTH":"AUTHORITY"},axis=1)
+            admin_grpauth["USER_ID"] = "-group-"
+            
+            acl = pd.concat([acl,profile_userowners,admin_gowners,admin_grpspec,admin_grpauth],
+                            ignore_index=True, sort=False).fillna(' ')
+            returnFields += ["ADMIN_ID","AUTHORITY","VIA"]
+            
+        if access:
+            acl = acl.loc[acl["ACCESS"].map(RACF.accessKeywords.index)==RACF.accessKeywords.index(access.upper())]
+        if allows:
+            acl = acl.loc[acl["ACCESS"].map(RACF.accessKeywords.index)>=RACF.accessKeywords.index(allows.upper())]
+        return acl.sort_values(by=sortBy[sort])[tbProfileKeys+returnFields].reset_index(drop=True)
+
     
+    def verify(self, rules=None, domains=None):
+        ''' verify fields in profiles against the expected value, issues are returned in a df
+        rules can be passed as a list of tuples, or dict via parameter, or as function result from external module.
+        '''
+        
+        from .profileFieldRules import _domains, _rules
+        if not rules:
+            rules = _rules(self)
+        if not domains:
+            domains = _domains(self,pd)  # needs pandas
+
+        if type(rules)==str:
+            rules= yaml.safe_load(rules)
+
+        def listMe(item):
+            ''' make list in parameters optional when there is only 1 item
+            also, to facilitate yaml input, "DSAC, DSCACC" is interpreter as list of str  '''
+            return item if type(item)==list else item.replace(',',' ').split() if type(item)==str else [item]
+        
+        brokenSum = pd.DataFrame(columns=['CLASS','PROFILE','FIELD_NAME','EXPECT','VALUE'])
+        for (tbNames,*tbCriteria) in rules:
+            for tbName in listMe(tbNames):
+                dfName = RACF._recordname_df[tbName]
+                if hasattr(self,dfName):
+                    tbDF = getattr(self,dfName)
+                    if tbDF.empty:
+                      continue
+                else:
+                    continue
+                tbEntity = tbName[0:2]
+                tbClassName = {'DS':'dataset', 'GP':'group', 'GR':'general', 'US':'user'}[tbEntity]
+                ixLevel = 1 if tbEntity=='GR' else 0  # GR has CLASS before NAME in the index
+
+                for tbCrit in tbCriteria:
+                    locs = True
+                    matchPattern = None
+                    if 'class' in tbCrit:
+                        if tbEntity!='GR':
+                            print('only for GR')
+                        classPattern = ''
+                        for cl in listMe(tbCrit['class']):
+                            classPattern += RACF.generic2regex(cl) + "|"
+                        locs &= tbDF.index.get_level_values(0).str.match(classPattern[:-1])
+                    if '-class' in tbCrit:
+                        if tbEntity=='GR':
+                            classPattern = ''
+                            for cl in listMe(tbCrit['-class']):
+                                classPattern += RACF.generic2regex(cl) + "|"
+                            locs &= ~ tbDF.index.get_level_values(0).str.match(classPattern[:-1])
+                    if 'profile' in tbCrit:
+                        locs &= tbDF.index.get_level_values(ixLevel).str.match(RACF.generic2regex(tbCrit['profile']))
+                    if '-profile' in tbCrit:
+                        locs &= ~ tbDF.index.get_level_values(ixLevel).str.match(RACF.generic2regex(tbCrit['-profile']))
+                    if 'match' in tbCrit:
+                        matchPattern = tbCrit['match'].replace('.','\.').replace('*','\*')\
+                                                      .replace('(','(?P<').replace(')','>[0-9A-Z@#$&]*)')
+                        matched = tbDF[tbName+'_NAME'].str.extract(matchPattern)
+                    for fldCrit in listMe(tbCrit['field']):
+                        fldName = fldCrit['name'] if matchPattern else tbName+'_'+fldCrit['name']
+                        fldExpect = fldCrit['expect'] if 'expect' in fldCrit else None
+                        if matchPattern:
+                            for fn in matched.columns:
+                                if fn==fldName:
+                                    if fldExpect:
+                                        locs &= matched[fn].gt('') & - matched[fn].isin(domains[fldExpect])
+                                    if 'or' in fldCrit:
+                                        locs &= ~ matched[fn].isin(listMe(fldCrit['or']))
+                        else:
+                            if fldExpect:
+                                locs &= tbDF[fldName].gt('') & - tbDF[fldName].isin(domains[fldExpect])
+                            if 'or' in fldCrit:
+                                locs &= ~ tbDF[fldName].isin(listMe(fldCrit['or']))
+                        if any(locs):
+                            broken = tbDF.loc[locs].copy()
+                            broken['CLASS'] = broken[tbName+'_CLASS_NAME'] if tbEntity=='GR' else tbClassName
+                            broken['PROFILE'] = broken[tbName+'_NAME']
+                            broken['FIELD_NAME'] = fldName
+                            broken['EXPECT'] = fldExpect
+                            broken['VALUE'] = matched[fldName] if matchPattern else broken[fldName]
+                            brokenSum = pd.concat([brokenSum,broken[brokenSum.columns]],
+                                                   sort=False, ignore_index=True)
+        return brokenSum        
+    
+
+    @property
+    def neworphans(self):
+        return self.verify(
+            rules = [
+                (['DSACC','DSCACC','GRACC','GRCACC'],
+                 {'field': {'name':'AUTH_ID', 'expect':'ACLID'}})
+            ]
+        )
+
+
     @property
     def orphans(self):
         
