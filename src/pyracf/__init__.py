@@ -926,9 +926,9 @@ class RACF:
                     if 'match' in tbCrit:
                         matchPattern = tbCrit['match'].replace('.','\.').replace('*','\*')\
                                                       .replace('(','(?P<').replace(')','>[^.]*)')
-                        matched = tbDF[tbName+'_NAME'].str.extract(matchPattern)
-                    for fldCrit in listMe(tbCrit['field']):
-                        fldName = fldCrit['name'] if matchPattern else tbName+'_'+fldCrit['name']
+                        matched = tbDF[tbName+'_NAME'].str.extract(matchPattern)  # extract 1 qualifier
+                    for fldCrit in listMe(tbCrit['test']):
+                        fldName = fldCrit['field'] if matchPattern else tbName+'_'+fldCrit['field']
                         fldExpect = fldCrit['expect'] if 'expect' in fldCrit else None
                         if matchPattern:
                             for fn in matched.columns:
@@ -959,7 +959,7 @@ class RACF:
         return self.verify(
             rules = [
                 (['DSACC','DSCACC','GRACC','GRCACC'],
-                 {'field': {'name':'AUTH_ID', 'expect':'ACLID'}})
+                 {'test': {'field':'AUTH_ID', 'expect':'ACLID'}})
             ]
         )
 
