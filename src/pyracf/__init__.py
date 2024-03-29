@@ -869,16 +869,18 @@ class RACF:
         return acl.sort_values(by=sortBy[sort])[tbProfileKeys+returnFields].reset_index(drop=True)
 
     
-    def verify(self, rules=None, domains=None):
+    def verify(self, rules=None, domains=None, module=".profileFieldRules"):
         ''' verify fields in profiles against the expected value, issues are returned in a df
         rules can be passed as a list of tuples, or dict via parameter, or as function result from external module.
         '''
         
-        from .profileFieldRules import _domains, _rules
-        if not rules:
-            rules = _rules(self)
-        if not domains:
-            domains = _domains(self,pd)  # needs pandas
+        if not(rules and domains):
+            ruleset = importlib.import_module(module, package="pyracf")
+            ruleset = importlib.reload(ruleset)
+            if not rules:
+                rules = ruleset.rules(self)
+            if not domains:
+                domains = ruleset.domains(self,pd)  # needs pandas
 
         if type(rules)==str:
             rules= yaml.safe_load(rules)
@@ -923,7 +925,7 @@ class RACF:
                         locs &= ~ tbDF.index.get_level_values(ixLevel).str.match(RACF.generic2regex(tbCrit['-profile']))
                     if 'match' in tbCrit:
                         matchPattern = tbCrit['match'].replace('.','\.').replace('*','\*')\
-                                                      .replace('(','(?P<').replace(')','>[0-9A-Z@#$&]*)')
+                                                      .replace('(','(?P<').replace(')','>[^.]*)')
                         matched = tbDF[tbName+'_NAME'].str.extract(matchPattern)
                     for fldCrit in listMe(tbCrit['field']):
                         fldName = fldCrit['name'] if matchPattern else tbName+'_'+fldCrit['name']

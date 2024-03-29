@@ -5,36 +5,37 @@ domains provides the sets of values that can be expected in profile fields and q
 rules specifies where these domain values should be expected.
 '''
 
-# dict returns a list, array or Series that will be used in .loc[field.isin( )] to verify valid values in profile fields.
-# keys of the dict are only those referenced in the corresp. rules.
+def domains(self,pd):
+    ''' dict returns a list, array or Series that will be used in .loc[field.isin( )] to verify valid values in profile fields.
+        keys of the dict are only referenced in the correspondig rules, feel free to change /extend.
+        self and pd are passed down to access data frames from caller. '''
 
-def _domains(self,pd):
-    domains = {
+    _domains = {
         'SPECIAL':pd.Index(['*','&RACUID','&RACGRP'],name='_NAME'),
         'USER':self.users.index,
         'GROUP':self.groups.index,
         'DELETE':['']
     }
-    domains.update({'ID':self.users.index.union(self.groups.index)})
-    domains.update({'ACLID':domains['SPECIAL'].union(domains['ID'])})
-    domains.update({'RACFVARS':self.generals.gfilter('RACFVARS').index.get_level_values(1)})
-    domains.update({'CATEGORY':self.generalMembers['GRMEM_MEMBER'].gfilter('SECDATA','CATEGORY').values})
-    domains.update({'SECLEVEL':self.generalMembers['GRMEM_MEMBER'].gfilter('SECDATA','SECLEVEL').values})
-    domains.update({'SECLABEL':self.generals.gfilter('SECLABEL').index.get_level_values(1)})
-    domains.update({'USERQUAL':self.users.index.union(domains['RACFVARS'])})
-    return domains
+    _domains.update({'ID':self.users.index.union(self.groups.index)})
+    _domains.update({'ACLID':_domains['SPECIAL'].union(_domains['ID'])})
+    _domains.update({'RACFVARS':self.generals.gfilter('RACFVARS').index.get_level_values(1)})
+    _domains.update({'CATEGORY':self.generalMembers['GRMEM_MEMBER'].gfilter('SECDATA','CATEGORY').values})
+    _domains.update({'SECLEVEL':self.generalMembers['GRMEM_MEMBER'].gfilter('SECDATA','SECLEVEL').values})
+    _domains.update({'SECLABEL':self.generals.gfilter('SECLABEL').index.get_level_values(1)})
+    _domains.update({'USERQUAL':self.users.index.union(_domains['RACFVARS'])})
+    return _domains
 
 
-def _rules(self, format='yaml'):
+def rules(self, format='yaml'):
+    ''' return list of lists/tuples, each with (list of) table ids, and one or more conditions.
+        each condition allows class, -class, profile, -profile, match and field.
+        class, -class, profile and -profile are (currently) generic patterns, and select or skip profile/segment/entries.
+        match extracts fields from the profile key, the capture name should be used in subsequent fields rules.
+           match changes . to \. and * to \*, so for regex patterns you should use \S and +? instead.
+        field tests if the value occurs in one of the domains, or a (list of) literal(s). '''
 
     if format=='yaml':
-
-        # YAML definition, should generate a list of lists, each table section is identified by - -
-        # list of lists, each with (list of) table ids, and one or more conditions.
-        # each condition allows class, -class, profile, -profile, match and field.
-        # class, -class, profile and -profile are (currently) generic patterns, and select or skip profile/segment/entries.
-        # match extracts fields from the profile key, the name should be used in subsequent fields rules.
-        # field tests if the value occurs in one of the domains, or a (list of) literal(s).
+        ''' YAML definition, should generate a list of lists, each table section starts with - - '''
 
         return '''
 
@@ -68,11 +69,12 @@ def _rules(self, format='yaml'):
       expect: USER
     comment: DIGTRING should be associated with a user ID
   - class: JESSPOOL
-    match: '&RACLNDE.(id).'
+    match: '\S+?.(id).\S+'
     field:
       name: id
       expect: USERQUAL
-    comment: JESSPOOL should be associated with a user ID
+      or: ['*','+MASTER+']
+    comment: 2nd qualifier in JESSPOOL should be a user ID
   - class: SURROGAT
     match: (id).SUBMIT
     field:
@@ -140,11 +142,7 @@ def _rules(self, format='yaml'):
 '''
 
     else:
-        # list of tuples, each with (list of) table ids, and one or more conditions.
-        # each condition allows class, -class, profile, -profile, match and field.
-        # class, -class, profile and -profile are (currently) generic patterns, and select or skip profile/segment/entries.
-        # match extracts fields from the profile key, the name should be used in subsequent fields rules.
-        # field test if the value occurs in one of the domains, or a (list of) literal(s).
+        ''' list of tuples/lists, native format. tuples used to help identify the table sections '''
 
         return [
             # orphan permits
@@ -176,11 +174,11 @@ def _rules(self, format='yaml'):
               'field':
                   {'name':'id', 'expect':'USER'}
              },
-             # JESSPOOL is associated with a user ID
+             # 2nd qualifier in JESSPOOL should be a user ID
              {'class':'JESSPOOL',
-              'match':'&RACLNDE.(id).',
+              'match':'\S+?.(id).\S+',
               'field':
-                  {'name':'id', 'expect':'USERQUAL'}
+                  {'name':'id', 'expect':'USERQUAL', 'or': ['*','+MASTER+']}
              },
              # surrogate profiles must refer to user ID or RACFVARS
              {'class':'SURROGAT',
