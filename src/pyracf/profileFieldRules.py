@@ -104,10 +104,10 @@ def rules(self, format='yaml'):
   - test:
     - field: USER_ID
       expect: USER
-      or: =NODATA
+      or: =MEMBER
     - field: GROUP_ID
       expect: GROUP
-      or: =NODATA
+      or: =MEMBER
     comment: orphans in STARTED profiles
 
 - - USBD
@@ -209,8 +209,8 @@ def rules(self, format='yaml'):
             # orphans in STARTED profiles
             ('GRST',
              {'test':[
-                {'field':'USER_ID', 'expect':'USER', 'or':'=NODATA'},
-                {'field':'GROUP_ID', 'expect':'GROUP', 'or':'=NODATA'}
+                {'field':'USER_ID', 'expect':'USER', 'or':'=MEMBER'},
+                {'field':'GROUP_ID', 'expect':'GROUP', 'or':'=MEMBER'}
                 ]
              }
             ),

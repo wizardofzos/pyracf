@@ -928,22 +928,24 @@ class RACF:
                                                       .replace('(','(?P<').replace(')','>[^.]*)')
                         matched = tbDF[tbName+'_NAME'].str.extract(matchPattern)  # extract 1 qualifier
                     for fldCrit in listMe(tbCrit['test']):
-                        fldName = fldCrit['field'] if matchPattern else tbName+'_'+fldCrit['field']
+                        fldLocs = locs
                         fldExpect = fldCrit['expect'] if 'expect' in fldCrit else None
+                        fldName = None                        
                         if matchPattern:
-                            for fn in matched.columns:
-                                if fn==fldName:
-                                    if fldExpect:
-                                        locs &= matched[fn].gt('') & - matched[fn].isin(domains[fldExpect])
-                                    if 'or' in fldCrit:
-                                        locs &= ~ matched[fn].isin(listMe(fldCrit['or']))
-                        else:
+                            if fldCrit['field'] in matched.columns:
+                                fldName = fldCrit['field']
+                                if fldExpect:
+                                    fldLocs &= matched[fldName].gt('') & - matched[fldName].isin(domains[fldExpect])
+                                if 'or' in fldCrit:
+                                    fldLocs &= ~ matched[fldName].isin(listMe(fldCrit['or']))
+                        if not fldName: 
+                            fldName = tbName+'_'+fldCrit['field']
                             if fldExpect:
-                                locs &= tbDF[fldName].gt('') & - tbDF[fldName].isin(domains[fldExpect])
+                                fldLocs &= tbDF[fldName].gt('') & - tbDF[fldName].isin(domains[fldExpect])
                             if 'or' in fldCrit:
-                                locs &= ~ tbDF[fldName].isin(listMe(fldCrit['or']))
-                        if any(locs):
-                            broken = tbDF.loc[locs].copy()
+                                fldLocs &= ~ tbDF[fldName].isin(listMe(fldCrit['or']))
+                        if any(fldLocs):
+                            broken = tbDF.loc[fldLocs].copy()
                             broken['CLASS'] = broken[tbName+'_CLASS_NAME'] if tbEntity=='GR' else tbClassName
                             broken['PROFILE'] = broken[tbName+'_NAME']
                             broken['FIELD_NAME'] = fldName
