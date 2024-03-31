@@ -40,10 +40,11 @@ def deprecated(func,oldname):
 class RACF:
     
     # Our states
-    STATE_BAD     = -1
-    STATE_INIT    =  0
-    STATE_PARSING =  1
-    STATE_READY   =  2
+    STATE_BAD         = -1
+    STATE_INIT        =  0
+    STATE_PARSING     =  1
+    STATE_READY       =  2
+    STATE_CORRELATING =  3
 
     # keep track of names used for a record type, "index" must be a list of field names
     _recordtype_info = {
@@ -243,6 +244,10 @@ class RACF:
             status = "Still parsing your unload"
             start  = self._starttime
             speed  = math.floor(seen/((datetime.now() -self._starttime).total_seconds()))
+        elif self._state == self.STATE_CORRELATING:
+            status = "Optimizing tables"
+            start = self._starttime
+            speed = math.floor(seen/((datetime.now() -self._starttime).total_seconds()))
         elif self._state == self.STATE_READY:
             status = "Ready"
             speed  = math.floor(seen/((self._stoptime - self._starttime).total_seconds()))
@@ -255,13 +260,17 @@ class RACF:
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - parsing {self._irrdbu00}')
         self.parse(recordtypes=recordtypes)
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - selected recordtypes: {",".join(recordtypes)}')
-        while self._state != self.STATE_READY:
+        while self._state != self.STATE_CORRELATING:
             progress =  math.floor(((sum(r['seen'] for r in self._records.values() if r)) / self._unloadlines) * 63)
             pct = (progress/63) * 100 # not as strange as it seems:)
             done = progress * '▉'
             todo = (63-progress) * ' '
             print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - progress: {done}{todo} ({pct:.2f}%)'.center(80), end="\r")
             time.sleep(0.5)
+        print('')
+        while self._state != self.STATE_READY:
+             print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - correlating data {40*" "}', end="\r")
+             time.sleep(0.5)
         # make completed line always show 100% :)
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - progress: {63*"▉"} ({100:.2f}%)'.center(80))
         for r in recordtypes:
@@ -310,8 +319,11 @@ class RACF:
 
         # TODO: Reduce memory use, delete self._parsed after dataframes are made
 
+        # We need the correlate anyways all the times so let's run it
         self.THREAD_COUNT -= 1
         if self.THREAD_COUNT == 0:
+            self._state = self.STATE_CORRELATING
+            self._correlate()
             self._state = self.STATE_READY         
             self._stoptime = datetime.now()
         return True
@@ -321,7 +333,7 @@ class RACF:
         rtype = RACF._recordname_type[rname]
         return self._records[rtype]['parsed'] if rtype in self._records else 0
         
-    def correlate(self, thingswewant=_recordtype_info.keys()):
+    def _correlate(self, thingswewant=_recordtype_info.keys()):
         """ construct tables that combine the raw dataframes for improved processing """
         
         # activate acl() method on our dataframes, so it get called with our instance's variables, the frame, and all optional parms
@@ -355,7 +367,7 @@ class RACF:
         if self.parsed("GPMEM") == 0 or self.parsed("USCON") == 0:
             raise StoopidException("Need to parse GPMEM and USCON first...")
         else: 
-            self.connectData["GPMEM_AUTH"]=self.connects["GPMEM_AUTH"]
+            self._connectData["GPMEM_AUTH"]=self._connects["GPMEM_AUTH"]
         
         self._connectByUser = self._connectData.set_index("USCON_NAME",drop=False).rename_axis('NAME')
         self._connectByGroup = self._connectData.set_index("USCON_GRP_ID",drop=False).rename_axis('GRP_ID')
@@ -1015,7 +1027,7 @@ class RACF:
         # get all owners... (group or user) or all superior groups
         tree = {}
         where_is = {}
-        higher_ups = self.groups.groupby(linkup_field)
+        higher_ups = self._groups.groupby(linkup_field)
         for higher_up in higher_ups.groups.keys():
             if higher_up not in tree:
                 tree[higher_up] = []
