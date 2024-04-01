@@ -4,6 +4,7 @@ import pandas as pd
 
 import math
 
+
 # No mess with my header lines
 import pandas.io.formats.excel
 pandas.io.formats.excel.ExcelFormatter.header_style = None
