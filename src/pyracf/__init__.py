@@ -116,13 +116,13 @@ class RACF:
     '0510': {'name':'GRSES', 'df':'_generalSESSION'},
     '0511': {'name':'GRSESE', 'df':'_generalSESSIONentities'},
     '0520': {'name':'GRDLF', 'df':'_generalDLF'},
-    '0521': {'name':'GRDLFJ', 'df':'_generalDLFjob-names'},
+    '0521': {'name':'GRDLFJ', 'df':'_generalDLFjobnames'},
     '0530': {'name':'GRSIGN', 'df':'_generalSSIGNON'},
     '0540': {'name':'GRST', 'df':'_generalSTARTED'},
     '0550': {'name':'GRSV', 'df':'_generalSYSTEMVIEW'},
     '0560': {'name':'GRCERT', 'df':'_generalCERT'},
     '0561': {'name':'CERTR', 'df':'_generalCERTreferences'},
-    '0562': {'name':'KEYR', 'df':'_general-KEYRING'},
+    '0562': {'name':'KEYR', 'df':'_generalKEYRING'},
     '0570': {'name':'GRTME', 'df':'_generalTME'},
     '0571': {'name':'GRTMEC', 'df':'_generalTMEchild'},
     '0572': {'name':'GRTMER', 'df':'_generalTMEresource'},
@@ -292,7 +292,6 @@ class RACF:
             self._starttime = datetime.now()
             self._state = self.STATE_PARSING
         self.THREAD_COUNT += 1
-        # TODO: Complete all record-types. Fix offsets.json !
         with open(self._irrdbu00, 'r', encoding="utf-8", errors="replace") as infile:
             for line in infile:
                 r = line[:4]
@@ -340,11 +339,9 @@ class RACF:
         # activate acl() method on our dataframes, so it get called with our instance's variables, the frame, and all optional parms
         # e.g. msys._datasetAccess.loc[['SYS1.**']].acl(permits=True, explode=False, resolve=False, admin=False, sort="user")
         pd.core.base.PandasObject.acl = lambda *x,**y: RACF.acl(self,*x,**y)
-        pd.core.base.PandasObject.ACL = lambda *x,**y: RACF.acl(self,*x,**y)
 
         # generic and regex filter on the index levels of a frame
-        pd.core.base.PandasObject.FILTER = RACF.gfilter
-        pd.core.base.PandasObject.MATCH = RACF.rfilter
+        # e.g. msys._datasets.gfilter('SYS1.**').acl(resolve=True, allows='UPDATE', sort="user")
         pd.core.base.PandasObject.gfilter = RACF.gfilter
         pd.core.base.PandasObject.rfilter = RACF.rfilter
 
@@ -368,7 +365,7 @@ class RACF:
         if self.parsed("GPMEM") == 0 or self.parsed("USCON") == 0:
             raise StoopidException("Need to parse GPMEM and USCON first...")
         else: 
-            self._connectData["GPMEM_AUTH"]=self._connects["GPMEM_AUTH"]
+            self._connectData["GPMEM_AUTH"] = self._connects["GPMEM_AUTH"]
         
         self._connectByUser = self._connectData.set_index("USCON_NAME",drop=False).rename_axis('NAME')
         self._connectByGroup = self._connectData.set_index("USCON_GRP_ID",drop=False).rename_axis('GRP_ID')
@@ -454,8 +451,6 @@ class RACF:
         option controls how selection is interpreted, and how data must be returned:
         None is for (expensive) backward compatibility, returns a df with 1 profile.
         LIST returns a series for 1 profile, much faster and easier to process.
-        REGEX returns a df for profile matching selection, starting at beginning of profile name, (general) class, or class+profile, (connect) group, or group+user ID.
-        GENERIC takes the generic pattern for the selection, turns it into regex, and returns a df.
         '''
         if not selection:
             raise StoopidException('profile criteria not specified...')
@@ -464,53 +459,33 @@ class RACF:
             if type(selection)==str: pass
             elif type(selection)==tuple:
                 selections = len(selection)
-                strings = [type(selection[i])==str for i in range(selections)]
+                strings = [type(selection[i])==str and selection[i]!='**' for i in range(selections)]
                 if all(strings): pass
                 else:
-                    found = False
-                    for i in range(selections):
-                        if all(strings[0:i]) and not any(strings[i+1:]):
-                            if i==0:
-                                selection = selection[0]
-                            else:    
-                                selection = tuple(selection[j] for j in range(i+1))
-                            found = True
-                            break
-                    if not found:
-                        locs = True
-                        for s in range(selections):
-                            if selection[s] not in (None,'**'):
-                                locs &= (df.index.get_level_values(s)==selection[s])
-                        selection = locs
+                    locs = pd.array([True]*df.shape[0], dtype=bool)
+                    for s in range(selections):
+                        if selection[s] not in (None,'**'):
+                            locs &= (df.index.get_level_values(s)==selection[s])
+                    selection = locs
             else:
                 raise StoopidException(f'specify patterns for profile, (group,userid) or (class,profile), not {selection}')
-            if option == None:  # return DataFrame for 1 profile
+            if option == None and type(selection) in (str,tuple):  # return DataFrame for 1 profile
                 try:
                     return df.loc[[selection]]
                 except KeyError:
                     return pd.DataFrame()
-            elif option in ('LIST','L'):  # return Series for 1 profile
+            else:  # return Series for 1 profile, or use loc[array]
                 try:
                     return df.loc[selection]
                 except KeyError:
                     return []
-        elif option in ('REGEX','R','GENERIC','GEN','G'):
-            if type(selection)==str:
-                return df.loc[df.index.get_level_values(0).str.match(selection if option in ('REGEX','R') else RACF.generic2regex(selection))]
-            elif type(selection)==tuple:
-                locs = True
-                for s in range(len(selection)):
-                    if selection[s] not in (None,'**'):
-                        locs &= (df.index.get_level_values(s).str.match(selection[s] if option in ('REGEX','R') else RACF.generic2regex(selection[s])))
-                return df.loc[locs]
-            else:
-                raise StoopidException(f'specify patterns for profile, (group,userid) or (class,profile), not {selection}')
         else:
             raise StoopidException(f'unexpected last parameter {option}')
 
+
     def gfilter(df, *selection):
         ''' Search profiles using GENERIC pattern on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
-        locs = True
+        locs = pd.array([True]*df.shape[0], dtype=bool)
         for s in range(len(selection)):
             if selection[s] not in (None,'**'):
                 locs &= (df.index.get_level_values(s).str.match(RACF.generic2regex(selection[s])))
@@ -518,13 +493,11 @@ class RACF:
 
     def rfilter(df, *selection):
         ''' Search profiles using refex on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
-        locs = True
+        locs = pd.array([True]*df.shape[0], dtype=bool)
         for s in range(len(selection)):
             if selection[s] not in (None,'**','.*'):
                 locs &= (df.index.get_level_values(s).str.match(selection[s]))
         return df.loc[locs]
-
-
 
 
     @property
@@ -538,15 +511,6 @@ class RACF:
     
     def user(self, userid=None, pattern=None):
         return self.giveMeProfiles(self._users, userid, pattern)
-
-    def OLDuser(self, userid=None):
-        if not userid:
-            raise StoopidException('userid not specified...')
-        try:
-            return self._users.loc[[userid]]
-        except:
-            return []
-        # return self._users.loc[self._users.USBD_NAME==userid]
 
 
     @property
@@ -582,6 +546,7 @@ class RACF:
     def revoked(self):
         return self._users.loc[self._users['USBD_REVOKE'] == 'YES']
 
+
     @property
     def groups(self, query=None):
         if self._state != self.STATE_READY:
@@ -591,20 +556,11 @@ class RACF:
     def group(self, group=None, pattern=None):
         return self.giveMeProfiles(self._groups, group, pattern)
 
-    def OLDgroup(self, group=None):
-        if not group:
-            raise StoopidException('group not specified...')
-        try:
-            return self._groups.loc[[group]]
-        except:
-            return []
-        # return self._groups.loc[self._groups.GPBD_NAME==group]
-
     @property
     def groupsWithoutUsers(self):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._groups.loc[-self.groups.GPBD_NAME.isin(self._connectData.USCON_GRP_ID)]
+        return self._groups.loc[~self.groups.GPBD_NAME.isin(self._connectData.USCON_GRP_ID)]
     
     @property
     def groupConnect(self):
@@ -678,6 +634,9 @@ class RACF:
     @property
     def uacc_read_datasets(self):
         return self._datasets.loc[self._datasets.DSBD_UACC=="READ"]
+    @property
+    def uacc_update_datasets(self):
+        return self._datasets.loc[self._datasets.DSBD_UACC=="UPDATE"]
 
     @property
     def generals(self, query=None):
@@ -720,6 +679,7 @@ class RACF:
     
     def generalConditionalPermit(self, resclass=None, profile=None, id=None, access=None, pattern=None):
         return self.giveMeProfiles(self._generalConditionalAccess, (resclass,profile,id,access), pattern)
+
 
     def rankedAccess(args):
         ''' translate access levels into integers, add 10 if permit is for the user ID. 
@@ -1193,7 +1153,7 @@ class RACF:
                         accesslist[access].append(id)
                     else:
                         if id in self.groups.index:
-                            g = self.connectData.loc[id][['USCON_NAME','USCON_GRP_SPECIAL']].values
+                            g = self.connect(id)[['USCON_NAME','USCON_GRP_SPECIAL']].values
                             for user,grp_special in g:
                                 accesslist[access].append(user)
                                 # But suppose this user is group_special here?
@@ -1206,13 +1166,13 @@ class RACF:
                             else:
                                 # group special propages up
                                 while gowner==gsupgroup:
-                                    g = self.connectData.loc[gowner][['USCON_NAME','USCON_GRP_SPECIAL']].values
+                                    g = self.connect(gowner)[['USCON_NAME','USCON_GRP_SPECIAL']].values
                                     for user,grp_special in g:
                                         if grp_special=='YES':
                                             accessmanagers[access].append(user)
                                     [gowner,gsupgroup] = self.group(gowner)[['GPBD_OWNER_ID','GPBD_SUPGRP_ID']].values[0]
                             # connect authority CONNECT/JOIN allows modification of member list
-                            g = self.connects.loc[id][['GPMEM_MEMBER_ID','GPMEM_AUTH']].values
+                            g = self.connect(id)[['USCON_NAME','GPMEM_AUTH']].values
                             for user,grp_auth in g:
                                 if grp_auth in ('CONNECT','JOIN'):
                                     accessmanagers[access].append(user)
