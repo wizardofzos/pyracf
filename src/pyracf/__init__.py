@@ -861,6 +861,20 @@ class RACF:
         def listMe(item):
             ''' make list in parameters optional when there is only 1 item '''
             return item if type(item)==list else [item]
+
+        def whereIsClass(df, classnames):
+            classPattern = ''
+            generic = False
+            for cl in listMe(classnames):
+                classPattern += RACF.generic2regex(cl) + "|"
+                generic &= cl.find('*')==-1 and cl.find('%')==-1
+            if generic:
+                return df.index.get_level_values(0).str.match(classPattern[:-1])
+            elif type(classnames)==str:
+                return df.index.get_level_values(0)==classnames
+            else:
+                return df.index.get_level_values(0).isin(classnames)
+
         
         brokenSum = pd.DataFrame(columns=['CLASS','PROFILE','FIELD_NAME','EXPECT','VALUE'])
         for (tbNames,*tbCriteria) in rules:
@@ -877,53 +891,52 @@ class RACF:
                 ixLevel = 1 if tbEntity=='GR' else 0  # GR has CLASS before NAME in the index
 
                 for tbCrit in tbCriteria:
-                    locs = True
+                    candDF = tbDF  # candidates for field checking
                     matchPattern = None
                     if 'class' in tbCrit:
                         if tbEntity!='GR':
                             print('only for GR')
-                        classPattern = ''
-                        for cl in listMe(tbCrit['class']):
-                            classPattern += RACF.generic2regex(cl) + "|"
-                        locs &= tbDF.index.get_level_values(0).str.match(classPattern[:-1])
+                        candDF = candDF.loc[whereIsClass(candDF, tbCrit['class'])]
                     if '-class' in tbCrit:
                         if tbEntity=='GR':
-                            classPattern = ''
-                            for cl in listMe(tbCrit['-class']):
-                                classPattern += RACF.generic2regex(cl) + "|"
-                            locs &= ~ tbDF.index.get_level_values(0).str.match(classPattern[:-1])
+                            candDF = candDF.loc[~ whereIsClass(candDF, tbCrit['-class'])]
                     if 'profile' in tbCrit:
-                        locs &= tbDF.index.get_level_values(ixLevel).str.match(RACF.generic2regex(tbCrit['profile']))
+                        candDF = candDF.loc[candDF.index.get_level_values(ixLevel).str.match(RACF.generic2regex(tbCrit['profile']))]
                     if '-profile' in tbCrit:
-                        locs &= ~ tbDF.index.get_level_values(ixLevel).str.match(RACF.generic2regex(tbCrit['-profile']))
+                        candDF = candDF.loc[ ~ candDF.index.get_level_values(ixLevel).str.match(RACF.generic2regex(tbCrit['-profile']))]
                     if 'match' in tbCrit:
                         matchPattern = tbCrit['match'].replace('.','\.').replace('*','\*')\
                                                       .replace('(','(?P<').replace(')','>[^.]*)')
-                        matched = tbDF[tbName+'_NAME'].str.extract(matchPattern)  # extract 1 qualifier
+                        matched = candDF[tbName+'_NAME'].str.extract(matchPattern)  # extract 1 qualifier
                     for fldCrit in listMe(tbCrit['test']):
-                        fldLocs = locs
+                        fldLocs = [True] * candDF.shape[0]
                         fldExpect = fldCrit['expect'] if 'expect' in fldCrit else None
                         fldName = None                        
                         if matchPattern:
                             if fldCrit['field'] in matched.columns:
                                 fldName = fldCrit['field']
                                 if fldExpect:
-                                    fldLocs &= matched[fldName].gt('') & - matched[fldName].isin(domains[fldExpect])
+                                    fldLocs &= matched[fldName].gt('') & ~ matched[fldName].isin(domains[fldExpect])
                                 if 'or' in fldCrit:
                                     fldLocs &= ~ matched[fldName].isin(listMe(fldCrit['or']))
                         if not fldName:
-                            fldName = fldCrit['field'] if fldCrit['field'] in tbDF.columns else tbName+'_'+fldCrit['field']
+                            fldName = fldCrit['field'] if fldCrit['field'] in candDF.columns else tbName+'_'+fldCrit['field']
                             if fldExpect:
-                                fldLocs &= tbDF[fldName].gt('') & - tbDF[fldName].isin(domains[fldExpect])
+                                fldLocs &= candDF[fldName].gt('') & ~ candDF[fldName].isin(domains[fldExpect])
                             if 'or' in fldCrit:
-                                fldLocs &= ~ tbDF[fldName].isin(listMe(fldCrit['or']))
+                                fldLocs &= ~ candDF[fldName].isin(listMe(fldCrit['or']))
                         if any(fldLocs):
-                            broken = tbDF.loc[fldLocs].copy()
-                            broken['CLASS'] = broken[tbName+'_CLASS_NAME'] if tbEntity=='GR' else tbClassName
-                            broken['PROFILE'] = broken[tbName+'_NAME']
+                            broken = candDF.loc[fldLocs].copy()\
+                                           .rename({tbName+'_CLASS_NAME':'CLASS', tbName+'_NAME':'PROFILE', fldName:'VALUE'},axis=1)
+                            if tbEntity!='GR':
+                                broken['CLASS'] = tbClassName
+                            if matchPattern:
+                                broken['VALUE'] = matched[fldName]
+                            # broken['CLASS'] = broken[tbName+'_CLASS_NAME'] if tbEntity=='GR' else tbClassName
+                            # broken['PROFILE'] = broken[tbName+'_NAME']
+                            # broken['VALUE'] = matched[fldName] if matchPattern else broken[fldName]
                             broken['FIELD_NAME'] = fldName
                             broken['EXPECT'] = fldExpect
-                            broken['VALUE'] = matched[fldName] if matchPattern else broken[fldName]
                             brokenSum = pd.concat([brokenSum,broken[brokenSum.columns]],
                                                    sort=False, ignore_index=True)
         return brokenSum        
