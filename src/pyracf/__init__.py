@@ -911,8 +911,8 @@ class RACF:
                                     fldLocs &= matched[fldName].gt('') & - matched[fldName].isin(domains[fldExpect])
                                 if 'or' in fldCrit:
                                     fldLocs &= ~ matched[fldName].isin(listMe(fldCrit['or']))
-                        if not fldName: 
-                            fldName = tbName+'_'+fldCrit['field']
+                        if not fldName:
+                            fldName = fldCrit['field'] if fldCrit['field'] in tbDF.columns else tbName+'_'+fldCrit['field']
                             if fldExpect:
                                 fldLocs &= tbDF[fldName].gt('') & - tbDF[fldName].isin(domains[fldExpect])
                             if 'or' in fldCrit:
