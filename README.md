@@ -15,6 +15,12 @@ To get started with PyRACF, install it using `pip install pyracf` or explore the
 
 ## Updates
 
+### 0.8.1 (property for most application segments)
+- application segments for dataset, group and user entities are avaible with entity prefix, e.g., msys.userTSO, msys.datasetDFP, msys.groupOMVS
+- system related application segments from general resources are published without prefix, e.g., msys.STDATA or msys.MFA
+- old properties msys.installdata and msys.DistributedMappings are replaced by userUSRDATA and userDistributedIdMappings
+- most of these properties are automatically generated
+
 ### 0.8.0 (acl, gfilter, rfilter methods)
 - selection method gfilter (supports RACF generic patterns) and rfilter (for regex patterns)
   supports as many parameters as there are index columns in the frame

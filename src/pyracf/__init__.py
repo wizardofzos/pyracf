@@ -2,7 +2,7 @@ import importlib.resources
 import json
 import yaml
 import math
-import pandas as pd 
+import pandas as pd
 
 
 # No mess with my header lines
@@ -18,7 +18,7 @@ import xlsxwriter
 import os
 import glob
 
-import warnings 
+import warnings
 
 class StoopidException(Exception):
     def __init__(self, message):
@@ -26,7 +26,7 @@ class StoopidException(Exception):
         super().__init__(self.message)
 
 def deprecated(func,oldname):
-    ''' Wrapper routine to add (deprecated) alias name to new routine (func), supports methods and properties. 
+    ''' Wrapper routine to add (deprecated) alias name to new routine (func), supports methods and properties.
         Inspired by functools.partial() '''
     def deprecated_func(*arg,**keywords):
         if hasattr(func,"__name__"):  # normal function object
@@ -39,7 +39,7 @@ def deprecated(func,oldname):
     return deprecated_func
 
 class RACF:
-    
+
     # Our states
     STATE_BAD         = -1
     STATE_INIT        =  0
@@ -52,26 +52,26 @@ class RACF:
     '0100': {'name':'GPBD', 'df':'_groups'},
     '0101': {'name':'GPSGRP', 'df':'_subgroups'},
     '0102': {'name':'GPMEM', 'df':'_connects', "index":["GPMEM_NAME","GPMEM_MEMBER_ID"]},
-    '0103': {'name':'GPINSTD', 'df':'_groupUSRDATA'},
-    '0110': {'name':'GPDFP', 'df':'_groupDFP'},
-    '0120': {'name':'GPOMVS', 'df':'_groupOMVS'},
+    '0103': {'name':'GPINSTD', 'df':'_groupUSRDATA', 'publisher':'*'},
+    '0110': {'name':'GPDFP', 'df':'_groupDFP', 'publisher':'*'},
+    '0120': {'name':'GPOMVS', 'df':'_groupOMVS', 'publisher':'*'},
     '0130': {'name':'GPOVM', 'df':'_groupOVM'},
-    '0141': {'name':'GPTME', 'df':'_groupTME'},
-    '0151': {'name':'GPCSD', 'df':'_groupCSDATA'},
+    '0141': {'name':'GPTME', 'df':'_groupTME', 'publisher':'*'},
+    '0151': {'name':'GPCSD', 'df':'_groupCSDATA', 'publisher':'*'},
     '0200': {'name':'USBD', 'df':'_users'},
     '0201': {'name':'USCAT', 'df':'_userCategories'},
     '0202': {'name':'USCLA', 'df':'_userClasses'},
     '0203': {'name':'USGCON', 'df':'_groupConnect', "index":["USGCON_GRP_ID","USGCON_NAME"]},
-    '0204': {'name':'USINSTD', 'df':'_userUSRDATA'},
+    '0204': {'name':'USINSTD', 'df':'_userUSRDATA'},  # , 'publisher':'*'
     '0205': {'name':'USCON', 'df':'_connectData', "index":["USCON_GRP_ID","USCON_NAME"]},
-    '0206': {'name':'USRSF', 'df':'_userRRSFdata'},
-    '0207': {'name':'USCERT', 'df':'_userCERTname'},
-    '0208': {'name':'USNMAP', 'df':'_userAssociationMappings'},
-    '0209': {'name':'USDMAP', 'df':'_userDistributedMapping'},
-    '020A': {'name':'USMFA', 'df':'_userMFAfactor'},
-    '020B': {'name':'USMPOL', 'df':'_userMFApolicies'},
-    '0210': {'name':'USDFP', 'df':'_userDFP'},
-    '0220': {'name':'USTSO', 'df':'_userTSO'},
+    '0206': {'name':'USRSF', 'df':'_userRRSFdata', 'publisher':'userRRSFDATA'},
+    '0207': {'name':'USCERT', 'df':'_userCERTname', 'publisher':'*'},
+    '0208': {'name':'USNMAP', 'df':'_userAssociationMapping', 'publisher':'*'},
+    '0209': {'name':'USDMAP', 'df':'_userDistributedIdMapping'},  # , 'publisher':'*'
+    '020A': {'name':'USMFA', 'df':'_userMFAfactor', 'publisher':'*'},
+    '020B': {'name':'USMPOL', 'df':'_userMFApolicies', 'publisher':'*'},
+    '0210': {'name':'USDFP', 'df':'_userDFP', 'publisher':'*'},
+    '0220': {'name':'USTSO', 'df':'_userTSO', 'publisher':'*'},
     '0230': {'name':'USCICS', 'df':'_userCICS'},
     '0231': {'name':'USCOPC', 'df':'_userCICSoperatorClasses'},
     '0232': {'name':'USCRSL', 'df':'_userCICSrslKeys'},
@@ -79,8 +79,8 @@ class RACF:
     '0240': {'name':'USLAN', 'df':'_userLANGUAGE'},
     '0250': {'name':'USOPR', 'df':'_userOPERPARM'},
     '0251': {'name':'USOPRP', 'df':'_userOPERPARMscope'},
-    '0260': {'name':'USWRK', 'df':'_userWORKATTR'},
-    '0270': {'name':'USOMVS', 'df':'_userOMVS'},
+    '0260': {'name':'USWRK', 'df':'_userWORKATTR', 'publisher':'*'},
+    '0270': {'name':'USOMVS', 'df':'_userOMVS', 'publisher':'*'},
     '0280': {'name':'USNETV', 'df':'_userNETVIEW'},
     '0281': {'name':'USNOPC', 'df':'_userNETVIEWopclass'},
     '0282': {'name':'USNDOM', 'df':'_userNETVIEWdomains'},
@@ -91,61 +91,61 @@ class RACF:
     '02D0': {'name':'USKERB', 'df':'_userKERB'},
     '02E0': {'name':'USPROXY', 'df':'_userPROXY'},
     '02F0': {'name':'USEIM', 'df':'_userEIM'},
-    '02G1': {'name':'USCSD', 'df':'_userCSDATA'},
-    '1210': {'name':'USMFAC', 'df':'_user-MFAfactorTags'},
+    '02G1': {'name':'USCSD', 'df':'_userCSDATA', 'publisher':'*'},
+    '1210': {'name':'USMFAC', 'df':'_userMFAfactorTags', 'publisher':'*'},
     '0400': {'name':'DSBD', 'df':'_datasets'},
     '0401': {'name':'DSCAT', 'df':'_datasetCategories'},
     '0402': {'name':'DSCACC', 'df':'_datasetConditionalAccess', "index":["DSCACC_NAME","DSCACC_AUTH_ID","DSCACC_ACCESS"]},
     '0403': {'name':'DSVOL', 'df':'_datasetVolumes'},
     '0404': {'name':'DSACC', 'df':'_datasetAccess', "index":["DSACC_NAME","DSACC_AUTH_ID","DSACC_ACCESS"]},
-    '0405': {'name':'DSINSTD', 'df':'_datasetUSRDATA'},
+    '0405': {'name':'DSINSTD', 'df':'_datasetUSRDATA', 'publisher':'*'},
     '0406': {'name':'DSMEM', 'df':'_datasetMember'},
-    '0410': {'name':'DSDFP', 'df':'_datasetDFP'},
-    '0421': {'name':'DSTME', 'df':'_datasetTME'},
-    '0431': {'name':'DSCSD', 'df':'_datasetCSDATA'},
+    '0410': {'name':'DSDFP', 'df':'_datasetDFP', 'publisher':'*'},
+    '0421': {'name':'DSTME', 'df':'_datasetTME', 'publisher':'*'},
+    '0431': {'name':'DSCSD', 'df':'_datasetCSDATA', 'publisher':'*'},
     '0500': {'name':'GRBD', 'df':'_generals'},
     '0501': {'name':'GRTVOL', 'df':'_generalTAPEvolume'},
     '0502': {'name':'GRCAT', 'df':'_generalCategories'},
     '0503': {'name':'GRMEM', 'df':'_generalMembers'},
-    '0504': {'name':'GRVOL', 'df':'_generalVolumes'},
+    '0504': {'name':'GRVOL', 'df':'_generalTAPEvolumes'},
     '0505': {'name':'GRACC', 'df':'_generalAccess', "index":["GRACC_CLASS_NAME","GRACC_NAME","GRACC_AUTH_ID","GRACC_ACCESS"]},
-    '0506': {'name':'GRINSTD', 'df':'_generalUSRDATA'},
+    '0506': {'name':'GRINSTD', 'df':'_generalUSRDATA', 'publisher':'*'},
     '0507': {'name':'GRCACC', 'df':'_generalConditionalAccess', "index":["GRCACC_CLASS_NAME","GRCACC_NAME","GRCACC_AUTH_ID","GRCACC_ACCESS"]},
-    '0508': {'name':'GRFLTR', 'df':'_generalFILTER'},
-    '0509': {'name':'GRDMAP', 'df':'_generalDistributedMapping'},
-    '0510': {'name':'GRSES', 'df':'_generalSESSION'},
-    '0511': {'name':'GRSESE', 'df':'_generalSESSIONentities'},
-    '0520': {'name':'GRDLF', 'df':'_generalDLF'},
-    '0521': {'name':'GRDLFJ', 'df':'_generalDLFjobnames'},
-    '0530': {'name':'GRSIGN', 'df':'_generalSSIGNON'},
-    '0540': {'name':'GRST', 'df':'_generalSTARTED'},
-    '0550': {'name':'GRSV', 'df':'_generalSYSTEMVIEW'},
-    '0560': {'name':'GRCERT', 'df':'_generalCERT'},
-    '0561': {'name':'CERTR', 'df':'_generalCERTreferences'},
-    '0562': {'name':'KEYR', 'df':'_generalKEYRING'},
-    '0570': {'name':'GRTME', 'df':'_generalTME'},
-    '0571': {'name':'GRTMEC', 'df':'_generalTMEchild'},
-    '0572': {'name':'GRTMER', 'df':'_generalTMEresource'},
-    '0573': {'name':'GRTMEG', 'df':'_generalTMEgroup'},
-    '0574': {'name':'GRTMEE', 'df':'_generalTMErole'},
-    '0580': {'name':'GRKERB', 'df':'_generalKERB'},
-    '0590': {'name':'GRPROXY', 'df':'_generalPROXY'},
-    '05A0': {'name':'GREIM', 'df':'_generalEIM'},
-    '05B0': {'name':'GRALIAS', 'df':'_generalALIAS'},
-    '05C0': {'name':'GRCDT', 'df':'_generalCDTINFO'},
-    '05D0': {'name':'GRICTX', 'df':'_generalICTX'},
-    '05E0': {'name':'GRCFDEF', 'df':'_generalCFDEF', "index":["GRCFDEF_CLASS","GRCFDEF_NAME"]},
-    '05F0': {'name':'GRSIG', 'df':'_generalSIGVER'},
-    '05G0': {'name':'GRCSF', 'df':'_generalICSF'},
-    '05G1': {'name':'GRCSFK', 'df':'_generalICSFkeylabel'},
-    '05G2': {'name':'GRCSFC', 'df':'_generalICSFcertificateIdentifier'},
-    '05H0': {'name':'GRMFA', 'df':'_generalMFAfactor'},
-    '05I0': {'name':'GRMFP', 'df':'_generalMFApolicy'},
-    '05I1': {'name':'GRMPF', 'df':'_generalMFApolicyFactors'},
-    '05J1': {'name':'GRCSD', 'df':'_generalCSDATA'},
-    '05K0': {'name':'GRIDTP', 'df':'_generalIDTFPARMS'},
-    '05L0': {'name':'GRJES', 'df':'_generalJESDATA'},
-    '1560': {'name':'CERTN', 'df':'_generalCERTNAME'}
+    '0508': {'name':'GRFLTR', 'df':'_generalDistributedIdFilter', 'publisher':'DistributedIdFilter'},
+    '0509': {'name':'GRDMAP', 'df':'_generalDistributedIdMapping', 'publisher':'DistributedIdMapping'},
+    '0510': {'name':'GRSES', 'df':'_generalSESSION', 'publisher':'SESSION'}, # APPCLU profiles
+    '0511': {'name':'GRSESE', 'df':'_generalSESSIONentities', 'publisher':'SESSIONentities'},
+    '0520': {'name':'GRDLF', 'df':'_generalDLFDATA', 'publisher':'DLFDATA'},
+    '0521': {'name':'GRDLFJ', 'df':'_generalDLFDATAjobnames', 'publisher':'DLFDATAjobnames'},
+    '0530': {'name':'GRSIGN', 'df':'_generalSSIGNON'}, # needs APPLDATA
+    '0540': {'name':'GRST', 'df':'_generalSTDATA', 'publisher':'STDATA'},
+    '0550': {'name':'GRSV', 'df':'_generalSVFMR', 'publisher':'SVFMR'}, # SYSMVIEW profiles
+    '0560': {'name':'GRCERT', 'df':'_generalCERT', 'publisher':'CERT'},
+    '1560': {'name':'CERTN', 'df':'_generalCERTname', 'publisher':'CERTname'},
+    '0561': {'name':'CERTR', 'df':'_generalCERTreferences', 'publisher':'CERTreferences'},
+    '0562': {'name':'KEYR', 'df':'_generalKEYRING', 'publisher':'KEYRING'},
+    '0570': {'name':'GRTME', 'df':'_generalTME', 'publisher':'TME'},
+    '0571': {'name':'GRTMEC', 'df':'_generalTMEchild', 'publisher':'TMEchild'},
+    '0572': {'name':'GRTMER', 'df':'_generalTMEresource', 'publisher':'TMEresource'},
+    '0573': {'name':'GRTMEG', 'df':'_generalTMEgroup', 'publisher':'TMEgroup'},
+    '0574': {'name':'GRTMEE', 'df':'_generalTMErole', 'publisher':'TMErole'},
+    '0580': {'name':'GRKERB', 'df':'_generalKERB', 'publisher':'KERB'},
+    '0590': {'name':'GRPROXY', 'df':'_generalPROXY', 'publisher':'PROXY'},
+    '05A0': {'name':'GREIM', 'df':'_generalEIM', 'publisher':'EIM'},
+    '05B0': {'name':'GRALIAS', 'df':'_generalALIAS', 'publisher':'ALIAS'}, # IP lookup value in SERVAUTH class
+    '05C0': {'name':'GRCDT', 'df':'_generalCDTINFO', 'publisher':'CDTINFO'},
+    '05D0': {'name':'GRICTX', 'df':'_generalICTX', 'publisher':'ICTX'},
+    '05E0': {'name':'GRCFDEF', 'df':'_generalCFDEF', "index":["GRCFDEF_CLASS","GRCFDEF_NAME"], 'publisher':'CFDEF'},
+    '05F0': {'name':'GRSIG', 'df':'_generalSIGVER', 'publisher':'SIGVER'},
+    '05G0': {'name':'GRCSF', 'df':'_generalICSF', 'publisher':'ICSF'},
+    '05G1': {'name':'GRCSFK', 'df':'_generalICSFsymexportKeylabel', 'publisher':'ICSFsymexportKeylabel'},
+    '05G2': {'name':'GRCSFC', 'df':'_generalICSFsymexportCertificateIdentifier', 'publisher':'ICSFsymexportCertificateIdentifier'},
+    '05H0': {'name':'GRMFA', 'df':'_generalMFA', 'publisher':'MFA'},
+    '05I0': {'name':'GRMFP', 'df':'_generalMFPOLICY', 'publisher':'MFPOLICY'},
+    '05I1': {'name':'GRMPF', 'df':'_generalMFPOLICYfactors', 'publisher':'MFPOLICYfactors'},
+    '05J1': {'name':'GRCSD', 'df':'_generalCSDATA', 'publisher':'*'},
+    '05K0': {'name':'GRIDTP', 'df':'_generalIDTFPARMS', 'publisher':'IDTFPARMS'},
+    '05L0': {'name':'GRJES', 'df':'_generalJES', 'publisher':'JES'}
     }
 
     _recordname_type = {}    # {'GPBD': '0100', ....}
@@ -153,7 +153,7 @@ class RACF:
     for (rtype,rinfo) in _recordtype_info.items():
         _recordname_type.update({rinfo['name']: rtype})
         _recordname_df.update({rinfo['name']: rinfo['df']})
-    
+
     # load irrdbu00 field definitions, save offsets in _recordtype_info
     # strictly speaking only needed for parse() function, but also not limited to one instance.
     with importlib.resources.open_text("pyracf", "offsets.json") as file:
@@ -167,9 +167,9 @@ class RACF:
     _ownertree          = None  # dict with lists
     _grouptreeLines     = None  # df with all supgroups up to SYS1
     _ownertreeLines     = None  # df with owners up to SYS1 or user ID
-    
+
     accessKeywords = ['NONE','EXECUTE','READ','UPDATE','CONTROL','ALTER','-owner-']
-    
+
     def accessAllows(level=None):
         ''' return list of access levels that allow the given access, e.g.
         RACF.accessAllows('UPDATE') returns [,'UPDATE','CONTROL','ALTER','-owner-']
@@ -195,7 +195,7 @@ class RACF:
             self._starttime = datetime.now()
             self._records = {}
             self._unloadlines = 0
-            
+
             for pickle in picklefiles:
                 fname = os.path.basename(pickle)
                 recordname = fname.replace(prefix,'').split('.')[0]
@@ -209,6 +209,13 @@ class RACF:
                       "parsed": recordsRetrieved
                     }
                     self._unloadlines += recordsRetrieved
+            for (rtype,rinfo) in RACF._recordtype_info.items():
+                if 'publisher' in rinfo:
+                    publisher = rinfo['publisher'] if rinfo['publisher']!='*' else rinfo['df'].lstrip('_')
+                    if hasattr(self, rinfo['df']):
+                        setattr(self, publisher, getattr(self, rinfo['df']))
+                    else:
+                        setattr(self, publisher, lambda x: warnings.warn(f"{publisher} has not been collected."))
             self._state = self.STATE_READY
             self._stoptime = datetime.now()
 
@@ -254,7 +261,7 @@ class RACF:
             speed  = math.floor(seen/((self._stoptime - self._starttime).total_seconds()))
             parsetime = (self._stoptime - self._starttime).total_seconds()
         else:
-            status = "Limbo"     
+            status = "Limbo"
         return {'status': status, 'input-lines': self._unloadlines, 'lines-read': seen, 'lines-parsed': parsed, 'lines-per-second': speed, 'parse-time': parsetime}
 
     def parse_fancycli(self, recordtypes=_recordtype_info.keys(), save_pickles=False, prefix=''):
@@ -308,7 +315,7 @@ class RACF:
                             end   = int(model['end'])
                             name  = model['field-name']
                             value = line[start-1:end].strip()
-                            irrmodel[name] = str(value) 
+                            irrmodel[name] = str(value)
                         self._parsed[r].append(irrmodel)
                         self._records[r]['parsed'] += 1
         # all models parsed :)
@@ -316,6 +323,12 @@ class RACF:
         for (rtype,rinfo) in RACF._recordtype_info.items():
             if rtype in thingswewant:
                 setattr(self, rinfo['df'], pd.DataFrame.from_dict(self._parsed[rtype]))
+            if 'publisher' in rinfo:
+                publisher = rinfo['publisher'] if rinfo['publisher']!='*' else rinfo['df'].lstrip('_')
+                if hasattr(self, rinfo['df']):
+                    setattr(self, publisher, getattr(self, rinfo['df']))
+                else:
+                    setattr(self, publisher, lambda x: warnings.warn(f"{publisher} has not been collected."))
 
         # TODO: Reduce memory use, delete self._parsed after dataframes are made
 
@@ -324,7 +337,7 @@ class RACF:
         if self.THREAD_COUNT == 0:
             self._state = self.STATE_CORRELATING
             self._correlate()
-            self._state = self.STATE_READY         
+            self._state = self.STATE_READY
             self._stoptime = datetime.now()
         return True
 
@@ -332,10 +345,10 @@ class RACF:
         """ how many records with this name (type) were parsed """
         rtype = RACF._recordname_type[rname]
         return self._records[rtype]['parsed'] if rtype in self._records else 0
-        
+
     def _correlate(self, thingswewant=_recordtype_info.keys()):
         """ construct tables that combine the raw dataframes for improved processing """
-        
+
         # activate acl() method on our dataframes, so it get called with our instance's variables, the frame, and all optional parms
         # e.g. msys._datasetAccess.loc[['SYS1.**']].acl(permits=True, explode=False, resolve=False, admin=False, sort="user")
         pd.core.base.PandasObject.acl = lambda *x,**y: RACF.acl(self,*x,**y)
@@ -359,17 +372,17 @@ class RACF:
                     keys = rinfo["name"]+"_NAME"
                     names = "_NAME"
                 getattr(self,rinfo['df']).set_index(keys,drop=False,inplace=True)
-                getattr(self,rinfo['df']).rename_axis(names,inplace=True)  # prevent ambiguous index / column names 
-        
+                getattr(self,rinfo['df']).rename_axis(names,inplace=True)  # prevent ambiguous index / column names
+
         # copy group auth (USE,CREATE,CONNECT,JOIN) to complete the connectData list, using index alignment
         if self.parsed("GPMEM") == 0 or self.parsed("USCON") == 0:
             raise StoopidException("Need to parse GPMEM and USCON first...")
-        else: 
+        else:
             self._connectData["GPMEM_AUTH"] = self._connects["GPMEM_AUTH"]
-        
+
         self._connectByUser = self._connectData.set_index("USCON_NAME",drop=False).rename_axis('NAME')
         self._connectByGroup = self._connectData.set_index("USCON_GRP_ID",drop=False).rename_axis('GRP_ID')
-            
+
         # dicts containing lists of groups for printing group structure
         self._ownertree = self.ownertree()
         self._grouptree = self.grouptree()
@@ -387,7 +400,7 @@ class RACF:
         self._grouptreeLines = gtl.rename(columns={'GPBD_NAME':'GROUP','GPBD_SUPGRP_ID':'PARENTS'})\
                                   .set_index("GROUP",drop=False)\
                                   .rename_axis('GROUP_NAME')
-        
+
         # self._ownertreeLines: frame of group + name of all owners (group or user) until SYS1 or user ID found
         otl=self._groups[['GPBD_NAME','GPBD_SUPGRP_ID','GPBD_OWNER_ID']]
         otlLen = 0
@@ -403,12 +416,12 @@ class RACF:
                                   .set_index("GROUP",drop=False)\
                                   .rename_axis('GROUP_NAME')
 
-        
+
     def save_pickle(self, df='', dfname='', path='', prefix=''):
         # Sanity check
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        
+
         df.to_pickle(f'{path}/{prefix}{dfname}.pickle')
 
 
@@ -499,7 +512,8 @@ class RACF:
                 locs &= (df.index.get_level_values(s).str.match(selection[s]))
         return df.loc[locs]
 
-
+    # user frames
+    
     @property
     def users(self):
         if self._state != self.STATE_READY:
@@ -508,7 +522,7 @@ class RACF:
             return self._users
         except:
             raise StoopidException('No USBD records parsed!')
-    
+
     def user(self, userid=None, pattern=None):
         return self.giveMeProfiles(self._users, userid, pattern)
 
@@ -518,16 +532,21 @@ class RACF:
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._connectData
-        
+
     def connect(self, group=None, userid=None, pattern=None):
         return self.giveMeProfiles(self._connectData, (group,userid), pattern)
 
+    @property
+    def userUSRDATA(self):
+        return self._userUSRDATA
+
+    installdata = property(deprecated(userUSRDATA,"installdata"))
 
     @property
-    def userDistributedMapping(self):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._userDistributedMapping
+    def userDistributedIdMapping(self):
+        return self._userDistributedIdMapping
+
+    userDistributedMapping = property(deprecated(userDistributedIdMapping,"userDistributedMapping"))
 
 
     @property
@@ -546,13 +565,14 @@ class RACF:
     def revoked(self):
         return self._users.loc[self._users['USBD_REVOKE'] == 'YES']
 
-
+    # group frames
+    
     @property
     def groups(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._groups
-    
+
     def group(self, group=None, pattern=None):
         return self.giveMeProfiles(self._groups, group, pattern)
 
@@ -561,7 +581,7 @@ class RACF:
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._groups.loc[~self.groups.GPBD_NAME.isin(self._connectData.USCON_GRP_ID)]
-    
+
     @property
     def groupConnect(self):
         if self._state != self.STATE_READY:
@@ -580,30 +600,9 @@ class RACF:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._subgroups
 
-    @property
-    def installdata(self):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._userUSRDATA
 
-    @property
-    def userOMVS(self, query=None):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._userOMVS
-
-    @property
-    def groupOMVS(self, query=None):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._groupOMVS        
-
-    @property
-    def userTSO(self, query=None):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._userTSO    
-        
+    # dataset frames
+    
     @property
     def datasets(self):
         if self._state != self.STATE_READY:
@@ -631,13 +630,22 @@ class RACF:
     def datasetPermit(self, profile=None, id=None, access=None, pattern=None):
         return self.giveMeProfiles(self._datasetAccess, (profile,id,access), pattern)
 
+
     @property
     def uacc_read_datasets(self):
         return self._datasets.loc[self._datasets.DSBD_UACC=="READ"]
     @property
     def uacc_update_datasets(self):
         return self._datasets.loc[self._datasets.DSBD_UACC=="UPDATE"]
+    @property
+    def uacc_control_datasets(self):
+        return self._datasets.loc[self._datasets.DSBD_UACC=="CONTROL"]
+    @property
+    def uacc_alter_datasets(self):
+        return self._datasets.loc[self._datasets.DSBD_UACC=="ALTER"]
 
+    # general resource frames
+    
     @property
     def generals(self, query=None):
         if self._state != self.STATE_READY:
@@ -653,7 +661,7 @@ class RACF:
     def generalMembers(self, query=None):
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._generalMembers    
+        return self._generalMembers
 
     genericMembers = property(deprecated(generalMembers,"genericMembers"))
 
@@ -664,11 +672,11 @@ class RACF:
         return self._generalAccess
 
     genericAccess = property(deprecated(generalAccess,"genericAccess"))
-    
+
     def generalPermit(self, resclass=None, profile=None, id=None, access=None, pattern=None):
         return self.giveMeProfiles(self._generalAccess, (resclass,profile,id,access), pattern)
-    
-    
+
+
     @property
     def generalConditionalAccess(self):
         if self._state != self.STATE_READY:
@@ -676,13 +684,19 @@ class RACF:
         return self._generalConditionalAccess
 
     genericConditionalAccess = property(deprecated(generalConditionalAccess,"genericConditionalAccess"))
-    
+
     def generalConditionalPermit(self, resclass=None, profile=None, id=None, access=None, pattern=None):
         return self.giveMeProfiles(self._generalConditionalAccess, (resclass,profile,id,access), pattern)
 
 
+    @property
+    def SSIGNON(self): # GRSIGN
+        return self._generalSSIGNON.join(self._generals['GRBD_APPL_DATA'])
+
+
+
     def rankedAccess(args):
-        ''' translate access levels into integers, add 10 if permit is for the user ID. 
+        ''' translate access levels into integers, add 10 if permit is for the user ID.
         could be used in .apply() but would be called for each row, so very very slow '''
         (userid,authid,access) = args
         accessNum = RACF.accessKeywords.index(access)
@@ -720,7 +734,7 @@ class RACF:
                     tbPermits[-1].columns = [tbPermits[-1].columns[i].replace(tb+"_","") for i in range(len(tbPermits[-1].columns))]
             tbPermits = pd.concat(tbPermits,sort=False)\
                           .drop(["RECORD_TYPE","ACCESS_CNT","UACC"],axis=1)\
-                          .fillna(' ') 
+                          .fillna(' ')
         elif tbName in ["DSACC","DSCACC","GRACC","GRCACC"]:
             # access frame selected, add profiles from frame tbEntity+BD
             tbPermits = df.copy()
@@ -732,21 +746,21 @@ class RACF:
             tbProfiles = tbProfiles[tbProfileKeys+["OWNER_ID","UACC"]]
         else:
             raise StoopidException(f'Table {tbName} not supported for acl( ), except DSBD, DSACC, DSCACC, GRBD, GRACC or GRCACC.')
-          
+
         # tbProfiles and tbPermits have column names without the tbName prefix
-        
+
         returnFields = ["USER_ID","AUTH_ID","ACCESS"]
         if tbName in ["DSCACC","GRCACC"]:
             returnFields = returnFields+["CATYPE","CANAME","NET_ID","CACRITERIA"]
 
-        sortBy = {"user":["USER_ID"]+tbProfileKeys, 
+        sortBy = {"user":["USER_ID"]+tbProfileKeys,
                   "access":["RANKED_ACCESS","USER_ID"],
-                  "id":["AUTH_ID"]+tbProfileKeys, 
-                  "admin":"ADMIN_ID", 
+                  "id":["AUTH_ID"]+tbProfileKeys,
+                  "admin":"ADMIN_ID",
                   "profile":tbProfileKeys+["USER_ID"]}
         if sort not in sortBy:
             raise StoopidException(f'Sort value {sort} not supported for acl( ), use one of {",".join(sortBy.keys())}.')
-        
+
         if explode or resolve:  # get user IDs connected to groups into field USER_ID
             acl = pd.merge(tbPermits, self._connectByGroup[["USCON_NAME"]], how="left", left_on="AUTH_ID", right_index=True)
             acl.insert(3,"USER_ID",acl["USCON_NAME"].where(acl["USCON_NAME"].notna(),acl["AUTH_ID"]))
@@ -762,19 +776,19 @@ class RACF:
                 uacc["USER_ID"] = "-uacc-"
                 uacc = uacc.rename({"OWNER_ID":"AUTH_ID","UACC":"ACCESS"},axis=1)
                 acl = pd.concat([acl,uacc], ignore_index=True, sort=False).fillna(' ') # lose index b/c concat doesn't support us
-            
+
         if resolve or sort=="access":
             # map access level to number, add 10 for user permits so they override group permits in sort_values( )
             acl["RANKED_ACCESS"] = acl["ACCESS"].map(RACF.accessKeywords.index)
             acl["RANKED_ACCESS"] = acl["RANKED_ACCESS"].where(acl["USER_ID"]!=acl["AUTH_ID"], acl["RANKED_ACCESS"]+10)
         if resolve:
-            # keep highest value of RANKED_ACCESS, this is at least twice as fast as using .iloc[].idxmax() 
+            # keep highest value of RANKED_ACCESS, this is at least twice as fast as using .iloc[].idxmax()
             condAcc = ["CATYPE","CANAME"] if "CATYPE" in acl.columns else []
             acl = acl.sort_values(tbProfileKeys+["USER_ID"]+condAcc+["RANKED_ACCESS"])\
                      .drop_duplicates(tbProfileKeys+["USER_ID"]+condAcc, keep='last')
         if sort=="access":
             acl.RANKED_ACCESS = 10 - (acl.RANKED_ACCESS % 10)  # highest access first
-        
+
         if admin:
             # owner of the profile, or group special, or group authority
             # users who own the profiles
@@ -807,14 +821,14 @@ class RACF:
                                         .rename({"GPBD_NAME":"VIA","GPBD_OWNER_ID":"ADMIN_ID"},axis=1)\
                                         .drop(["GPBD_SUPGRP_ID"],axis=1)
             admin_gowners["AUTHORITY"] = "OWNER"
-            
+
             # find all owner groups + groups up to SYS1 or user ID that breaks ownership
             admin_grpspec1 = admin_owners.query("GPBD_OWNER_ID == GPBD_SUPGRP_ID")\
                                          .drop(["GPBD_OWNER_ID","GPBD_SUPGRP_ID"],axis=1)
             admin_grpspec2 = pd.merge(admin_grpspec1, self._ownertreeLines, how="inner", left_on="AUTH_ID", right_index=True)\
                                .drop(["GPBD_NAME","GROUP"],axis=1)
             admin_grpspec1.rename({"GPBD_NAME":"OWNER_IDS"},axis=1,inplace=True)
-            
+
             # identify group special on ACL group and on any owning group
             admin_grpspec = pd.merge(pd.concat([admin_grpspec1,admin_grpspec2,profile_groupowner1,profile_groupowner2], sort=False),\
                                      self._connectByGroup[["USCON_NAME","USCON_GRP_ID","USCON_GRP_SPECIAL"]]\
@@ -830,23 +844,23 @@ class RACF:
                                      how="inner", left_on="AUTH_ID", right_index=True)\
                               .rename({"USCON_NAME":"ADMIN_ID","USCON_GRP_ID":"VIA","GPMEM_AUTH":"AUTHORITY"},axis=1)
             admin_grpauth["USER_ID"] = "-group-"
-            
+
             acl = pd.concat([acl,profile_userowners,admin_gowners,admin_grpspec,admin_grpauth],
                             ignore_index=True, sort=False).fillna(' ')
             returnFields += ["ADMIN_ID","AUTHORITY","VIA"]
-            
+
         if access:
             acl = acl.loc[acl["ACCESS"].map(RACF.accessKeywords.index)==RACF.accessKeywords.index(access.upper())]
         if allows:
             acl = acl.loc[acl["ACCESS"].map(RACF.accessKeywords.index)>=RACF.accessKeywords.index(allows.upper())]
         return acl.sort_values(by=sortBy[sort])[tbProfileKeys+returnFields].reset_index(drop=True)
 
-    
+
     def verify(self, rules=None, domains=None, module=".profileFieldRules"):
         ''' verify fields in profiles against the expected value, issues are returned in a df
         rules can be passed as a list of tuples, or dict via parameter, or as function result from external module.
         '''
-        
+
         if not(rules and domains):
             ruleset = importlib.import_module(module, package="pyracf")
             ruleset = importlib.reload(ruleset)
@@ -875,7 +889,7 @@ class RACF:
             else:
                 return df.index.get_level_values(0).isin(classnames)
 
-        
+
         brokenSum = pd.DataFrame(columns=['CLASS','PROFILE','FIELD_NAME','EXPECT','VALUE'])
         for (tbNames,*tbCriteria) in rules:
             for tbName in listMe(tbNames):
@@ -911,7 +925,7 @@ class RACF:
                     for fldCrit in listMe(tbCrit['test']):
                         fldLocs = [True] * candDF.shape[0]
                         fldExpect = fldCrit['expect'] if 'expect' in fldCrit else None
-                        fldName = None                        
+                        fldName = None
                         if matchPattern:
                             if fldCrit['field'] in matched.columns:
                                 fldName = fldCrit['field']
@@ -939,8 +953,8 @@ class RACF:
                             broken['EXPECT'] = fldExpect
                             brokenSum = pd.concat([brokenSum,broken[brokenSum.columns]],
                                                    sort=False, ignore_index=True)
-        return brokenSum        
-    
+        return brokenSum
+
 
     @property
     def neworphans(self):
@@ -954,10 +968,10 @@ class RACF:
 
     @property
     def orphans(self):
-        
+
         if self.parsed("DSACC") + self.parsed("GRACC") == 0:
             raise StoopidException('No dataset/general access records parsed! (PEBKAM/ID-10T error)')
-            
+
         datasetOrphans = None
         generalOrphans = None
 
@@ -965,7 +979,7 @@ class RACF:
             self._datasetAccess = self._datasetAccess.assign(inGroups=self._datasetAccess.DSACC_AUTH_ID.isin(self._groups.GPBD_NAME))
             self._datasetAccess = self._datasetAccess.assign(inUsers=self._datasetAccess.DSACC_AUTH_ID.isin(self._users.USBD_NAME))
             datasetOrphans = self._datasetAccess.loc[(self._datasetAccess['inGroups'] == False) & (self._datasetAccess['inUsers'] == False) & (self._datasetAccess['DSACC_AUTH_ID'] != "*") & (self._datasetAccess['DSACC_AUTH_ID'] != "&RACUID")]
-        
+
         if self.parsed("GRACC") > 0:
                 self._generalAccess = self._generalAccess.assign(inGroups=self._generalAccess.GRACC_AUTH_ID.isin(self._groups.GPBD_NAME))
                 self._generalAccess = self._generalAccess.assign(inUsers=self._generalAccess.GRACC_AUTH_ID.isin(self._users.USBD_NAME))
@@ -988,7 +1002,7 @@ class RACF:
                     'U': writer.book.add_format({'bg_color': 'orange'}),
                     'C': writer.book.add_format({'bg_color': 'red'}),
                     'A': writer.book.add_format({'bg_color': 'red'}),
-                    'D': writer.book.add_format({'bg_color': 'cyan'}), 
+                    'D': writer.book.add_format({'bg_color': 'cyan'}),
                     'T': writer.book.add_format({'bg_color': 'orange'}),
                 }
 
@@ -1092,7 +1106,7 @@ class RACF:
                             value = shared_strings[centry.string]
                             worksheet.write(j, i, value, accessLevelFormats[value])
 
-        writer.close()   
+        writer.close()
 
     def tree(self,linkup_field="GPBD_SUPGRP_ID"):
         # get all owners... (group or user) or all superior groups
@@ -1120,14 +1134,14 @@ class RACF:
         return tree
 
     def ownertree(self):
-        ''' 
+        '''
         create dict with the user IDs that own groups as key, and a list of their owned groups as values.
         if a group in this list owns group, the list is replaced by a dict.
         '''
         return self._ownertree if self._ownertree else self.tree("GPBD_OWNER_ID")
 
     def grouptree(self):
-        ''' 
+        '''
         create dict starting with SYS1, and a list of groups owned by SYS1 as values.
         if a group in this list owns group, the list is replaced by a dict.
         because SYS1s superior group is blank/missing, we return the first group that is owned by "".
@@ -1136,21 +1150,21 @@ class RACF:
 
     def getdatasetrisk(self, profile=''):
         '''This will produce a dict as follows:
-      
+
         '''
         try:
             if self.parsed("GPBD") == 0 or self.parsed("USCON") == 0 or self.parsed("USBD") == 0 or self.parsed("DSACC") == 0 or self.parsed("DSBD") == 0:
                 raise StoopidException("Need to parse DSACC and DSBD first...")
         except:
             raise StoopidException("Need to parse DSACC, USCON, USBD, GPBD and DSBD first...")
-        
+
         try:
             d = self.datasets.loc[[profile]]
         except KeyError:
             d = pd.DataFrame()
         if d.empty:
             raise StoopidException(f'Profile {profile} not found...')
-        
+
         owner = d['DSBD_OWNER_ID'].values[0]
         accesslist = {}
         accessmanagers = {}
