@@ -51,26 +51,26 @@ class RACF:
     '0100': {'name':'GPBD', 'df':'_groups'},
     '0101': {'name':'GPSGRP', 'df':'_subgroups'},
     '0102': {'name':'GPMEM', 'df':'_connects', "index":["GPMEM_NAME","GPMEM_MEMBER_ID"]},
-    '0103': {'name':'GPINSTD', 'df':'_groupUSRDATA'},
-    '0110': {'name':'GPDFP', 'df':'_groupDFP'},
-    '0120': {'name':'GPOMVS', 'df':'_groupOMVS'},
+    '0103': {'name':'GPINSTD', 'df':'_groupUSRDATA', 'publisher':'*'},
+    '0110': {'name':'GPDFP', 'df':'_groupDFP', 'publisher':'*'},
+    '0120': {'name':'GPOMVS', 'df':'_groupOMVS', 'publisher':'*'},
     '0130': {'name':'GPOVM', 'df':'_groupOVM'},
-    '0141': {'name':'GPTME', 'df':'_groupTME'},
-    '0151': {'name':'GPCSD', 'df':'_groupCSDATA'},
+    '0141': {'name':'GPTME', 'df':'_groupTME', 'publisher':'*'},
+    '0151': {'name':'GPCSD', 'df':'_groupCSDATA', 'publisher':'*'},
     '0200': {'name':'USBD', 'df':'_users'},
     '0201': {'name':'USCAT', 'df':'_userCategories'},
     '0202': {'name':'USCLA', 'df':'_userClasses'},
     '0203': {'name':'USGCON', 'df':'_groupConnect', "index":["USGCON_GRP_ID","USGCON_NAME"]},
-    '0204': {'name':'USINSTD', 'df':'_userUSRDATA'},
+    '0204': {'name':'USINSTD', 'df':'_userUSRDATA'},  # , 'publisher':'*'
     '0205': {'name':'USCON', 'df':'_connectData', "index":["USCON_GRP_ID","USCON_NAME"]},
-    '0206': {'name':'USRSF', 'df':'_userRRSFdata'},
-    '0207': {'name':'USCERT', 'df':'_userCERTname'},
-    '0208': {'name':'USNMAP', 'df':'_userAssociationMappings'},
-    '0209': {'name':'USDMAP', 'df':'_userDistributedMapping'},
-    '020A': {'name':'USMFA', 'df':'_userMFAfactor'},
-    '020B': {'name':'USMPOL', 'df':'_userMFApolicies'},
-    '0210': {'name':'USDFP', 'df':'_userDFP'},
-    '0220': {'name':'USTSO', 'df':'_userTSO'},
+    '0206': {'name':'USRSF', 'df':'_userRRSFdata', 'publisher':'userRRSFDATA'},
+    '0207': {'name':'USCERT', 'df':'_userCERTname', 'publisher':'*'},
+    '0208': {'name':'USNMAP', 'df':'_userAssociationMapping', 'publisher':'*'},
+    '0209': {'name':'USDMAP', 'df':'_userDistributedIdMapping'},  # , 'publisher':'*'
+    '020A': {'name':'USMFA', 'df':'_userMFAfactor', 'publisher':'*'},
+    '020B': {'name':'USMPOL', 'df':'_userMFApolicies', 'publisher':'*'},
+    '0210': {'name':'USDFP', 'df':'_userDFP', 'publisher':'*'},
+    '0220': {'name':'USTSO', 'df':'_userTSO', 'publisher':'*'},
     '0230': {'name':'USCICS', 'df':'_userCICS'},
     '0231': {'name':'USCOPC', 'df':'_userCICSoperatorClasses'},
     '0232': {'name':'USCRSL', 'df':'_userCICSrslKeys'},
@@ -78,8 +78,8 @@ class RACF:
     '0240': {'name':'USLAN', 'df':'_userLANGUAGE'},
     '0250': {'name':'USOPR', 'df':'_userOPERPARM'},
     '0251': {'name':'USOPRP', 'df':'_userOPERPARMscope'},
-    '0260': {'name':'USWRK', 'df':'_userWORKATTR'},
-    '0270': {'name':'USOMVS', 'df':'_userOMVS'},
+    '0260': {'name':'USWRK', 'df':'_userWORKATTR', 'publisher':'*'},
+    '0270': {'name':'USOMVS', 'df':'_userOMVS', 'publisher':'*'},
     '0280': {'name':'USNETV', 'df':'_userNETVIEW'},
     '0281': {'name':'USNOPC', 'df':'_userNETVIEWopclass'},
     '0282': {'name':'USNDOM', 'df':'_userNETVIEWdomains'},
@@ -90,61 +90,61 @@ class RACF:
     '02D0': {'name':'USKERB', 'df':'_userKERB'},
     '02E0': {'name':'USPROXY', 'df':'_userPROXY'},
     '02F0': {'name':'USEIM', 'df':'_userEIM'},
-    '02G1': {'name':'USCSD', 'df':'_userCSDATA'},
-    '1210': {'name':'USMFAC', 'df':'_user-MFAfactorTags'},
+    '02G1': {'name':'USCSD', 'df':'_userCSDATA', 'publisher':'*'},
+    '1210': {'name':'USMFAC', 'df':'_userMFAfactorTags', 'publisher':'*'},
     '0400': {'name':'DSBD', 'df':'_datasets'},
     '0401': {'name':'DSCAT', 'df':'_datasetCategories'},
     '0402': {'name':'DSCACC', 'df':'_datasetConditionalAccess', "index":["DSCACC_NAME","DSCACC_AUTH_ID","DSCACC_ACCESS"]},
     '0403': {'name':'DSVOL', 'df':'_datasetVolumes'},
     '0404': {'name':'DSACC', 'df':'_datasetAccess', "index":["DSACC_NAME","DSACC_AUTH_ID","DSACC_ACCESS"]},
-    '0405': {'name':'DSINSTD', 'df':'_datasetUSRDATA'},
+    '0405': {'name':'DSINSTD', 'df':'_datasetUSRDATA', 'publisher':'*'},
     '0406': {'name':'DSMEM', 'df':'_datasetMember'},
-    '0410': {'name':'DSDFP', 'df':'_datasetDFP'},
-    '0421': {'name':'DSTME', 'df':'_datasetTME'},
-    '0431': {'name':'DSCSD', 'df':'_datasetCSDATA'},
+    '0410': {'name':'DSDFP', 'df':'_datasetDFP', 'publisher':'*'},
+    '0421': {'name':'DSTME', 'df':'_datasetTME', 'publisher':'*'},
+    '0431': {'name':'DSCSD', 'df':'_datasetCSDATA', 'publisher':'*'},
     '0500': {'name':'GRBD', 'df':'_generals'},
     '0501': {'name':'GRTVOL', 'df':'_generalTAPEvolume'},
     '0502': {'name':'GRCAT', 'df':'_generalCategories'},
     '0503': {'name':'GRMEM', 'df':'_generalMembers'},
-    '0504': {'name':'GRVOL', 'df':'_generalVolumes'},
+    '0504': {'name':'GRVOL', 'df':'_generalTAPEvolumes'},
     '0505': {'name':'GRACC', 'df':'_generalAccess', "index":["GRACC_CLASS_NAME","GRACC_NAME","GRACC_AUTH_ID","GRACC_ACCESS"]},
-    '0506': {'name':'GRINSTD', 'df':'_generalUSRDATA'},
+    '0506': {'name':'GRINSTD', 'df':'_generalUSRDATA', 'publisher':'*'},
     '0507': {'name':'GRCACC', 'df':'_generalConditionalAccess', "index":["GRCACC_CLASS_NAME","GRCACC_NAME","GRCACC_AUTH_ID","GRCACC_ACCESS"]},
-    '0508': {'name':'GRFLTR', 'df':'_generalFILTER'},
-    '0509': {'name':'GRDMAP', 'df':'_generalDistributedMapping'},
-    '0510': {'name':'GRSES', 'df':'_generalSESSION'},
-    '0511': {'name':'GRSESE', 'df':'_generalSESSIONentities'},
-    '0520': {'name':'GRDLF', 'df':'_generalDLF'},
-    '0521': {'name':'GRDLFJ', 'df':'_generalDLFjobnames'},
-    '0530': {'name':'GRSIGN', 'df':'_generalSSIGNON'},
-    '0540': {'name':'GRST', 'df':'_generalSTARTED'},
-    '0550': {'name':'GRSV', 'df':'_generalSYSTEMVIEW'},
-    '0560': {'name':'GRCERT', 'df':'_generalCERT'},
-    '0561': {'name':'CERTR', 'df':'_generalCERTreferences'},
-    '0562': {'name':'KEYR', 'df':'_generalKEYRING'},
-    '0570': {'name':'GRTME', 'df':'_generalTME'},
-    '0571': {'name':'GRTMEC', 'df':'_generalTMEchild'},
-    '0572': {'name':'GRTMER', 'df':'_generalTMEresource'},
-    '0573': {'name':'GRTMEG', 'df':'_generalTMEgroup'},
-    '0574': {'name':'GRTMEE', 'df':'_generalTMErole'},
-    '0580': {'name':'GRKERB', 'df':'_generalKERB'},
-    '0590': {'name':'GRPROXY', 'df':'_generalPROXY'},
-    '05A0': {'name':'GREIM', 'df':'_generalEIM'},
-    '05B0': {'name':'GRALIAS', 'df':'_generalALIAS'},
-    '05C0': {'name':'GRCDT', 'df':'_generalCDTINFO'},
-    '05D0': {'name':'GRICTX', 'df':'_generalICTX'},
-    '05E0': {'name':'GRCFDEF', 'df':'_generalCFDEF', "index":["GRCFDEF_CLASS","GRCFDEF_NAME"]},
-    '05F0': {'name':'GRSIG', 'df':'_generalSIGVER'},
-    '05G0': {'name':'GRCSF', 'df':'_generalICSF'},
-    '05G1': {'name':'GRCSFK', 'df':'_generalICSFkeylabel'},
-    '05G2': {'name':'GRCSFC', 'df':'_generalICSFcertificateIdentifier'},
-    '05H0': {'name':'GRMFA', 'df':'_generalMFAfactor'},
-    '05I0': {'name':'GRMFP', 'df':'_generalMFApolicy'},
-    '05I1': {'name':'GRMPF', 'df':'_generalMFApolicyFactors'},
-    '05J1': {'name':'GRCSD', 'df':'_generalCSDATA'},
-    '05K0': {'name':'GRIDTP', 'df':'_generalIDTFPARMS'},
-    '05L0': {'name':'GRJES', 'df':'_generalJESDATA'},
-    '1560': {'name':'CERTN', 'df':'_generalCERTNAME'}
+    '0508': {'name':'GRFLTR', 'df':'_generalDistributedIdFilter', 'publisher':'DistributedIdFilter'},
+    '0509': {'name':'GRDMAP', 'df':'_generalDistributedIdMapping', 'publisher':'DistributedIdMapping'},
+    '0510': {'name':'GRSES', 'df':'_generalSESSION', 'publisher':'SESSION'}, # APPCLU profiles
+    '0511': {'name':'GRSESE', 'df':'_generalSESSIONentities', 'publisher':'SESSIONentities'},
+    '0520': {'name':'GRDLF', 'df':'_generalDLFDATA', 'publisher':'DLFDATA'},
+    '0521': {'name':'GRDLFJ', 'df':'_generalDLFDATAjobnames', 'publisher':'DLFDATAjobnames'},
+    '0530': {'name':'GRSIGN', 'df':'_generalSSIGNON'}, # needs APPLDATA
+    '0540': {'name':'GRST', 'df':'_generalSTDATA', 'publisher':'STDATA'},
+    '0550': {'name':'GRSV', 'df':'_generalSVFMR', 'publisher':'SVFMR'}, # SYSMVIEW profiles
+    '0560': {'name':'GRCERT', 'df':'_generalCERT', 'publisher':'CERT'},
+    '1560': {'name':'CERTN', 'df':'_generalCERTname', 'publisher':'CERTname'},
+    '0561': {'name':'CERTR', 'df':'_generalCERTreferences', 'publisher':'CERTreferences'},
+    '0562': {'name':'KEYR', 'df':'_generalKEYRING', 'publisher':'KEYRING'},
+    '0570': {'name':'GRTME', 'df':'_generalTME', 'publisher':'TME'},
+    '0571': {'name':'GRTMEC', 'df':'_generalTMEchild', 'publisher':'TMEchild'},
+    '0572': {'name':'GRTMER', 'df':'_generalTMEresource', 'publisher':'TMEresource'},
+    '0573': {'name':'GRTMEG', 'df':'_generalTMEgroup', 'publisher':'TMEgroup'},
+    '0574': {'name':'GRTMEE', 'df':'_generalTMErole', 'publisher':'TMErole'},
+    '0580': {'name':'GRKERB', 'df':'_generalKERB', 'publisher':'KERB'},
+    '0590': {'name':'GRPROXY', 'df':'_generalPROXY', 'publisher':'PROXY'},
+    '05A0': {'name':'GREIM', 'df':'_generalEIM', 'publisher':'EIM'},
+    '05B0': {'name':'GRALIAS', 'df':'_generalALIAS', 'publisher':'ALIAS'}, # IP lookup value in SERVAUTH class
+    '05C0': {'name':'GRCDT', 'df':'_generalCDTINFO', 'publisher':'CDTINFO'},
+    '05D0': {'name':'GRICTX', 'df':'_generalICTX', 'publisher':'ICTX'},
+    '05E0': {'name':'GRCFDEF', 'df':'_generalCFDEF', "index":["GRCFDEF_CLASS","GRCFDEF_NAME"], 'publisher':'CFDEF'},
+    '05F0': {'name':'GRSIG', 'df':'_generalSIGVER', 'publisher':'SIGVER'},
+    '05G0': {'name':'GRCSF', 'df':'_generalICSF', 'publisher':'ICSF'},
+    '05G1': {'name':'GRCSFK', 'df':'_generalICSFsymexportKeylabel', 'publisher':'ICSFsymexportKeylabel'},
+    '05G2': {'name':'GRCSFC', 'df':'_generalICSFsymexportCertificateIdentifier', 'publisher':'ICSFsymexportCertificateIdentifier'},
+    '05H0': {'name':'GRMFA', 'df':'_generalMFA', 'publisher':'MFA'},
+    '05I0': {'name':'GRMFP', 'df':'_generalMFPOLICY', 'publisher':'MFPOLICY'},
+    '05I1': {'name':'GRMPF', 'df':'_generalMFPOLICYfactors', 'publisher':'MFPOLICYfactors'},
+    '05J1': {'name':'GRCSD', 'df':'_generalCSDATA', 'publisher':'*'},
+    '05K0': {'name':'GRIDTP', 'df':'_generalIDTFPARMS', 'publisher':'IDTFPARMS'},
+    '05L0': {'name':'GRJES', 'df':'_generalJES', 'publisher':'JES'}
     }
 
     _recordname_type = {}    # {'GPBD': '0100', ....}
@@ -208,6 +208,13 @@ class RACF:
                       "parsed": recordsRetrieved
                     }
                     self._unloadlines += recordsRetrieved
+            for (rtype,rinfo) in RACF._recordtype_info.items():
+                if 'publisher' in rinfo:
+                    publisher = rinfo['publisher'] if rinfo['publisher']!='*' else rinfo['df'].lstrip('_')
+                    if hasattr(self, rinfo['df']):
+                        setattr(self, publisher, getattr(self, rinfo['df']))
+                    else:
+                        setattr(self, publisher, lambda x: warnings.warn(f"{publisher} has not been collected."))
             self._state = self.STATE_READY
             self._stoptime = datetime.now()
 
@@ -315,6 +322,12 @@ class RACF:
         for (rtype,rinfo) in RACF._recordtype_info.items():
             if rtype in thingswewant:
                 setattr(self, rinfo['df'], pd.DataFrame.from_dict(self._parsed[rtype]))
+            if 'publisher' in rinfo:
+                publisher = rinfo['publisher'] if rinfo['publisher']!='*' else rinfo['df'].lstrip('_')
+                if hasattr(self, rinfo['df']):
+                    setattr(self, publisher, getattr(self, rinfo['df']))
+                else:
+                    setattr(self, publisher, lambda x: warnings.warn(f"{publisher} has not been collected."))
 
         # TODO: Reduce memory use, delete self._parsed after dataframes are made
 
@@ -498,6 +511,7 @@ class RACF:
                 locs &= (df.index.get_level_values(s).str.match(selection[s]))
         return df.loc[locs]
 
+    # user frames
 
     @property
     def users(self):
@@ -523,10 +537,16 @@ class RACF:
 
 
     @property
-    def userDistributedMapping(self):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._userDistributedMapping
+    def userUSRDATA(self):
+        return self._userUSRDATA
+
+    installdata = property(deprecated(userUSRDATA,"installdata"))
+
+    @property
+    def userDistributedIdMapping(self):
+        return self._userDistributedIdMapping
+
+    userDistributedMapping = property(deprecated(userDistributedIdMapping,"userDistributedMapping"))
 
 
     @property
@@ -545,6 +565,8 @@ class RACF:
     def revoked(self):
         return self._users.loc[self._users['USBD_REVOKE'] == 'YES']
 
+
+    # group frames
 
     @property
     def groups(self, query=None):
@@ -579,29 +601,8 @@ class RACF:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._subgroups
 
-    @property
-    def installdata(self):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._userUSRDATA
 
-    @property
-    def userOMVS(self, query=None):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._userOMVS
-
-    @property
-    def groupOMVS(self, query=None):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._groupOMVS        
-
-    @property
-    def userTSO(self, query=None):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._userTSO    
+    # dataset frames
         
     @property
     def datasets(self):
@@ -636,6 +637,15 @@ class RACF:
     @property
     def uacc_update_datasets(self):
         return self._datasets.loc[self._datasets.DSBD_UACC=="UPDATE"]
+    @property
+    def uacc_control_datasets(self):
+        return self._datasets.loc[self._datasets.DSBD_UACC=="CONTROL"]
+    @property
+    def uacc_alter_datasets(self):
+        return self._datasets.loc[self._datasets.DSBD_UACC=="ALTER"]
+
+
+    # general resource frames
 
     @property
     def generals(self, query=None):
@@ -678,6 +688,11 @@ class RACF:
     
     def generalConditionalPermit(self, resclass=None, profile=None, id=None, access=None, pattern=None):
         return self.giveMeProfiles(self._generalConditionalAccess, (resclass,profile,id,access), pattern)
+
+    @property
+    def SSIGNON(self): # GRSIGN
+        return self._generalSSIGNON.join(self._generals['GRBD_APPL_DATA'])
+
 
 
     def rankedAccess(args):
