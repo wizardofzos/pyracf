@@ -48,6 +48,13 @@ class RACF:
     STATE_CORRELATING =  3
 
     # keep track of names used for a record type, "index" must be a list of field names
+    # A dict with `key` -> RecordType
+    #                   'name' -> Internal name (and prefix for pickle-files, and should match prefix in offsets.json for variables in the table (GPMEM_NAME etc...))
+    #                   'df'   -> name of internal df
+    #                   'index' -> index if different than <name>_NAME
+    #                   'publisher' -> property in class to get the df
+    #                                *         -> as df without the _
+    #                                all but * -> this name as property
     _recordtype_info = {
     '0100': {'name':'GPBD', 'df':'_groups'},
     '0101': {'name':'GPSGRP', 'df':'_subgroups'},
@@ -475,7 +482,7 @@ class RACF:
                 strings = [type(selection[i])==str and selection[i]!='**' for i in range(selections)]
                 if all(strings): pass
                 else:
-                    locs = pd.array([True]*df.shape[0], dtype=bool)
+                    locs = pd.array([True]*df.shape[0], dtype="boolean")
                     for s in range(selections):
                         if selection[s] not in (None,'**'):
                             locs &= (df.index.get_level_values(s)==selection[s])
@@ -498,7 +505,7 @@ class RACF:
 
     def gfilter(df, *selection):
         ''' Search profiles using GENERIC pattern on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
-        locs = pd.array([True]*df.shape[0], dtype=bool)
+        locs = pd.array([True]*df.shape[0], dtype="boolean")
         for s in range(len(selection)):
             if selection[s] not in (None,'**'):
                 locs &= (df.index.get_level_values(s).str.match(RACF.generic2regex(selection[s])))
@@ -506,7 +513,7 @@ class RACF:
 
     def rfilter(df, *selection):
         ''' Search profiles using refex on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
-        locs = pd.array([True]*df.shape[0], dtype=bool)
+        locs = pd.array([True]*df.shape[0], dtype="boolean")
         for s in range(len(selection)):
             if selection[s] not in (None,'**','.*'):
                 locs &= (df.index.get_level_values(s).str.match(selection[s]))

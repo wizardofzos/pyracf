@@ -15,7 +15,7 @@ To get started with PyRACF, install it using `pip install pyracf` or explore the
 
 ## Updates
 
-### 0.8.1 (property for most application segments)
+### 0.8.2 (property for most application segments)
 - application segments for dataset, group and user entities are avaible with entity prefix, e.g., msys.userTSO, msys.datasetDFP, msys.groupOMVS
 - system related application segments from general resources are published without prefix, e.g., msys.STDATA or msys.MFA
 - old properties msys.installdata and msys.userDistributedMappings are replaced by userUSRDATA and userDistributedIdMappings
