@@ -38,6 +38,99 @@ def deprecated(func,oldname):
     deprecated_func.func = func
     return deprecated_func
 
+class GroupStructureTree(dict):
+    ''' Dict with group names starting from SYS1 (group tree) or from (multiple) user IDs (owner tree).
+    Printing these objects, the tree will be formatted as Unix tree (default, or after .setformat('unix') or with mainframe characters (after .setformat('simple').
+    The dict may be accessed with .tree '''
+    def __init__(self,df,linkup_field="GPBD_SUPGRP_ID"):
+        # get all owners... (group or user) or all superior groups
+        tree = {}
+        where_is = {}
+        higher_ups = df.groupby(linkup_field)
+        for higher_up in higher_ups.groups.keys():
+            if higher_up not in tree:
+                tree[higher_up] = []
+                for group in higher_ups.get_group(higher_up)['GPBD_NAME'].values:
+                    tree[higher_up].append(group)
+                    where_is[group] = tree[higher_up]
+        # initially, for an owner tree, anchor can be a user (like IBMUSER) or a group
+        # now we gotta condense it, so only IBMUSER and other group owning users are at top level
+        # for group tree, we should end up with SYS1, and a list of groups
+        deletes = []
+        for anchor in tree:
+            if anchor in where_is:
+                supgrpMembers = where_is[anchor]
+                ix = supgrpMembers.index(anchor)
+                supgrpMembers[ix] = {anchor: tree[anchor]}
+                deletes.append(anchor)
+        for anchor in deletes:
+            tree.pop(anchor)
+        if '' in tree:  # bring SYS1 to the top, supgroup of SYS1 is ''
+            tree = tree[''][0]
+        self.tree = tree
+        self._format = 'unix'
+        
+    def __get__(self):
+        ''' class objects have a value too '''
+        return self.tree
+
+    def __str__(self):
+        ''' what happens when print(object) is issued '''
+        return self.simple_format(self.tree) if self._format=='simple' else self.unix_format(self.tree)
+        
+    def setformat(self,format='unix'):
+        ''' set default format for next print '''
+        if format in ['unix','simple']:
+            self._format = format
+            return self
+        else:
+            warnings.warn(f'Unsupported format value {format}, select unix or simple.')
+
+    def unix_format(self,branch=None,prefix=''):
+        ''' print groups, prefixed with vertical bars to show depth '''
+        BOX_START = u'\u250C'
+        BOX_ENTRY = u'\u251C'
+        BOX_CONT = u'\u2502'
+        BOX_END = u'\u2514'
+        if not branch:
+            branch = self.tree
+        info = ''
+        if type(branch)==str:
+            info += prefix + ' ' +  str(branch) + '\n'
+        elif type(branch)==list:
+            # indent 1 level, prev level continues with just a bar
+            if prefix and prefix[-1]==BOX_ENTRY:
+                prefix = prefix[0:-1]+BOX_CONT
+            for node in branch:
+                # last node in a branch gets an END indicator, others get a T
+                mark = ' '+BOX_END if (node==branch[-1]) else ' '+BOX_ENTRY
+                info += self.unix_format(node,prefix=prefix+mark)
+        else:
+            for (node,values) in branch.items():
+                info += prefix + ' ' + str(node) + '\n'
+                # only 1 END indicator (which we just printed)
+                if prefix and prefix[-1]==BOX_END:
+                    prefix = prefix[0:-1]+' '
+                info += self.unix_format(values,prefix=prefix)
+        return info
+
+    def simple_format(self,branch=None,depth=0):
+        ''' print groups, prefixed with vertical bars to show depth '''
+        if not branch:
+            branch = self.tree
+        info = ''
+        if type(branch)==str:
+            info += ' |'*depth + ' ' +  str(branch) + '\n'
+        elif type(branch)==list:
+            depth += 1
+            for node in branch:            
+                info += self.simple_format(node,depth)
+        else:
+            for (node,values) in branch.items():
+                info += ' |'*depth + ' '  + str(node) + '\n'
+                info += self.simple_format(values,depth)
+        return info
+
 class RACF:
     
     # Our states
@@ -47,30 +140,30 @@ class RACF:
     STATE_READY       =  2
     STATE_CORRELATING =  3
 
-    # keep track of names used for a record type, "index" must be a list of field names
-    # A dict with `key` -> RecordType
-    #                   'name' -> Internal name (and prefix for pickle-files, and should match prefix in offsets.json for variables in the table (GPMEM_NAME etc...))
+    # keep track of names used for a record type, record type + name must match those in offsets.json
+    # A dict with 'key' -> RecordType
+    #                   'name' -> Internal name (and prefix for pickle-files, variables in the dfs (GPMEM_NAME etc... from offsets.json))
     #                   'df'   -> name of internal df
-    #                   'index' -> index if different than <name>_NAME
-    #                   'publisher' -> property in class to get the df
-    #                                *         -> as df without the _
+    #                   'index' -> index if different from <name>_NAME (and <name>_CLASS_NAME for GRxxx)
+    #                   'publisher' -> adds property in class to get the df (default: no publisher)
+    #                                *         -> same as df without the _
     #                                all but * -> this name as property
     _recordtype_info = {
-    '0100': {'name':'GPBD', 'df':'_groups'},
-    '0101': {'name':'GPSGRP', 'df':'_subgroups'},
-    '0102': {'name':'GPMEM', 'df':'_connects', "index":["GPMEM_NAME","GPMEM_MEMBER_ID"]},
+    '0100': {'name':'GPBD', 'df':'_groups', 'publisher':'*'},
+    '0101': {'name':'GPSGRP', 'df':'_subgroups', 'publisher':'*'},
+    '0102': {'name':'GPMEM', 'df':'_connects', "index":["GPMEM_NAME","GPMEM_MEMBER_ID"], 'publisher':'*'},
     '0103': {'name':'GPINSTD', 'df':'_groupUSRDATA', 'publisher':'*'},
     '0110': {'name':'GPDFP', 'df':'_groupDFP', 'publisher':'*'},
     '0120': {'name':'GPOMVS', 'df':'_groupOMVS', 'publisher':'*'},
     '0130': {'name':'GPOVM', 'df':'_groupOVM'},
     '0141': {'name':'GPTME', 'df':'_groupTME', 'publisher':'*'},
     '0151': {'name':'GPCSD', 'df':'_groupCSDATA', 'publisher':'*'},
-    '0200': {'name':'USBD', 'df':'_users'},
-    '0201': {'name':'USCAT', 'df':'_userCategories'},
-    '0202': {'name':'USCLA', 'df':'_userClasses'},
-    '0203': {'name':'USGCON', 'df':'_groupConnect', "index":["USGCON_GRP_ID","USGCON_NAME"]},
+    '0200': {'name':'USBD', 'df':'_users', 'publisher':'*'},
+    '0201': {'name':'USCAT', 'df':'_userCategories', 'publisher':'*'},
+    '0202': {'name':'USCLA', 'df':'_userClasses', 'publisher':'*'},
+    '0203': {'name':'USGCON', 'df':'_groupConnect', "index":["USGCON_GRP_ID","USGCON_NAME"], 'publisher':'*'},
     '0204': {'name':'USINSTD', 'df':'_userUSRDATA'},  # , 'publisher':'*'
-    '0205': {'name':'USCON', 'df':'_connectData', "index":["USCON_GRP_ID","USCON_NAME"]},
+    '0205': {'name':'USCON', 'df':'_connectData', "index":["USCON_GRP_ID","USCON_NAME"], 'publisher':'*'},
     '0206': {'name':'USRSF', 'df':'_userRRSFdata', 'publisher':'userRRSFDATA'},
     '0207': {'name':'USCERT', 'df':'_userCERTname', 'publisher':'*'},
     '0208': {'name':'USNMAP', 'df':'_userAssociationMapping', 'publisher':'*'},
@@ -79,18 +172,18 @@ class RACF:
     '020B': {'name':'USMPOL', 'df':'_userMFApolicies', 'publisher':'*'},
     '0210': {'name':'USDFP', 'df':'_userDFP', 'publisher':'*'},
     '0220': {'name':'USTSO', 'df':'_userTSO', 'publisher':'*'},
-    '0230': {'name':'USCICS', 'df':'_userCICS'},
-    '0231': {'name':'USCOPC', 'df':'_userCICSoperatorClasses'},
-    '0232': {'name':'USCRSL', 'df':'_userCICSrslKeys'},
-    '0233': {'name':'USCTSL', 'df':'_userCICStslKeys'},
-    '0240': {'name':'USLAN', 'df':'_userLANGUAGE'},
-    '0250': {'name':'USOPR', 'df':'_userOPERPARM'},
-    '0251': {'name':'USOPRP', 'df':'_userOPERPARMscope'},
+    '0230': {'name':'USCICS', 'df':'_userCICS', 'publisher':'*'},
+    '0231': {'name':'USCOPC', 'df':'_userCICSoperatorClasses', 'publisher':'*'},
+    '0232': {'name':'USCRSL', 'df':'_userCICSrslKeys', 'publisher':'*'},
+    '0233': {'name':'USCTSL', 'df':'_userCICStslKeys', 'publisher':'*'},
+    '0240': {'name':'USLAN', 'df':'_userLANGUAGE', 'publisher':'*'},
+    '0250': {'name':'USOPR', 'df':'_userOPERPARM', 'publisher':'*'},
+    '0251': {'name':'USOPRP', 'df':'_userOPERPARMscope', 'publisher':'*'},
     '0260': {'name':'USWRK', 'df':'_userWORKATTR', 'publisher':'*'},
     '0270': {'name':'USOMVS', 'df':'_userOMVS', 'publisher':'*'},
-    '0280': {'name':'USNETV', 'df':'_userNETVIEW'},
-    '0281': {'name':'USNOPC', 'df':'_userNETVIEWopclass'},
-    '0282': {'name':'USNDOM', 'df':'_userNETVIEWdomains'},
+    '0280': {'name':'USNETV', 'df':'_userNETVIEW', 'publisher':'*'},
+    '0281': {'name':'USNOPC', 'df':'_userNETVIEWopclass', 'publisher':'*'},
+    '0282': {'name':'USNDOM', 'df':'_userNETVIEWdomains', 'publisher':'*'},
     '0290': {'name':'USDCE', 'df':'_userDCE'},
     '02A0': {'name':'USOVM', 'df':'_userOVM'},
     '02B0': {'name':'USLNOT', 'df':'_userLNOTES'},
@@ -100,21 +193,21 @@ class RACF:
     '02F0': {'name':'USEIM', 'df':'_userEIM'},
     '02G1': {'name':'USCSD', 'df':'_userCSDATA', 'publisher':'*'},
     '1210': {'name':'USMFAC', 'df':'_userMFAfactorTags', 'publisher':'*'},
-    '0400': {'name':'DSBD', 'df':'_datasets'},
-    '0401': {'name':'DSCAT', 'df':'_datasetCategories'},
-    '0402': {'name':'DSCACC', 'df':'_datasetConditionalAccess', "index":["DSCACC_NAME","DSCACC_AUTH_ID","DSCACC_ACCESS"]},
+    '0400': {'name':'DSBD', 'df':'_datasets', 'publisher':'*'},
+    '0401': {'name':'DSCAT', 'df':'_datasetCategories', 'publisher':'*'},
+    '0402': {'name':'DSCACC', 'df':'_datasetConditionalAccess', "index":["DSCACC_NAME","DSCACC_AUTH_ID","DSCACC_ACCESS"], 'publisher':'*'},
     '0403': {'name':'DSVOL', 'df':'_datasetVolumes'},
-    '0404': {'name':'DSACC', 'df':'_datasetAccess', "index":["DSACC_NAME","DSACC_AUTH_ID","DSACC_ACCESS"]},
+    '0404': {'name':'DSACC', 'df':'_datasetAccess', "index":["DSACC_NAME","DSACC_AUTH_ID","DSACC_ACCESS"], 'publisher':'*'},
     '0405': {'name':'DSINSTD', 'df':'_datasetUSRDATA', 'publisher':'*'},
     '0406': {'name':'DSMEM', 'df':'_datasetMember'},
     '0410': {'name':'DSDFP', 'df':'_datasetDFP', 'publisher':'*'},
     '0421': {'name':'DSTME', 'df':'_datasetTME', 'publisher':'*'},
     '0431': {'name':'DSCSD', 'df':'_datasetCSDATA', 'publisher':'*'},
     '0500': {'name':'GRBD', 'df':'_generals'},
-    '0501': {'name':'GRTVOL', 'df':'_generalTAPEvolume'},
-    '0502': {'name':'GRCAT', 'df':'_generalCategories'},
+    '0501': {'name':'GRTVOL', 'df':'_generalTAPEvolume', 'publisher':'*'},
+    '0502': {'name':'GRCAT', 'df':'_generalCategories', 'publisher':'*'},
     '0503': {'name':'GRMEM', 'df':'_generalMembers'},
-    '0504': {'name':'GRVOL', 'df':'_generalTAPEvolumes'},
+    '0504': {'name':'GRVOL', 'df':'_generalTAPEvolumes', 'publisher':'*'},
     '0505': {'name':'GRACC', 'df':'_generalAccess', "index":["GRACC_CLASS_NAME","GRACC_NAME","GRACC_AUTH_ID","GRACC_ACCESS"]},
     '0506': {'name':'GRINSTD', 'df':'_generalUSRDATA', 'publisher':'*'},
     '0507': {'name':'GRCACC', 'df':'_generalConditionalAccess', "index":["GRCACC_CLASS_NAME","GRCACC_NAME","GRCACC_AUTH_ID","GRCACC_ACCESS"]},
@@ -216,13 +309,8 @@ class RACF:
                       "parsed": recordsRetrieved
                     }
                     self._unloadlines += recordsRetrieved
-            for (rtype,rinfo) in RACF._recordtype_info.items():
-                if 'publisher' in rinfo:
-                    publisher = rinfo['publisher'] if rinfo['publisher']!='*' else rinfo['df'].lstrip('_')
-                    if hasattr(self, rinfo['df']):
-                        setattr(self, publisher, getattr(self, rinfo['df']))
-                    else:
-                        setattr(self, publisher, lambda x: warnings.warn(f"{publisher} has not been collected."))
+            self._state = self.STATE_CORRELATING
+            self._correlate()
             self._state = self.STATE_READY
             self._stoptime = datetime.now()
 
@@ -330,12 +418,6 @@ class RACF:
         for (rtype,rinfo) in RACF._recordtype_info.items():
             if rtype in thingswewant:
                 setattr(self, rinfo['df'], pd.DataFrame.from_dict(self._parsed[rtype]))
-            if 'publisher' in rinfo:
-                publisher = rinfo['publisher'] if rinfo['publisher']!='*' else rinfo['df'].lstrip('_')
-                if hasattr(self, rinfo['df']):
-                    setattr(self, publisher, getattr(self, rinfo['df']))
-                else:
-                    setattr(self, publisher, lambda x: warnings.warn(f"{publisher} has not been collected."))
 
         # TODO: Reduce memory use, delete self._parsed after dataframes are made
 
@@ -366,7 +448,9 @@ class RACF:
         pd.core.base.PandasObject.rfilter = RACF.rfilter
 
 
+        # use the table definitions in _recordtype_info finalize the dfs:
         # set consistent index columns for existing dfs: profile key, connect group+user, of profile class+key (for G.R.)
+        # define properties to access the dfs, in addition to the properties defined as functions below
         for (rtype,rinfo) in RACF._recordtype_info.items():
             if rtype in thingswewant and rtype in self._records and self._records[rtype]['parsed']>0:
                 if "index" in rinfo:
@@ -378,8 +462,16 @@ class RACF:
                 else:
                     keys = rinfo["name"]+"_NAME"
                     names = "_NAME"
-                getattr(self,rinfo['df']).set_index(keys,drop=False,inplace=True)
-                getattr(self,rinfo['df']).rename_axis(names,inplace=True)  # prevent ambiguous index / column names 
+                if getattr(self,rinfo['df']).index.names!=names:  # reuse existing index for pickles
+                    getattr(self,rinfo['df']).set_index(keys,drop=False,inplace=True)
+                    getattr(self,rinfo['df']).rename_axis(names,inplace=True)  # prevent ambiguous index / column names 
+            if 'publisher' in rinfo:
+                publisher = rinfo['publisher'] if rinfo['publisher']!='*' else rinfo['df'].lstrip('_')
+                if hasattr(self, rinfo['df']):
+                    setattr(self, publisher, getattr(self, rinfo['df']))
+                else:
+                    setattr(self, publisher, lambda x: warnings.warn(f"{publisher} has not been collected."))
+
         
         # copy group auth (USE,CREATE,CONNECT,JOIN) to complete the connectData list, using index alignment
         if self.parsed("GPMEM") == 0 or self.parsed("USCON") == 0:
@@ -391,8 +483,8 @@ class RACF:
         self._connectByGroup = self._connectData.set_index("USCON_GRP_ID",drop=False).rename_axis('GRP_ID')
             
         # dicts containing lists of groups for printing group structure
-        self._ownertree = self.ownertree()
-        self._grouptree = self.grouptree()
+        self._ownertree = self.ownertree
+        self._grouptree = self.grouptree
 
         # self._grouptreeLines: frame of group + name of all superior groups until SYS1
         gtl = self._groups[['GPBD_NAME','GPBD_SUPGRP_ID']]
@@ -482,7 +574,7 @@ class RACF:
                 strings = [type(selection[i])==str and selection[i]!='**' for i in range(selections)]
                 if all(strings): pass
                 else:
-                    locs = pd.array([True]*df.shape[0], dtype="boolean")
+                    locs = pd.array([True]*df.shape[0])
                     for s in range(selections):
                         if selection[s] not in (None,'**'):
                             locs &= (df.index.get_level_values(s)==selection[s])
@@ -505,7 +597,7 @@ class RACF:
 
     def gfilter(df, *selection):
         ''' Search profiles using GENERIC pattern on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
-        locs = pd.array([True]*df.shape[0], dtype="boolean")
+        locs = pd.array([True]*df.shape[0])
         for s in range(len(selection)):
             if selection[s] not in (None,'**'):
                 locs &= (df.index.get_level_values(s).str.match(RACF.generic2regex(selection[s])))
@@ -513,7 +605,7 @@ class RACF:
 
     def rfilter(df, *selection):
         ''' Search profiles using refex on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
-        locs = pd.array([True]*df.shape[0], dtype="boolean")
+        locs = pd.array([True]*df.shape[0])
         for s in range(len(selection)):
             if selection[s] not in (None,'**','.*'):
                 locs &= (df.index.get_level_values(s).str.match(selection[s]))
@@ -521,37 +613,23 @@ class RACF:
 
     # user frames
 
-    @property
-    def users(self):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        try:
-            return self._users
-        except:
-            raise StoopidException('No USBD records parsed!')
-    
     def user(self, userid=None, pattern=None):
         return self.giveMeProfiles(self._users, userid, pattern)
 
-
-    @property
-    def connectData(self):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._connectData
-        
     def connect(self, group=None, userid=None, pattern=None):
         return self.giveMeProfiles(self._connectData, (group,userid), pattern)
 
 
     @property
     def userUSRDATA(self):
+        # retained here due to deprecated property definition
         return self._userUSRDATA
 
     installdata = property(deprecated(userUSRDATA,"installdata"))
 
     @property
     def userDistributedIdMapping(self):
+        # retained here due to deprecated property definition
         return self._userDistributedIdMapping
 
     userDistributedMapping = property(deprecated(userDistributedIdMapping,"userDistributedMapping"))
@@ -576,12 +654,6 @@ class RACF:
 
     # group frames
 
-    @property
-    def groups(self, query=None):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._groups
-    
     def group(self, group=None, pattern=None):
         return self.giveMeProfiles(self._groups, group, pattern)
 
@@ -591,50 +663,14 @@ class RACF:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._groups.loc[~self.groups.GPBD_NAME.isin(self._connectData.USCON_GRP_ID)]
     
-    @property
-    def groupConnect(self):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._groupConnect
-
-    @property
-    def connects(self):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._connects
-
-    @property
-    def subgroups(self):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._subgroups
-
 
     # dataset frames
         
-    @property
-    def datasets(self):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._datasets
-
     def dataset(self, profile=None, pattern=None):
         return self.giveMeProfiles(self._datasets, profile, pattern)
 
-    @property
-    def datasetConditionalAccess(self):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._datasetConditionalAccess
-
     def datasetConditionalPermit(self, profile=None, id=None, access=None, pattern=None):
         return self.giveMeProfiles(self._datasetConditionalAccess, (profile,id,access), pattern)
-
-    @property
-    def datasetAccess(self):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        return self._datasetAccess
 
     def datasetPermit(self, profile=None, id=None, access=None, pattern=None):
         return self.giveMeProfiles(self._datasetAccess, (profile,id,access), pattern)
@@ -657,6 +693,7 @@ class RACF:
 
     @property
     def generals(self, query=None):
+        # retained here due to deprecated property definition
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._generals
@@ -668,6 +705,7 @@ class RACF:
 
     @property
     def generalMembers(self, query=None):
+        # retained here due to deprecated property definition
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._generalMembers    
@@ -676,6 +714,7 @@ class RACF:
 
     @property
     def generalAccess(self, query=None):
+        # retained here due to deprecated property definition
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._generalAccess
@@ -688,6 +727,7 @@ class RACF:
     
     @property
     def generalConditionalAccess(self):
+        # retained here due to deprecated property definition
         if self._state != self.STATE_READY:
             raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._generalConditionalAccess
@@ -1006,45 +1046,24 @@ class RACF:
 
         writer.close()   
 
-    def tree(self,linkup_field="GPBD_SUPGRP_ID"):
-        # get all owners... (group or user) or all superior groups
-        tree = {}
-        where_is = {}
-        higher_ups = self._groups.groupby(linkup_field)
-        for higher_up in higher_ups.groups.keys():
-            if higher_up not in tree:
-                tree[higher_up] = []
-                for group in higher_ups.get_group(higher_up)['GPBD_NAME'].values:
-                    tree[higher_up].append(group)
-                    where_is[group] = tree[higher_up]
-        # initially, for an owner tree, anchor can be a user (like IBMUSER) or a group
-        # now we gotta condense it, so only IBMUSER and other group owning users are at top level
-        # for group tree, we should end up with SYS1, and a list of groups
-        deletes = []
-        for anchor in tree:
-            if anchor in where_is:
-                supgrpMembers = where_is[anchor]
-                ix = supgrpMembers.index(anchor)
-                supgrpMembers[ix] = {anchor: tree[anchor]}
-                deletes.append(anchor)
-        for anchor in deletes:
-            tree.pop(anchor)
-        return tree
 
+    @property
     def ownertree(self):
         ''' 
         create dict with the user IDs that own groups as key, and a list of their owned groups as values.
         if a group in this list owns group, the list is replaced by a dict.
         '''
-        return self._ownertree if self._ownertree else self.tree("GPBD_OWNER_ID")
+        return self._ownertree if self._ownertree else GroupStructureTree(self._groups,"GPBD_OWNER_ID")
 
+    @property
     def grouptree(self):
         ''' 
         create dict starting with SYS1, and a list of groups owned by SYS1 as values.
         if a group in this list owns group, the list is replaced by a dict.
         because SYS1s superior group is blank/missing, we return the first group that is owned by "".
         '''
-        return self._grouptree if self._grouptree else self.tree("GPBD_SUPGRP_ID")[""][0]
+        return self._grouptree if self._grouptree else GroupStructureTree(self._groups,"GPBD_SUPGRP_ID")
+
 
     def getdatasetrisk(self, profile=''):
         '''This will produce a dict as follows:

@@ -15,6 +15,13 @@ To get started with PyRACF, install it using `pip install pyracf` or explore the
 
 ## Updates
 
+### 0.8.3 (tree print format for grouptree and ownertree)
+- msys.grouptree and msys.ownertree are now properties instead of callables
+  print as unix tree or simple format, e.g. print(msys.ownertree)
+  default format looks like unix tree, change with msys.ownertree.setformat('simple')
+  dict structure accessible through .tree attribute
+- fixed: correlate also builds temporary tables from saved pickles
+
 ### 0.8.2 (property for most application segments)
 - application segments for dataset, group and user entities are avaible with entity prefix, e.g., msys.userTSO, msys.datasetDFP, msys.groupOMVS
 - system related application segments from general resources are published without prefix, e.g., msys.STDATA or msys.MFA
@@ -197,13 +204,18 @@ Create a neat XLSX
 
 Print z/OS UNIX profiles
 
-    mysys.generals.gfilter('FAC*', 'BPX.**')
+    mysys.general('FACILITY', 'BPX.SUPERUSER')
+    mysys.general('FACILITY', 'BPX.**')  # show only the FACILITY BPX.** profile
+    mysys.general('FACILITY')  # show all FACILITY profiles
+
+    mysys.generals.gfilter('FAC*', 'BPX.**')  # show all BPX profiles
     mysys.generals.gfilter('UNIXPRIV') # print all in UNIXPRIV
 
 Show group information
 
     mysys.connect('SYS1')            # users connected to SYS1 groups
     mysys.connect('**','IBMUSER')    # groups IBMUSER is connected to
+
     mysys.connectData.gfilter('SYS*','IBM*') # connects using patterns
     mysys.connectData.rfilter('SYS[AB].*','PROD.*') # regex with alternatives
     mysys.connectData.query("USCON_GRP_SPECIAL=='YES' & USCON_REVOKE=='YES'")  # group special revoked
@@ -219,6 +231,13 @@ Show access list information
     mysys.datasets.gfilter('SYS%.**').acl(allows='UPDATE', resolve=True)    # groups and user permits combined 
     mysys.datasets.gfilter('PROD.**').acl(permits=False, admin=True)    # who can change groups or profiles to change access on PROD data sets
     mysys.generals.gfilter('XFAC*', 'CKR.**').acl() # permits on zSecure Admin/Audit profile
+
+
+Show group tree information
+
+    print(msys.grouptree)  # group - superior group - subgroups in UNIX tree format
+    print(msys.ownertree.setformat('simple'))  # group - OWNER in simple format
+    msys.grouptree.tree  # get the dict
 
 
 # Updates 
