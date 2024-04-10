@@ -600,7 +600,10 @@ class RACF:
         locs = pd.array([True]*df.shape[0])
         for s in range(len(selection)):
             if selection[s] not in (None,'**'):
-                locs &= (df.index.get_level_values(s).str.match(RACF.generic2regex(selection[s])))
+                if selection[s]=='*':
+                    locs &= (df.index.get_level_values(s)=='*')
+                else: 
+                    locs &= (df.index.get_level_values(s).str.match(RACF.generic2regex(selection[s])))
         return df.loc[locs]
 
     def rfilter(df, *selection):
