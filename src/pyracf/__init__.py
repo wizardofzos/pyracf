@@ -268,7 +268,7 @@ class RACF:
     _grouptreeLines     = None  # df with all supgroups up to SYS1
     _ownertreeLines     = None  # df with owners up to SYS1 or user ID
     
-    accessKeywords = ['NONE','EXECUTE','READ','UPDATE','CONTROL','ALTER','-owner-']
+    accessKeywords = [' ','NONE','EXECUTE','READ','UPDATE','CONTROL','ALTER','-owner-']
     
     def accessAllows(level=None):
         ''' return list of access levels that allow the given access, e.g.
@@ -455,7 +455,7 @@ class RACF:
             if rtype in thingswewant and rtype in self._records and self._records[rtype]['parsed']>0:
                 if "index" in rinfo:
                     keys = rinfo["index"]
-                    names = [keys[i].replace(rinfo["name"]+"_","_") for i in range(len(keys))]
+                    names = [k.replace(rinfo["name"]+"_","_") for k in keys]
                 elif rtype[1]=="5":  # general resources
                     keys = [rinfo["name"]+"_CLASS_NAME",rinfo["name"]+"_NAME"]
                     names = ["_CLASS_NAME","_NAME"]
@@ -472,15 +472,44 @@ class RACF:
                 else:
                     setattr(self, publisher, lambda x: warnings.warn(f"{publisher} has not been collected."))
 
-        
+
+        if self.parsed("GPBD") == 0 or self.parsed("GPMEM") == 0 or self.parsed("USCON") == 0:
+            raise StoopidException("Need to parse GPBD, GPMEM and USCON first...")
+
         # copy group auth (USE,CREATE,CONNECT,JOIN) to complete the connectData list, using index alignment
-        if self.parsed("GPMEM") == 0 or self.parsed("USCON") == 0:
-            raise StoopidException("Need to parse GPMEM and USCON first...")
-        else: 
-            self._connectData["GPMEM_AUTH"] = self._connects["GPMEM_AUTH"]
+        self._connectData["GPMEM_AUTH"] = self._connects["GPMEM_AUTH"]
+
+        # copy ID(*) access into resource frames, similar to UACC: IDSTAR_ACCESS and EFFECTIVE_UACC
+        if self.parsed("DSBD") > 0 and self.parsed("DSACC") > 0:
+            uaccs = pd.DataFrame()
+            uaccs["UACC_NUM"] = self._datasets["DSBD_UACC"].map(RACF.accessKeywords.index)
+            uaccs["IDSTAR_ACCESS"] = self._datasetAccess.gfilter(None, '*').droplevel([1,2])['DSACC_ACCESS']
+            uaccs["IDSTAR_ACCESS"] = uaccs["IDSTAR_ACCESS"].fillna(' ')
+            uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(RACF.accessKeywords.index)
+            uaccs["EFFECTIVE_NUM"] = uaccs[["IDSTAR_NUM","UACC_NUM"]].max(axis=1)
+            uaccs["EFFECTIVE_UACC"] = uaccs['EFFECTIVE_NUM'].map(RACF.accessKeywords.__getitem__)
+            column = self._datasets.columns.to_list().index('DSBD_UACC')
+            self._datasets.insert(column+1,"IDSTAR_ACCESS",uaccs["IDSTAR_ACCESS"])
+            self._datasets.insert(column+2,"EFFECTIVE_UACC",uaccs["EFFECTIVE_UACC"])
+            del uaccs
         
-        self._connectByUser = self._connectData.set_index("USCON_NAME",drop=False).rename_axis('NAME')
-        self._connectByGroup = self._connectData.set_index("USCON_GRP_ID",drop=False).rename_axis('GRP_ID')
+        if self.parsed("GRBD") > 0 and self.parsed("GRACC") > 0:
+            uaccs = pd.DataFrame()
+            uaccs["UACC"] = self._generals["GRBD_UACC"]
+            uaccs["UACC"] = uaccs["UACC"].where(uaccs["UACC"].isin(RACF.accessKeywords),other=' ')  # DIGTCERT fields may be distorted
+            uaccs["UACC_NUM"] = uaccs["UACC"].map(RACF.accessKeywords.index)
+            uaccs["IDSTAR_ACCESS"] = self._generalAccess.gfilter(None, '*').droplevel([1,2])['GRACC_ACCESS']
+            uaccs["IDSTAR_ACCESS"] = uaccs["IDSTAR_ACCESS"].fillna(' ')
+            uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(RACF.accessKeywords.index)
+            uaccs["EFFECTIVE_NUM"] = uaccs[["IDSTAR_NUM","UACC_NUM"]].max(axis=1)
+            uaccs["EFFECTIVE_UACC"] = uaccs['EFFECTIVE_NUM'].map(RACF.accessKeywords.__getitem__)
+            column = self._generals.columns.to_list().index('GRBD_UACC')
+            self._generals.insert(column+1,"IDSTAR_ACCESS",uaccs["IDSTAR_ACCESS"])
+            self._generals.insert(column+2,"EFFECTIVE_UACC",uaccs["EFFECTIVE_UACC"])
+            del uaccs
+        
+        # self._connectByUser = self._connectData.set_index("USCON_NAME",drop=False).rename_axis('NAME')
+        # self._connectByGroup = self._connectData.set_index("USCON_GRP_ID",drop=False).rename_axis('GRP_ID')
             
         # dicts containing lists of groups for printing group structure
         self._ownertree = self.ownertree
@@ -620,7 +649,24 @@ class RACF:
         return self.giveMeProfiles(self._users, userid, pattern)
 
     def connect(self, group=None, userid=None, pattern=None):
-        return self.giveMeProfiles(self._connectData, (group,userid), pattern)
+        ''' connect('SYS1') returns 1 index level with user IDs, connect(None,'IBMUSER') returns 1 index level with group names '''
+        if pattern=='L' or pattern=='LIST':
+            return self.giveMeProfiles(self._connectData, (group,userid), pattern)
+        else:
+            df = self._connectData
+            if group and (not userid or userid=='**'):
+                # with group given, return connected user IDs via index (.loc['group'] strips level(0))
+                selection = group
+            elif userid and (not group or group=='**'):
+                # with user ID given, return connected groups via index (only level(0))
+                return df.loc[df.index.get_level_values(1)==userid].droplevel(1)
+            else:
+                # with group + user ID given, return 1 entry with all index levels (because only the data columns will be of interest)
+                selection = [(group,userid)]
+            try:
+                return df.loc[selection]
+            except KeyError:
+                return pd.DataFrame()
 
 
     @property
@@ -776,24 +822,24 @@ class RACF:
         if tbName in ["DSBD","GRBD"]:
             # profiles selected, add corresp. access + cond.access frames
             tbProfiles = df[[tbName+"_"+k for k in tbProfileKeys+["OWNER_ID","UACC"]]].copy()
-            tbProfiles.columns = [tbProfiles.columns[i].replace(tbName+"_","") for i in range(len(tbProfiles.columns))]
+            tbProfiles.columns = [c.replace(tbName+"_","") for c in tbProfiles.columns]
             tbPermits = []
             for tb in [tbEntity+"ACC",tbEntity+"CACC"]:
                 if self.parsed(tb)>0:
                     tbPermits.append(getattr(self,self._recordname_df[tb])\
                                      .merge(tbProfiles["UACC"], left_index=True, right_index=True))
-                    tbPermits[-1].columns = [tbPermits[-1].columns[i].replace(tb+"_","") for i in range(len(tbPermits[-1].columns))]
+                    tbPermits[-1].columns = [c.replace(tb+"_","") for c in tbPermits[-1].columns]
             tbPermits = pd.concat(tbPermits,sort=False)\
                           .drop(["RECORD_TYPE","ACCESS_CNT","UACC"],axis=1)\
                           .fillna(' ') 
         elif tbName in ["DSACC","DSCACC","GRACC","GRCACC"]:
             # access frame selected, add profiles from frame tbEntity+BD
             tbPermits = df.copy()
-            tbPermits.columns = [tbPermits.columns[i].replace(tbName+"_","") for i in range(len(tbPermits.columns))]
+            tbPermits.columns = [c.replace(tbName+"_","") for c in tbPermits.columns]
             tbPermits.drop(["RECORD_TYPE","ACCESS_CNT"],axis=1,inplace=True)
             tbProfiles = getattr(self,self._recordname_df[tbEntity+"BD"])\
                          .loc[tbPermits.droplevel([-2,-1]).index.drop_duplicates()].copy()
-            tbProfiles.columns = [tbProfiles.columns[i].replace(tbEntity+"BD_","") for i in range(len(tbProfiles.columns))]
+            tbProfiles.columns = [c.replace(tbEntity+"BD_","") for c in tbProfiles.columns]
             tbProfiles = tbProfiles[tbProfileKeys+["OWNER_ID","UACC"]]
         else:
             raise StoopidException(f'Table {tbName} not supported for acl( ), except DSBD, DSACC, DSCACC, GRBD, GRACC or GRCACC.')
@@ -812,8 +858,11 @@ class RACF:
         if sort not in sortBy:
             raise StoopidException(f'Sort value {sort} not supported for acl( ), use one of {",".join(sortBy.keys())}.')
         
+        if explode or resolve or admin:  # get view of connectData with only one index level (the group name)
+            groupMembers = self._connectData.droplevel(1)
+
         if explode or resolve:  # get user IDs connected to groups into field USER_ID
-            acl = pd.merge(tbPermits, self._connectByGroup[["USCON_NAME"]], how="left", left_on="AUTH_ID", right_index=True)
+            acl = pd.merge(tbPermits, groupMembers[["USCON_NAME"]], how="left", left_on="AUTH_ID", right_index=True)
             acl.insert(3,"USER_ID",acl["USCON_NAME"].where(acl["USCON_NAME"].notna(),acl["AUTH_ID"]))
         elif permits:  # just the userid+access from RACF, add USER_ID column for consistency
             acl = tbPermits
@@ -882,7 +931,7 @@ class RACF:
             
             # identify group special on ACL group and on any owning group
             admin_grpspec = pd.merge(pd.concat([admin_grpspec1,admin_grpspec2,profile_groupowner1,profile_groupowner2], sort=False),\
-                                     self._connectByGroup[["USCON_NAME","USCON_GRP_ID","USCON_GRP_SPECIAL"]]\
+                                     groupMembers[["USCON_NAME","USCON_GRP_ID","USCON_GRP_SPECIAL"]]\
                                              .query('USCON_GRP_SPECIAL == "YES"'),
                                      how="inner", left_on="OWNER_IDS", right_index=True)\
                                .rename({"USCON_NAME":"ADMIN_ID","OWNER_IDS":"VIA"},axis=1)\
@@ -890,7 +939,7 @@ class RACF:
             admin_grpspec["AUTHORITY"] = "GRPSPECIAL"
 
             # CONNECT or JOIN authority on an ACL group
-            admin_grpauth = pd.merge(tbPermits, self._connectByGroup[["USCON_NAME","USCON_GRP_ID","GPMEM_AUTH"]]
+            admin_grpauth = pd.merge(tbPermits, groupMembers[["USCON_NAME","USCON_GRP_ID","GPMEM_AUTH"]]
                                                  .query('GPMEM_AUTH==["CONNECT","JOIN"]'),
                                      how="inner", left_on="AUTH_ID", right_index=True)\
                               .rename({"USCON_NAME":"ADMIN_ID","USCON_GRP_ID":"VIA","GPMEM_AUTH":"AUTHORITY"},axis=1)
