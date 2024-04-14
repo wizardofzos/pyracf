@@ -473,24 +473,22 @@ class RACF:
                     setattr(self, publisher, lambda x: warnings.warn(f"{publisher} has not been collected."))
 
 
-        if self.parsed("GPBD") == 0 or self.parsed("GPMEM") == 0 or self.parsed("USCON") == 0:
-            raise StoopidException("Need to parse GPBD, GPMEM and USCON first...")
-
         # copy group auth (USE,CREATE,CONNECT,JOIN) to complete the connectData list, using index alignment
-        self._connectData["GPMEM_AUTH"] = self._connects["GPMEM_AUTH"]
+        if self.parsed("GPBD") > 0 and self.parsed("GPMEM") > 0 and self.parsed("USCON") > 0:
+            self._connectData["GPMEM_AUTH"] = self._connects["GPMEM_AUTH"]
 
-        # copy ID(*) access into resource frames, similar to UACC: IDSTAR_ACCESS and EFFECTIVE_UACC
+        # copy ID(*) access into resource frames, similar to UACC: IDSTAR_ACCESS and ALL_USER_ACCESS
         if self.parsed("DSBD") > 0 and self.parsed("DSACC") > 0:
             uaccs = pd.DataFrame()
             uaccs["UACC_NUM"] = self._datasets["DSBD_UACC"].map(RACF.accessKeywords.index)
             uaccs["IDSTAR_ACCESS"] = self._datasetAccess.gfilter(None, '*').droplevel([1,2])['DSACC_ACCESS']
             uaccs["IDSTAR_ACCESS"] = uaccs["IDSTAR_ACCESS"].fillna(' ')
             uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(RACF.accessKeywords.index)
-            uaccs["EFFECTIVE_NUM"] = uaccs[["IDSTAR_NUM","UACC_NUM"]].max(axis=1)
-            uaccs["EFFECTIVE_UACC"] = uaccs['EFFECTIVE_NUM'].map(RACF.accessKeywords.__getitem__)
+            uaccs["ALL_USER_NUM"] = uaccs[["IDSTAR_NUM","UACC_NUM"]].max(axis=1)
+            uaccs["ALL_USER_ACCESS"] = uaccs['ALL_USER_NUM'].map(RACF.accessKeywords.__getitem__)
             column = self._datasets.columns.to_list().index('DSBD_UACC')
             self._datasets.insert(column+1,"IDSTAR_ACCESS",uaccs["IDSTAR_ACCESS"])
-            self._datasets.insert(column+2,"EFFECTIVE_UACC",uaccs["EFFECTIVE_UACC"])
+            self._datasets.insert(column+2,"ALL_USER_ACCESS",uaccs["ALL_USER_ACCESS"])
             del uaccs
         
         if self.parsed("GRBD") > 0 and self.parsed("GRACC") > 0:
@@ -501,11 +499,11 @@ class RACF:
             uaccs["IDSTAR_ACCESS"] = self._generalAccess.gfilter(None, '*').droplevel([1,2])['GRACC_ACCESS']
             uaccs["IDSTAR_ACCESS"] = uaccs["IDSTAR_ACCESS"].fillna(' ')
             uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(RACF.accessKeywords.index)
-            uaccs["EFFECTIVE_NUM"] = uaccs[["IDSTAR_NUM","UACC_NUM"]].max(axis=1)
-            uaccs["EFFECTIVE_UACC"] = uaccs['EFFECTIVE_NUM'].map(RACF.accessKeywords.__getitem__)
+            uaccs["ALL_USER_NUM"] = uaccs[["IDSTAR_NUM","UACC_NUM"]].max(axis=1)
+            uaccs["ALL_USER_ACCESS"] = uaccs['ALL_USER_NUM'].map(RACF.accessKeywords.__getitem__)
             column = self._generals.columns.to_list().index('GRBD_UACC')
             self._generals.insert(column+1,"IDSTAR_ACCESS",uaccs["IDSTAR_ACCESS"])
-            self._generals.insert(column+2,"EFFECTIVE_UACC",uaccs["EFFECTIVE_UACC"])
+            self._generals.insert(column+2,"ALL_USER_ACCESS",uaccs["ALL_USER_ACCESS"])
             del uaccs
         
         # self._connectByUser = self._connectData.set_index("USCON_NAME",drop=False).rename_axis('NAME')

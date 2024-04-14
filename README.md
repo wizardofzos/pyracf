@@ -21,6 +21,9 @@ To get started with PyRACF, install it using `pip install pyracf` or explore the
   default format looks like unix tree, change with msys.ownertree.setformat('simple')
   dict structure accessible through .tree attribute
 - fixed: correlate also builds temporary tables from saved pickles
+- .connect('group') and .connect(None,'user') return a (single level) Index with user IDs, resp., groups, connected to the given entity
+  this helps with queries that test group membership
+- add IDSTAR_ACCESS and ALL_USER_ACCESS .datasets and .generals with, resp., permitted access on ID(*) and the higher value of UACC and IDSTAR_ACCESS.
 
 ### 0.8.2 (property for most application segments)
 - application segments for dataset, group and user entities are avaible with entity prefix, e.g., msys.userTSO, msys.datasetDFP, msys.groupOMVS
