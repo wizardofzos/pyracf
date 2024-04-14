@@ -594,29 +594,19 @@ class RACF:
         if not selection:
             raise StoopidException('profile criteria not specified...')
         if option in (None,'LIST','L'):  # return 1 profile
-            # 1 string, several strings in a tuple, or a mix of strings and None, but the latter must be tested with get_level_values
-            if type(selection)==str: pass
+            # 1 string, several strings in a tuple, or a mix of strings and None
+            if type(selection)==str and not option:
+                selection = [selection]  # [] forces return of a df, not a Series
             elif type(selection)==tuple:
-                selections = len(selection)
-                strings = [type(selection[i])==str and selection[i]!='**' for i in range(selections)]
-                if all(strings): pass
-                else:
-                    locs = pd.array([True]*df.shape[0])
-                    for s in range(selections):
-                        if selection[s] not in (None,'**'):
-                            locs &= (df.index.get_level_values(s)==selection[s])
-                    selection = locs
+                selection = tuple(slice(None) if s in (None,'**') else s for s in selection),
             else:
-                raise StoopidException(f'specify patterns for profile, (group,userid) or (class,profile), not {selection}')
-            if option == None and type(selection) in (str,tuple):  # return DataFrame for 1 profile
-                try:
-                    return df.loc[[selection]]
-                except KeyError:
+                pass
+            try:
+                return df.loc[selection]
+            except KeyError:
+                if not option:  # return DataFrame with profiles
                     return pd.DataFrame()
-            else:  # return Series for 1 profile, or use loc[array]
-                try:
-                    return df.loc[selection]
-                except KeyError:
+                else:  # return Series 
                     return []
         else:
             raise StoopidException(f'unexpected last parameter {option}')
@@ -651,18 +641,17 @@ class RACF:
         if pattern=='L' or pattern=='LIST':
             return self.giveMeProfiles(self._connectData, (group,userid), pattern)
         else:
-            df = self._connectData
             if group and (not userid or userid=='**'):
                 # with group given, return connected user IDs via index (.loc['group'] strips level(0))
                 selection = group
             elif userid and (not group or group=='**'):
                 # with user ID given, return connected groups via index (only level(0))
-                return df.loc[df.index.get_level_values(1)==userid].droplevel(1)
+                return self._connectData.loc[(slice(None),userid),].droplevel(1)
             else:
                 # with group + user ID given, return 1 entry with all index levels (because only the data columns will be of interest)
                 selection = [(group,userid)]
             try:
-                return df.loc[selection]
+                return self._connectData.loc[selection]
             except KeyError:
                 return pd.DataFrame()
 
