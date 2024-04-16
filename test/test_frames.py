@@ -245,13 +245,9 @@ methods = [
  'user',
  'generic2regex',
  'giveMeProfiles',
- 'offset',
  'parse_t',
  'rankedAccess',
- 'rinfo',
- 'rtype',
  'xls',
- 'file',
 ]
 otherAttributes = [
  'STATE_BAD',
@@ -264,7 +260,6 @@ otherAttributes = [
  '_grouptree',
  '_ownertree',
  '_irrdbu00',
- '_offsets',
  '_parsed',
  '_recordname_df',
  '_recordname_type',

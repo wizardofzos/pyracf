@@ -262,6 +262,10 @@ class RACF:
         rtype = _offsets[offset]['record-type']
         if rtype in _recordtype_info.keys():
           _recordtype_info[rtype].update({"offsets": _offsets[offset]["offsets"]})
+    try:
+        del file, rtype, rinfo, offset, _offsets  # don't need these as class attributes
+    except NameError:
+        pass
 
     _grouptree          = None  # dict with lists
     _ownertree          = None  # dict with lists
