@@ -1,0 +1,8 @@
+# configuration for pytest objects, these are available in global TESTPARM dict.
+
+testname = "synthetic"
+unload = "../synthetic.unload"
+# unload = "../synthetic.unload"
+# unload = "../ZPDT.irrdbu00"
+pickledir = "/tmp"
+pickleprefix = "pytest-"
