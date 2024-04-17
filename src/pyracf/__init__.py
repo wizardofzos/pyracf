@@ -283,6 +283,15 @@ class RACF:
 
     def __init__(self, irrdbu00=None, pickles=None, prefix=''):
 
+        # activate acl() method on our dataframes, so it get called with our instance's variables, the frame, and all optional parms
+        # e.g. msys._datasetAccess.loc[['SYS1.**']].acl(permits=True, explode=False, resolve=False, admin=False, sort="user")
+        pd.core.base.PandasObject.acl = lambda *x,**y: RACF.acl(self,*x,**y)
+
+        # generic and regex filter on the index levels of a frame
+        # e.g. msys._datasets.gfilter('SYS1.**').acl(resolve=True, allows='UPDATE', sort="user")
+        pd.core.base.PandasObject.gfilter = RACF.gfilter
+        pd.core.base.PandasObject.rfilter = RACF.rfilter
+
         self._state = self.STATE_INIT
 
         if not irrdbu00 and not pickles:
@@ -313,6 +322,16 @@ class RACF:
                       "parsed": recordsRetrieved
                     }
                     self._unloadlines += recordsRetrieved
+
+            # create remaining public DFs as empty
+            for (rtype,rinfo) in RACF._recordtype_info.items():
+                if not hasattr(self, rinfo['df']):
+                    setattr(self, rinfo['df'], pd.DataFrame())
+                    self._records[rtype] = {
+                      "seen": 0,
+                      "parsed": 0
+                    }
+
             self._state = self.STATE_CORRELATING
             self._correlate()
             self._state = self.STATE_READY
@@ -442,16 +461,6 @@ class RACF:
     def _correlate(self, thingswewant=_recordtype_info.keys()):
         """ construct tables that combine the raw dataframes for improved processing """
         
-        # activate acl() method on our dataframes, so it get called with our instance's variables, the frame, and all optional parms
-        # e.g. msys._datasetAccess.loc[['SYS1.**']].acl(permits=True, explode=False, resolve=False, admin=False, sort="user")
-        pd.core.base.PandasObject.acl = lambda *x,**y: RACF.acl(self,*x,**y)
-
-        # generic and regex filter on the index levels of a frame
-        # e.g. msys._datasets.gfilter('SYS1.**').acl(resolve=True, allows='UPDATE', sort="user")
-        pd.core.base.PandasObject.gfilter = RACF.gfilter
-        pd.core.base.PandasObject.rfilter = RACF.rfilter
-
-
         # use the table definitions in _recordtype_info finalize the dfs:
         # set consistent index columns for existing dfs: profile key, connect group+user, of profile class+key (for G.R.)
         # define properties to access the dfs, in addition to the properties defined as functions below

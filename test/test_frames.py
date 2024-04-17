@@ -249,18 +249,17 @@ methods = [
  'rankedAccess',
  'xls',
 ]
+
+# attributes we should have
 otherAttributes = [
  'STATE_BAD',
  'STATE_CORRELATING',
  'STATE_INIT',
  'STATE_PARSING',
  'STATE_READY',
- 'THREAD_COUNT',
  '_correlate',
  '_grouptree',
  '_ownertree',
- '_irrdbu00',
- '_parsed',
  '_recordname_df',
  '_recordname_type',
  '_recordtype_info',
@@ -268,6 +267,13 @@ otherAttributes = [
  '_starttime',
  '_stoptime',
  '_state',
+]
+
+# attributes that don't get created for pickles (for example), so if we find them that's fine, if we don't it's fine too
+optionalAttributes = [
+ 'THREAD_COUNT',
+ '_irrdbu00',
+ '_parsed',
  '_unloadlines',
 ]
 
@@ -305,6 +311,7 @@ def test_unexpected_attributes(testparms):
       elif f in externalFrames: pass
       elif f in methods: pass
       elif f in otherAttributes: pass
+      elif f in optionalAttributes: pass
       else:
           assert not hasattr(r,f), f'unexpected attribute {f}'
 
