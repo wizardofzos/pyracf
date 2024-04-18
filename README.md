@@ -15,6 +15,22 @@ To get started with PyRACF, install it using `pip install pyracf` or explore the
 
 ## Updates
 
+### 0.8.5 (fixes for pickles, pytest, wiki)
+- parse_fancycli now creates empty data frames for pickles it could not find
+- index added to data frames from old pickles, not for pickles that already have index fields
+- pytest framework for QA in development cycle, initial tests ensure attributes are the same with all 3 methods to obtain RACF profiles
+- wiki https://github.com/wizardofzos/pyracf/wiki
+
+### 0.8.3 (tree print format for grouptree and ownertree)
+- msys.grouptree and msys.ownertree are now properties instead of callables
+  print as unix tree or simple format, e.g. print(msys.ownertree)
+  default format looks like unix tree, change with msys.ownertree.setformat('simple')
+  dict structure accessible through .tree attribute
+- .connect('group') and .connect(None,'user') return a (single level) Index with user IDs, resp., groups, connected to the given entity
+  this helps with queries that test group membership
+- add IDSTAR\_ACCESS and ALL\_USER\_ACCESS to .datasets and .generals with, resp., permitted access on ID(*) and the higher value of UACC and IDSTAR_ACCESS.
+- fixed: correlate also builds internal tables from saved pickles
+
 ### 0.8.2 (property for most application segments)
 - application segments for dataset, group and user entities are avaible with entity prefix, e.g., msys.userTSO, msys.datasetDFP, msys.groupOMVS
 - system related application segments from general resources are published without prefix, e.g., msys.STDATA or msys.MFA
@@ -153,7 +169,6 @@ Then later, you don't need to parse the same unload again, just do:
 | groups | Returns DataFrame with all group data | mysys.groups |
 | groupsWithoutUsers | Returns DataFrame with groups that have no connected users | mysys.groupsWithoutUsers |
 | grouptree | Returns dict with groups arranged by superior group | mysys.grouptree() |
-| installdata | Returns DataFrame with with user installation data (0204 recordtype) | mysys.installdata |
 | operations | Returns a DataFrame  with all operations users | mysys.operations |
 | orphans | Returns 2 DataFrames one with orphans in dataset profile access lists, and one for general resources | d, g = mysys.orphans |
 | ownertree | Returns dict with groups arranged by owner group or user ID | mysys.ownertree() |
@@ -197,28 +212,44 @@ Create a neat XLSX
 
 Print z/OS UNIX profiles
 
-    mysys.generals.gfilter('FAC*', 'BPX.**')
+    mysys.general('FACILITY', 'BPX.SUPERUSER')
+    mysys.general('FACILITY', 'BPX.**')  # show only the FACILITY BPX.** profile
+    mysys.general('FACILITY')  # show all FACILITY profiles
+
+    mysys.generals.gfilter('FAC*', 'BPX.**')  # show all BPX profiles
     mysys.generals.gfilter('UNIXPRIV') # print all in UNIXPRIV
 
 Show group information
 
     mysys.connect('SYS1')            # users connected to SYS1 groups
     mysys.connect('**','IBMUSER')    # groups IBMUSER is connected to
+
     mysys.connectData.gfilter('SYS*','IBM*') # connects using patterns
     mysys.connectData.rfilter('SYS[AB].*','PROD.*') # regex with alternatives
     mysys.connectData.query("USCON_GRP_SPECIAL=='YES' & USCON_REVOKE=='YES'")  # group special revoked
     mysys.connectData.query("GPMEM_AUTH==['CONNECT','JOIN']")  # users with connect authorities
 
+    mysys.users.query("index in @mysys.connect('SYS1').index")  # user details of users connected to SYS1
+
 Show access list information
 
     mysys.datasetPermit('SYS1.**')    # IDs permitted on SYS1.**
     mysys.datasetPermit(id='IBMUSER', access='ALTER')    # where is IBMUSER permitted
+    mysys.datasetPermit(id='*')       # where is ID(*) permitted
 
     mysys.datasets.gfilter('SYS1.**').acl(access='ALTER')    # IDs ALTER access on any SYS1 dataset profile
     mysys.datasets.gfilter('SYS%.**').acl(allows='UPDATE')    # IDs with access that allows UPDATE
     mysys.datasets.gfilter('SYS%.**').acl(allows='UPDATE', resolve=True)    # groups and user permits combined 
     mysys.datasets.gfilter('PROD.**').acl(permits=False, admin=True)    # who can change groups or profiles to change access on PROD data sets
     mysys.generals.gfilter('XFAC*', 'CKR.**').acl() # permits on zSecure Admin/Audit profile
+
+    mysys.datasets.query("ALL_USER_ACCESS=='UPDATE'")    # UACC or ID(*) set to UPDATE
+
+Show group tree information
+
+    print(msys.grouptree)  # group - superior group - subgroups in UNIX tree format
+    print(msys.ownertree.setformat('simple'))  # group - OWNER in simple format
+    msys.grouptree.tree  # get the dict
 
 
 # Updates 
