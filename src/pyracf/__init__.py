@@ -611,7 +611,10 @@ class RACF:
             if type(selection)==str and not option:
                 selection = [selection]  # [] forces return of a df, not a Series
             elif type(selection)==tuple:
-                selection = tuple(slice(None) if s in (None,'**') else s for s in selection),
+                if any([s in (None,'**') for s in selection]):  # any qualifiers are a mask
+                    selection = tuple(slice(None) if s in (None,'**') else s for s in selection),
+                else:
+                    selection = [selection]
             else:
                 pass
             try:

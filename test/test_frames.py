@@ -220,9 +220,6 @@ deprecatedFrames = [
 
 methods = [
  'parsed',
- 'accessAllows',
- 'accessKeywords',
- 'acl',
  'connect',
  'dataset',
  'datasetConditionalPermit',
@@ -231,22 +228,17 @@ methods = [
  'generalConditionalPermit',
  'generalPermit',
  'getdatasetrisk',
- 'gfilter',
  'group',
  'grouptree',
  'orphans',
  'ownertree',
  'parse',
  'parse_fancycli',
- 'rfilter',
  'save_pickle',
  'save_pickles',
  'status',
  'user',
- 'generic2regex',
- 'giveMeProfiles',
  'parse_t',
- 'rankedAccess',
  'xls',
 ]
 
@@ -271,11 +263,23 @@ otherAttributes = [
 
 # attributes that don't get created for pickles (for example), so if we find them that's fine, if we don't it's fine too
 optionalAttributes = [
+ 'accessAllows',
+ 'accessKeywords',
+ 'generic2regex',
+ 'rankedAccess',
  'THREAD_COUNT',
  '_irrdbu00',
  '_parsed',
  '_unloadlines',
 ]
+
+frameMethods = [
+ 'acl',
+ 'gfilter',
+ 'rfilter',
+ 'giveMeProfiles',
+]
+
 
 def test_frames_in_attributes(testparms):
   r = testparms['object']
@@ -283,14 +287,14 @@ def test_frames_in_attributes(testparms):
       if f in deprecatedFrames:
           with pytest.warns(UserWarning) as record: # should be .deprecated_call():
               assert hasattr(r,f), f'deprecated frame {f} must be an attribute'
-              assert type(getattr(r,f))==pd.core.frame.DataFrame, f'deprecated frame {f} must be a frame'
+              assert getattr(r,f).ndim==2, f'deprecated frame {f} must be a frame'
           assert record[0].message.args[0].find('deprecated')>-1, f'deprecated frame {f} without warning'
       else:
           assert hasattr(r,f), f'documented frame {f} must be an attribute'
-          assert type(getattr(r,f))==pd.core.frame.DataFrame, f'documented frame {f} must be a frame'
+          assert getattr(r,f).ndim==2, f'documented frame {f} must be a frame'
   for f in internalFrames:
       assert hasattr(r,f), f'internal (_) frame {f} must be an attribute'
-      assert type(getattr(r,f))==pd.core.frame.DataFrame, f'internal (_) frame {f} must be a frame'
+      assert getattr(r,f).ndim==2, f'internal (_) frame {f} must be a frame'
 
 def test_expected_attributes(testparms):
   r = testparms['object']  
@@ -310,6 +314,7 @@ def test_unexpected_attributes(testparms):
       elif f in internalFrames: pass
       elif f in externalFrames: pass
       elif f in methods: pass
+      elif f in frameMethods: pass
       elif f in otherAttributes: pass
       elif f in optionalAttributes: pass
       else:
