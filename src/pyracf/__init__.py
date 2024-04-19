@@ -18,25 +18,15 @@ import xlsxwriter
 import os
 import glob
 
-import warnings 
+import warnings
+
+from .racf_functions import accessKeywords, generic2regex
+from .utils import deprecated
 
 class StoopidException(Exception):
     def __init__(self, message):
         self.message = message
         super().__init__(self.message)
-
-def deprecated(func,oldname):
-    ''' Wrapper routine to add (deprecated) alias name to new routine (func), supports methods and properties. 
-        Inspired by functools.partial() '''
-    def deprecated_func(*arg,**keywords):
-        if hasattr(func,"__name__"):  # normal function object
-            newroutine = func
-        else:  # property object
-            newroutine = func.fget
-        warnings.warn(f"{oldname} is deprecated and will be removed, use {newroutine.__name__} instead.")
-        return newroutine(*arg,**keywords)
-    deprecated_func.func = func
-    return deprecated_func
 
 class GroupStructureTree(dict):
     ''' Dict with group names starting from SYS1 (group tree) or from (multiple) user IDs (owner tree).
@@ -272,15 +262,6 @@ class RACF:
     _grouptreeLines     = None  # df with all supgroups up to SYS1
     _ownertreeLines     = None  # df with owners up to SYS1 or user ID
     
-    accessKeywords = [' ','NONE','EXECUTE','READ','UPDATE','CONTROL','ALTER','-owner-']
-    
-    def accessAllows(level=None):
-        ''' return list of access levels that allow the given access, e.g.
-        RACF.accessAllows('UPDATE') returns [,'UPDATE','CONTROL','ALTER','-owner-']
-        for use in pandas .query("ACCESS in @RACF.accessAllows('UPDATE')")
-        '''
-        return RACF.accessKeywords[RACF.accessKeywords.index(level):]
-
     def __init__(self, irrdbu00=None, pickles=None, prefix=''):
 
         # activate acl() method on our dataframes, so it get called with our instance's variables, the frame, and all optional parms
@@ -493,12 +474,12 @@ class RACF:
         # copy ID(*) access into resource frames, similar to UACC: IDSTAR_ACCESS and ALL_USER_ACCESS
         if self.parsed("DSBD") > 0 and self.parsed("DSACC") > 0 and 'IDSTAR_ACCESS' not in self._datasets.columns:
             uaccs = pd.DataFrame()
-            uaccs["UACC_NUM"] = self._datasets["DSBD_UACC"].map(RACF.accessKeywords.index)
+            uaccs["UACC_NUM"] = self._datasets["DSBD_UACC"].map(accessKeywords.index)
             uaccs["IDSTAR_ACCESS"] = self._datasetAccess.gfilter(None, '*').droplevel([1,2])['DSACC_ACCESS']
             uaccs["IDSTAR_ACCESS"] = uaccs["IDSTAR_ACCESS"].fillna(' ')
-            uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(RACF.accessKeywords.index)
+            uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(accessKeywords.index)
             uaccs["ALL_USER_NUM"] = uaccs[["IDSTAR_NUM","UACC_NUM"]].max(axis=1)
-            uaccs["ALL_USER_ACCESS"] = uaccs['ALL_USER_NUM'].map(RACF.accessKeywords.__getitem__)
+            uaccs["ALL_USER_ACCESS"] = uaccs['ALL_USER_NUM'].map(accessKeywords.__getitem__)
             column = self._datasets.columns.to_list().index('DSBD_UACC')
             self._datasets.insert(column+1,"IDSTAR_ACCESS",uaccs["IDSTAR_ACCESS"])
             self._datasets.insert(column+2,"ALL_USER_ACCESS",uaccs["ALL_USER_ACCESS"])
@@ -507,13 +488,13 @@ class RACF:
         if self.parsed("GRBD") > 0 and self.parsed("GRACC") > 0 and 'IDSTAR_ACCESS' not in self._generals.columns:
             uaccs = pd.DataFrame()
             uaccs["UACC"] = self._generals["GRBD_UACC"]
-            uaccs["UACC"] = uaccs["UACC"].where(uaccs["UACC"].isin(RACF.accessKeywords),other=' ')  # DIGTCERT fields may be distorted
-            uaccs["UACC_NUM"] = uaccs["UACC"].map(RACF.accessKeywords.index)
+            uaccs["UACC"] = uaccs["UACC"].where(uaccs["UACC"].isin(accessKeywords),other=' ')  # DIGTCERT fields may be distorted
+            uaccs["UACC_NUM"] = uaccs["UACC"].map(accessKeywords.index)
             uaccs["IDSTAR_ACCESS"] = self._generalAccess.gfilter(None, '*').droplevel([1,2])['GRACC_ACCESS']
             uaccs["IDSTAR_ACCESS"] = uaccs["IDSTAR_ACCESS"].fillna(' ')
-            uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(RACF.accessKeywords.index)
+            uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(accessKeywords.index)
             uaccs["ALL_USER_NUM"] = uaccs[["IDSTAR_NUM","UACC_NUM"]].max(axis=1)
-            uaccs["ALL_USER_ACCESS"] = uaccs['ALL_USER_NUM'].map(RACF.accessKeywords.__getitem__)
+            uaccs["ALL_USER_ACCESS"] = uaccs['ALL_USER_NUM'].map(accessKeywords.__getitem__)
             column = self._generals.columns.to_list().index('GRBD_UACC')
             self._generals.insert(column+1,"IDSTAR_ACCESS",uaccs["IDSTAR_ACCESS"])
             self._generals.insert(column+2,"ALL_USER_ACCESS",uaccs["ALL_USER_ACCESS"])
@@ -582,22 +563,6 @@ class RACF:
                 pass
 
 
-    def generic2regex(selection, lenient='%&*'):
-        ''' Change a RACF generic pattern into regex to match with text strings in pandas cells.  use lenient="" to match with dsnames/resources '''
-        if selection in ('**',''):
-            return '.*$'
-        else:
-            return selection.replace('*.**','`dot``ast`')\
-                    .replace('.**',r'\`dot``dot``ast`')\
-                    .replace('*',r'[\w@#$`lenient`]`ast`')\
-                    .replace('%',r'[\w@#$]')\
-                    .replace('.',r'\.')\
-                    .replace('`dot`','.')\
-                    .replace('`ast`','*')\
-                    .replace('`lenient`',lenient)\
-                    +'$'
-
-
     def giveMeProfiles(self, df, selection=None, option=None):
         ''' Search profiles using the index fields.  selection can be str or tuple.  Tuples check for group + user id in connects, or class + profile key in generals.
         option controls how selection is interpreted, and how data must be returned:
@@ -636,7 +601,7 @@ class RACF:
                 if selection[s]=='*':
                     locs &= (df.index.get_level_values(s)=='*')
                 else: 
-                    locs &= (df.index.get_level_values(s).str.match(RACF.generic2regex(selection[s])))
+                    locs &= (df.index.get_level_values(s).str.match(generic2regex(selection[s])))
         return df.loc[locs]
 
     def rfilter(df, *selection):
@@ -795,13 +760,6 @@ class RACF:
 
 
 
-    def rankedAccess(args):
-        ''' translate access levels into integers, add 10 if permit is for the user ID. 
-        could be used in .apply() but would be called for each row, so very very slow '''
-        (userid,authid,access) = args
-        accessNum = RACF.accessKeywords.index(access)
-        return accessNum+10 if userid==authid else accessNum
-
     def acl(self, df, permits=True, explode=False, resolve=False, admin=False, access=None, allows=None, sort="profile"):
         ''' transform {dataset,general}[Conditional]Access table:
         permits=True: show normal ACL (with the groups identified in field USER_ID)
@@ -882,7 +840,7 @@ class RACF:
             
         if resolve or sort=="access":
             # map access level to number, add 10 for user permits so they override group permits in sort_values( )
-            acl["RANKED_ACCESS"] = acl["ACCESS"].map(RACF.accessKeywords.index)
+            acl["RANKED_ACCESS"] = acl["ACCESS"].map(accessKeywords.index)
             acl["RANKED_ACCESS"] = acl["RANKED_ACCESS"].where(acl["USER_ID"]!=acl["AUTH_ID"], acl["RANKED_ACCESS"]+10)
         if resolve:
             # keep highest value of RANKED_ACCESS, this is at least twice as fast as using .iloc[].idxmax() 
@@ -953,9 +911,9 @@ class RACF:
             returnFields += ["ADMIN_ID","AUTHORITY","VIA"]
             
         if access:
-            acl = acl.loc[acl["ACCESS"].map(RACF.accessKeywords.index)==RACF.accessKeywords.index(access.upper())]
+            acl = acl.loc[acl["ACCESS"].map(accessKeywords.index)==accessKeywords.index(access.upper())]
         if allows:
-            acl = acl.loc[acl["ACCESS"].map(RACF.accessKeywords.index)>=RACF.accessKeywords.index(allows.upper())]
+            acl = acl.loc[acl["ACCESS"].map(accessKeywords.index)>=accessKeywords.index(allows.upper())]
         return acl.sort_values(by=sortBy[sort])[tbProfileKeys+returnFields].reset_index(drop=True)
 
     

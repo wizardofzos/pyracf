@@ -2,6 +2,7 @@
 
 import pytest 
 import pandas as pd
+# from pyracf.profile_frame import ProfileFrame
 
 externalFrames = ['ALIAS',
  'CDTINFO',
@@ -263,10 +264,6 @@ otherAttributes = [
 
 # attributes that don't get created for pickles (for example), so if we find them that's fine, if we don't it's fine too
 optionalAttributes = [
- 'accessAllows',
- 'accessKeywords',
- 'generic2regex',
- 'rankedAccess',
  'THREAD_COUNT',
  '_irrdbu00',
  '_parsed',
