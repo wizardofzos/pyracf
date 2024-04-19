@@ -21,7 +21,8 @@ import glob
 import warnings
 
 from .group_structure import GroupStructureTree
-from .racf_functions import accessKeywords, generic2regex
+from .profile_frame import ProfileFrame
+from .racf_functions import accessKeywords
 from .utils import deprecated
 
 class StoopidException(Exception):
@@ -171,16 +172,8 @@ class RACF:
     _grouptreeLines     = None  # df with all supgroups up to SYS1
     _ownertreeLines     = None  # df with owners up to SYS1 or user ID
     
+
     def __init__(self, irrdbu00=None, pickles=None, prefix=''):
-
-        # activate acl() method on our dataframes, so it get called with our instance's variables, the frame, and all optional parms
-        # e.g. msys._datasetAccess.loc[['SYS1.**']].acl(permits=True, explode=False, resolve=False, admin=False, sort="user")
-        pd.core.base.PandasObject.acl = lambda *x,**y: RACF.acl(self,*x,**y)
-
-        # generic and regex filter on the index levels of a frame
-        # e.g. msys._datasets.gfilter('SYS1.**').acl(resolve=True, allows='UPDATE', sort="user")
-        pd.core.base.PandasObject.gfilter = RACF.gfilter
-        pd.core.base.PandasObject.rfilter = RACF.rfilter
 
         self._state = self.STATE_INIT
 
@@ -205,7 +198,7 @@ class RACF:
                 if recordname in RACF._recordname_type:
                     recordtype = RACF._recordname_type[recordname]
                     dfname = RACF._recordname_df[recordname]
-                    setattr(self, dfname, pd.read_pickle(pickle))
+                    setattr(self, dfname, ProfileFrame.read_pickle(pickle))
                     recordsRetrieved = len(getattr(self, dfname))
                     self._records[recordtype] = {
                       "seen": recordsRetrieved,
@@ -216,7 +209,7 @@ class RACF:
             # create remaining public DFs as empty
             for (rtype,rinfo) in RACF._recordtype_info.items():
                 if not hasattr(self, rinfo['df']):
-                    setattr(self, rinfo['df'], pd.DataFrame())
+                    setattr(self, rinfo['df'], ProfileFrame())
                     self._records[rtype] = {
                       "seen": 0,
                       "parsed": 0
@@ -330,7 +323,7 @@ class RACF:
 
         for (rtype,rinfo) in RACF._recordtype_info.items():
             if rtype in thingswewant:
-                setattr(self, rinfo['df'], pd.DataFrame.from_dict(self._parsed[rtype]))
+                setattr(self, rinfo['df'], ProfileFrame.from_dict(self._parsed[rtype]))
 
         # TODO: Reduce memory use, delete self._parsed after dataframes are made
 
@@ -355,15 +348,17 @@ class RACF:
         # set consistent index columns for existing dfs: profile key, connect group+user, of profile class+key (for G.R.)
         # define properties to access the dfs, in addition to the properties defined as functions below
         for (rtype,rinfo) in RACF._recordtype_info.items():
+            fieldPrefix = rinfo["name"]+"_"
+            getattr(self,rinfo['df'])._fieldPrefix = fieldPrefix
             if rtype in thingswewant and rtype in self._records and self._records[rtype]['parsed']>0:
                 if "index" in rinfo:
                     keys = rinfo["index"]
-                    names = [k.replace(rinfo["name"]+"_","_") for k in keys]
+                    names = [k.replace(fieldPrefix,"_") for k in keys]
                 elif rtype[1]=="5":  # general resources
-                    keys = [rinfo["name"]+"_CLASS_NAME",rinfo["name"]+"_NAME"]
+                    keys = [fieldPrefix+"CLASS_NAME",fieldPrefix+"NAME"]
                     names = ["_CLASS_NAME","_NAME"]
                 else:
-                    keys = rinfo["name"]+"_NAME"
+                    keys = fieldPrefix+"NAME"
                     names = "_NAME"
                 if getattr(self,rinfo['df']).index.names!=names:  # reuse existing index for pickles
                     getattr(self,rinfo['df']).set_index(keys,drop=False,inplace=True)
@@ -374,7 +369,7 @@ class RACF:
                     setattr(self, publisher, getattr(self, rinfo['df']))
                 else:
                     setattr(self, publisher, lambda x: warnings.warn(f"{publisher} has not been collected."))
-
+            getattr(self,rinfo['df'])._RACFobject = self  # access _groups and connectData from ProfileFrame methods
 
         # copy group auth (USE,CREATE,CONNECT,JOIN) to complete the connectData list, using index alignment
         if self.parsed("GPBD") > 0 and self.parsed("GPMEM") > 0 and self.parsed("USCON") > 0:
@@ -409,9 +404,6 @@ class RACF:
             self._generals.insert(column+2,"ALL_USER_ACCESS",uaccs["ALL_USER_ACCESS"])
             del uaccs
         
-        # self._connectByUser = self._connectData.set_index("USCON_NAME",drop=False).rename_axis('NAME')
-        # self._connectByGroup = self._connectData.set_index("USCON_GRP_ID",drop=False).rename_axis('GRP_ID')
-            
         # dicts containing lists of groups for printing group structure
         self._ownertree = self.ownertree
         self._grouptree = self.grouptree
@@ -472,64 +464,15 @@ class RACF:
                 pass
 
 
-    def giveMeProfiles(self, df, selection=None, option=None):
-        ''' Search profiles using the index fields.  selection can be str or tuple.  Tuples check for group + user id in connects, or class + profile key in generals.
-        option controls how selection is interpreted, and how data must be returned:
-        None is for (expensive) backward compatibility, returns a df with 1 profile.
-        LIST returns a series for 1 profile, much faster and easier to process.
-        '''
-        if not selection:
-            raise StoopidException('profile criteria not specified...')
-        if option in (None,'LIST','L'):  # return 1 profile
-            # 1 string, several strings in a tuple, or a mix of strings and None
-            if type(selection)==str and not option:
-                selection = [selection]  # [] forces return of a df, not a Series
-            elif type(selection)==tuple:
-                if any([s in (None,'**') for s in selection]):  # any qualifiers are a mask
-                    selection = tuple(slice(None) if s in (None,'**') else s for s in selection),
-                else:
-                    selection = [selection]
-            else:
-                pass
-            try:
-                return df.loc[selection]
-            except KeyError:
-                if not option:  # return DataFrame with profiles
-                    return pd.DataFrame()
-                else:  # return Series 
-                    return []
-        else:
-            raise StoopidException(f'unexpected last parameter {option}')
-
-
-    def gfilter(df, *selection):
-        ''' Search profiles using GENERIC pattern on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
-        locs = pd.array([True]*df.shape[0])
-        for s in range(len(selection)):
-            if selection[s] not in (None,'**'):
-                if selection[s]=='*':
-                    locs &= (df.index.get_level_values(s)=='*')
-                else: 
-                    locs &= (df.index.get_level_values(s).str.match(generic2regex(selection[s])))
-        return df.loc[locs]
-
-    def rfilter(df, *selection):
-        ''' Search profiles using refex on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
-        locs = pd.array([True]*df.shape[0])
-        for s in range(len(selection)):
-            if selection[s] not in (None,'**','.*'):
-                locs &= (df.index.get_level_values(s).str.match(selection[s]))
-        return df.loc[locs]
-
     # user frames
 
     def user(self, userid=None, pattern=None):
-        return self.giveMeProfiles(self._users, userid, pattern)
+        return self._users.giveMeProfiles(userid, pattern)
 
     def connect(self, group=None, userid=None, pattern=None):
         ''' connect('SYS1') returns 1 index level with user IDs, connect(None,'IBMUSER') returns 1 index level with group names '''
         if pattern=='L' or pattern=='LIST':
-            return self.giveMeProfiles(self._connectData, (group,userid), pattern)
+            return self._connectData.giveMeProfiles((group,userid), pattern)
         else:
             if group and (not userid or userid=='**'):
                 # with group given, return connected user IDs via index (.loc['group'] strips level(0))
@@ -543,7 +486,7 @@ class RACF:
             try:
                 return self._connectData.loc[selection]
             except KeyError:
-                return pd.DataFrame()
+                return ProfileFrame()
 
 
     @property
@@ -581,25 +524,23 @@ class RACF:
     # group frames
 
     def group(self, group=None, pattern=None):
-        return self.giveMeProfiles(self._groups, group, pattern)
+        return self._groups.giveMeProfiles(group, pattern)
 
     @property
     def groupsWithoutUsers(self):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._groups.loc[~self.groups.GPBD_NAME.isin(self._connectData.USCON_GRP_ID)]
     
 
     # dataset frames
         
     def dataset(self, profile=None, pattern=None):
-        return self.giveMeProfiles(self._datasets, profile, pattern)
+        return self._datasets.giveMeProfiles(profile, pattern)
 
     def datasetConditionalPermit(self, profile=None, id=None, access=None, pattern=None):
-        return self.giveMeProfiles(self._datasetConditionalAccess, (profile,id,access), pattern)
+        return self._datasetConditionalAccess.giveMeProfiles((profile,id,access), pattern)
 
     def datasetPermit(self, profile=None, id=None, access=None, pattern=None):
-        return self.giveMeProfiles(self._datasetAccess, (profile,id,access), pattern)
+        return self._datasetAccess.giveMeProfiles((profile,id,access), pattern)
 
     @property
     def uacc_read_datasets(self):
@@ -620,20 +561,16 @@ class RACF:
     @property
     def generals(self, query=None):
         # retained here due to deprecated property definition
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._generals
 
     generics = property(deprecated(generals,"generics"))
 
     def general(self, resclass=None, profile=None, pattern=None):
-        return self.giveMeProfiles(self._generals, (resclass,profile), pattern)
+        return self._generals.giveMeProfiles((resclass,profile), pattern)
 
     @property
     def generalMembers(self, query=None):
         # retained here due to deprecated property definition
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._generalMembers    
 
     genericMembers = property(deprecated(generalMembers,"genericMembers"))
@@ -648,184 +585,24 @@ class RACF:
     genericAccess = property(deprecated(generalAccess,"genericAccess"))
     
     def generalPermit(self, resclass=None, profile=None, id=None, access=None, pattern=None):
-        return self.giveMeProfiles(self._generalAccess, (resclass,profile,id,access), pattern)
+        return self._generalAccess.giveMeProfiles((resclass,profile,id,access), pattern)
     
     
     @property
     def generalConditionalAccess(self):
         # retained here due to deprecated property definition
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
         return self._generalConditionalAccess
 
     genericConditionalAccess = property(deprecated(generalConditionalAccess,"genericConditionalAccess"))
     
     def generalConditionalPermit(self, resclass=None, profile=None, id=None, access=None, pattern=None):
-        return self.giveMeProfiles(self._generalConditionalAccess, (resclass,profile,id,access), pattern)
+        return self._generalConditionalAccess.giveMeProfiles((resclass,profile,id,access), pattern)
 
     @property
     def SSIGNON(self): # GRSIGN
         return self._generalSSIGNON.join(self._generals['GRBD_APPL_DATA'])
 
 
-
-    def acl(self, df, permits=True, explode=False, resolve=False, admin=False, access=None, allows=None, sort="profile"):
-        ''' transform {dataset,general}[Conditional]Access table:
-        permits=True: show normal ACL (with the groups identified in field USER_ID)
-        explode=True: replace all groups with the users connected to the groups (in field USER_ID)
-        resolve=True: show user specific permit, or the highest group permit for each user
-        admin=True: add the users that have ability to change the groups on the ACL (in field ADMIN_ID)
-            VIA identifies the group name, AUTHORITY the RACF privilege involved
-        access=access level: show entries that are equal to the level specified, access='CONTROL'
-        allows=access level: show entries that are higher or equal to the level specified, allows='UPDATE'
-        sort=["user","access","id","admin","profile"] sort the resulting output
-        '''
-        tbName = df.columns[0].split('_')[0]
-        tbEntity = tbName[0:2]
-        if tbName in ["DSBD","DSACC","DSCACC"]:
-            tbProfileKeys = ["NAME","VOL"]
-        elif tbName in ["GRBD","GRACC","GRCACC"]:
-            tbProfileKeys = ["CLASS_NAME","NAME"]
-        else:
-            raise StoopidException(f'Table {tbName} not supported for acl( ), except DSBD, DSACC, DSCACC, GRBD, GRACC or GRCACC.')
-
-        if tbName in ["DSBD","GRBD"]:
-            # profiles selected, add corresp. access + cond.access frames
-            tbProfiles = df[[tbName+"_"+k for k in tbProfileKeys+["OWNER_ID","UACC"]]].copy()
-            tbProfiles.columns = [c.replace(tbName+"_","") for c in tbProfiles.columns]
-            tbPermits = []
-            for tb in [tbEntity+"ACC",tbEntity+"CACC"]:
-                if self.parsed(tb)>0:
-                    tbPermits.append(getattr(self,self._recordname_df[tb])\
-                                     .merge(tbProfiles["UACC"], left_index=True, right_index=True))
-                    tbPermits[-1].columns = [c.replace(tb+"_","") for c in tbPermits[-1].columns]
-            tbPermits = pd.concat(tbPermits,sort=False)\
-                          .drop(["RECORD_TYPE","ACCESS_CNT","UACC"],axis=1)\
-                          .fillna(' ') 
-        elif tbName in ["DSACC","DSCACC","GRACC","GRCACC"]:
-            # access frame selected, add profiles from frame tbEntity+BD
-            tbPermits = df.copy()
-            tbPermits.columns = [c.replace(tbName+"_","") for c in tbPermits.columns]
-            tbPermits.drop(["RECORD_TYPE","ACCESS_CNT"],axis=1,inplace=True)
-            tbProfiles = getattr(self,self._recordname_df[tbEntity+"BD"])\
-                         .loc[tbPermits.droplevel([-2,-1]).index.drop_duplicates()].copy()
-            tbProfiles.columns = [c.replace(tbEntity+"BD_","") for c in tbProfiles.columns]
-            tbProfiles = tbProfiles[tbProfileKeys+["OWNER_ID","UACC"]]
-        else:
-            raise StoopidException(f'Table {tbName} not supported for acl( ), except DSBD, DSACC, DSCACC, GRBD, GRACC or GRCACC.')
-          
-        # tbProfiles and tbPermits have column names without the tbName prefix
-        
-        returnFields = ["USER_ID","AUTH_ID","ACCESS"]
-        if tbName in ["DSCACC","GRCACC"]:
-            returnFields = returnFields+["CATYPE","CANAME","NET_ID","CACRITERIA"]
-
-        sortBy = {"user":["USER_ID"]+tbProfileKeys, 
-                  "access":["RANKED_ACCESS","USER_ID"],
-                  "id":["AUTH_ID"]+tbProfileKeys, 
-                  "admin":"ADMIN_ID", 
-                  "profile":tbProfileKeys+["USER_ID"]}
-        if sort not in sortBy:
-            raise StoopidException(f'Sort value {sort} not supported for acl( ), use one of {",".join(sortBy.keys())}.')
-        
-        if explode or resolve or admin:  # get view of connectData with only one index level (the group name)
-            groupMembers = self._connectData.droplevel(1)
-
-        if explode or resolve:  # get user IDs connected to groups into field USER_ID
-            acl = pd.merge(tbPermits, groupMembers[["USCON_NAME"]], how="left", left_on="AUTH_ID", right_index=True)
-            acl.insert(3,"USER_ID",acl["USCON_NAME"].where(acl["USCON_NAME"].notna(),acl["AUTH_ID"]))
-        elif permits:  # just the userid+access from RACF, add USER_ID column for consistency
-            acl = tbPermits
-            acl.insert(3,"USER_ID",acl["AUTH_ID"].where(~ acl["AUTH_ID"].isin(self._groups.index.values),"-group-"))
-        else:
-            acl = pd.DataFrame(columns=tbProfileKeys+returnFields)
-        if permits or explode or resolve:  # add -uacc- pseudo access
-            uacc = tbProfiles.query("UACC!='NONE'").copy()
-            if not uacc.empty:
-                uacc["OWNER_ID"] = "-uacc-" # is renamed to AUTH_ID
-                uacc["USER_ID"] = "-uacc-"
-                uacc = uacc.rename({"OWNER_ID":"AUTH_ID","UACC":"ACCESS"},axis=1)
-                acl = pd.concat([acl,uacc], ignore_index=True, sort=False).fillna(' ') # lose index b/c concat doesn't support us
-            
-        if resolve or sort=="access":
-            # map access level to number, add 10 for user permits so they override group permits in sort_values( )
-            acl["RANKED_ACCESS"] = acl["ACCESS"].map(accessKeywords.index)
-            acl["RANKED_ACCESS"] = acl["RANKED_ACCESS"].where(acl["USER_ID"]!=acl["AUTH_ID"], acl["RANKED_ACCESS"]+10)
-        if resolve:
-            # keep highest value of RANKED_ACCESS, this is at least twice as fast as using .iloc[].idxmax() 
-            condAcc = ["CATYPE","CANAME"] if "CATYPE" in acl.columns else []
-            acl = acl.sort_values(tbProfileKeys+["USER_ID"]+condAcc+["RANKED_ACCESS"])\
-                     .drop_duplicates(tbProfileKeys+["USER_ID"]+condAcc, keep='last')
-        if sort=="access":
-            acl.RANKED_ACCESS = 10 - (acl.RANKED_ACCESS % 10)  # highest access first
-        
-        if admin:
-            # owner of the profile, or group special, or group authority
-            # users who own the profiles
-            profile_userowners = pd.merge(tbProfiles, self._users["USBD_NAME"],
-                                          how="inner", left_on="OWNER_ID", right_index=True)\
-                                   .rename({"OWNER_ID":"ADMIN_ID"},axis=1)\
-                                   .drop(["USBD_NAME","UACC"],axis=1)
-            profile_userowners["AUTHORITY"] = "OWNER"
-            profile_userowners["VIA"] = "-profile-"
-            profile_userowners["ACCESS"] = "-owner-"
-
-            # groups that own the profiles
-            profile_groupowner1 = pd.merge(tbProfiles, self._groups[["GPBD_NAME"]],
-                                           how="inner", left_on="OWNER_ID", right_index=True)\
-                                    .drop(["GPBD_NAME","UACC"],axis=1)
-            profile_groupowner1["ACCESS"] = "-owner-"
-            profile_groupowner2 = pd.merge(profile_groupowner1, self._ownertreeLines, how="inner", left_on="OWNER_ID", right_index=True)\
-                                    .drop(["GROUP","OWNER_ID"],axis=1)
-            # identify group special on owner group and on any owning group
-            profile_groupowner1.rename({"OWNER_ID":"OWNER_IDS"},axis=1,inplace=True)
-            # continue with group special processing to find admin users
-
-            # who has administrative authority to modify groups from the ACL?
-            admin_owners = pd.merge(tbPermits, self._groups[["GPBD_NAME","GPBD_OWNER_ID","GPBD_SUPGRP_ID"]],
-                                    how="inner", left_on="AUTH_ID", right_index=True)
-            admin_owners["USER_ID"] = "-group-"
-
-            # users who own those groups
-            admin_gowners = admin_owners.query("GPBD_OWNER_ID != GPBD_SUPGRP_ID")\
-                                        .rename({"GPBD_NAME":"VIA","GPBD_OWNER_ID":"ADMIN_ID"},axis=1)\
-                                        .drop(["GPBD_SUPGRP_ID"],axis=1)
-            admin_gowners["AUTHORITY"] = "OWNER"
-            
-            # find all owner groups + groups up to SYS1 or user ID that breaks ownership
-            admin_grpspec1 = admin_owners.query("GPBD_OWNER_ID == GPBD_SUPGRP_ID")\
-                                         .drop(["GPBD_OWNER_ID","GPBD_SUPGRP_ID"],axis=1)
-            admin_grpspec2 = pd.merge(admin_grpspec1, self._ownertreeLines, how="inner", left_on="AUTH_ID", right_index=True)\
-                               .drop(["GPBD_NAME","GROUP"],axis=1)
-            admin_grpspec1.rename({"GPBD_NAME":"OWNER_IDS"},axis=1,inplace=True)
-            
-            # identify group special on ACL group and on any owning group
-            admin_grpspec = pd.merge(pd.concat([admin_grpspec1,admin_grpspec2,profile_groupowner1,profile_groupowner2], sort=False),\
-                                     groupMembers[["USCON_NAME","USCON_GRP_ID","USCON_GRP_SPECIAL"]]\
-                                             .query('USCON_GRP_SPECIAL == "YES"'),
-                                     how="inner", left_on="OWNER_IDS", right_index=True)\
-                               .rename({"USCON_NAME":"ADMIN_ID","OWNER_IDS":"VIA"},axis=1)\
-                               .drop(["USCON_GRP_ID","USCON_GRP_SPECIAL"],axis=1)
-            admin_grpspec["AUTHORITY"] = "GRPSPECIAL"
-
-            # CONNECT or JOIN authority on an ACL group
-            admin_grpauth = pd.merge(tbPermits, groupMembers[["USCON_NAME","USCON_GRP_ID","GPMEM_AUTH"]]
-                                                 .query('GPMEM_AUTH==["CONNECT","JOIN"]'),
-                                     how="inner", left_on="AUTH_ID", right_index=True)\
-                              .rename({"USCON_NAME":"ADMIN_ID","USCON_GRP_ID":"VIA","GPMEM_AUTH":"AUTHORITY"},axis=1)
-            admin_grpauth["USER_ID"] = "-group-"
-            
-            acl = pd.concat([acl,profile_userowners,admin_gowners,admin_grpspec,admin_grpauth],
-                            ignore_index=True, sort=False).fillna(' ')
-            returnFields += ["ADMIN_ID","AUTHORITY","VIA"]
-            
-        if access:
-            acl = acl.loc[acl["ACCESS"].map(accessKeywords.index)==accessKeywords.index(access.upper())]
-        if allows:
-            acl = acl.loc[acl["ACCESS"].map(accessKeywords.index)>=accessKeywords.index(allows.upper())]
-        return acl.sort_values(by=sortBy[sort])[tbProfileKeys+returnFields].reset_index(drop=True)
-
-    
     @property
     def orphans(self):
         
@@ -1000,7 +777,7 @@ class RACF:
         try:
             d = self.datasets.loc[[profile]]
         except KeyError:
-            d = pd.DataFrame()
+            d = ProfileFrame()
         if d.empty:
             raise StoopidException(f'Profile {profile} not found...')
         
