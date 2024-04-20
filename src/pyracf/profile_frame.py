@@ -1,6 +1,48 @@
 import pandas as pd
 from .racf_functions import accessKeywords, generic2regex
 
+class AclFrame(pd.DataFrame):
+    @property
+    def _constructor(self):
+        ''' a result of a method is also a ProfileFrame  '''
+        return AclFrame
+
+    def gfilter(df, *selection, **kw):
+        ''' Search profiles using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data levels of the df.
+        alternatively specify the field namesvia an alias keyword, r.datasets.acl().gfilter(user="IBM*") '''
+        _acl_filterKwds = {'user':'USER_ID', 'auth':'AUTH_ID', 'id':'AUTH_ID', 'access':'ACCESS'}
+        for s in range(len(selection)):
+            if selection[s] not in (None,'**'):
+                column = df.columns[s]
+                if selection[s]=='*':
+                    df = df.loc[df[column]=='*']
+                else:
+                    df = df.loc[df[column].str.match(generic2regex(selection[s]))]
+        for kwd,selection in kw.items():
+            if kwd in _acl_filterKwds:
+                column =_acl_filterKwds[kwd]
+                if selection=='*':
+                    df = df.loc[df[column]=='*']
+                else:
+                    df = df.loc[df[column].str.match(generic2regex(selection))]
+        return df
+
+    def rfilter(df, *selection, **kw):
+        ''' Search profiles using regex on the data fields.  selection can be one or more values, corresponding to data levels of the df
+        alternatively specify the field namesvia an alias keyword, r.datasets.acl().rfilter(user="I.*R")  '''
+        _acl_filterKwds = {'user':'USER_ID', 'auth':'AUTH_ID', 'id':'AUTH_ID', 'access':'ACCESS'}
+        for s in range(len(selection)):
+            if selection[s] not in (None,'**','.*'):
+                column = df.columns[s]
+                df = df.loc[df[column].str.match(selection[s])]
+        for kwd,selection in kw.items():
+            if kwd in _acl_filterKwds:
+                column =_acl_filterKwds[kwd]
+                if selection not in (None,'**','.*'):
+                    df = df.loc[df[column].str.match(selection)]
+        return df
+
+
 class ProfileFrame(pd.DataFrame):
     ''' properties that are copied to result frames '''
     _metadata = ['_RACFobject','_fieldPrefix']
@@ -14,7 +56,7 @@ class ProfileFrame(pd.DataFrame):
         return ProfileFrame(pd.read_pickle(path))
     
     def to_pickle(self, path):
-        ''' ensure RACFobject is not save in pickle '''
+        ''' ensure RACFobject is not saved in pickle '''
         md = self._metadata
         self._metadata = []
         pd.to_pickle(self,path)
@@ -22,22 +64,20 @@ class ProfileFrame(pd.DataFrame):
 
     def gfilter(df, *selection):
         ''' Search profiles using GENERIC pattern on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
-        locs = pd.array([True]*df.shape[0])
         for s in range(len(selection)):
             if selection[s] not in (None,'**'):
                 if selection[s]=='*':
-                    locs &= (df.index.get_level_values(s)=='*')
+                    df = df.loc[df.index.get_level_values(s)=='*']
                 else: 
-                    locs &= (df.index.get_level_values(s).str.match(generic2regex(selection[s])))
-        return df.loc[locs]
+                    df = df.loc[df.index.get_level_values(s).str.match(generic2regex(selection[s]))]
+        return df
 
     def rfilter(df, *selection):
         ''' Search profiles using refex on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
-        locs = pd.array([True]*df.shape[0])
         for s in range(len(selection)):
             if selection[s] not in (None,'**','.*'):
-                locs &= (df.index.get_level_values(s).str.match(selection[s]))
-        return df.loc[locs]
+                df = df.loc[df.index.get_level_values(s).str.match(selection[s])]
+        return df
 
     def giveMeProfiles(df, selection=None, option=None):
         ''' Search profiles using the index fields.  selection can be str or tuple.  Tuples check for group + user id in connects, or class + profile key in generals.
@@ -69,6 +109,23 @@ class ProfileFrame(pd.DataFrame):
             raise StoopidException(f'unexpected last parameter {option}')
 
 
+    def stripPrefix(df, deep=False, prefix=None, setprefix=None):
+        ''' strip table prefix from column names, shallow is only in the returned value, deep changes the table.
+            prefix can be specified f df._fieldPrefix is unavailable.
+            if the ProfileFrame is processed with .merge, _fieldPrefix is lost and can be restored with setprefix parm.  '''
+        prefix = prefix if prefix else setprefix if setprefix else df._fieldPrefix
+        if deep:  # reset column names in source frame
+            df.columns = [c.replace(prefix,"") for c in df.columns]
+            if setprefix:
+                 df._fieldPrefix = setprefix
+            return df
+        else:
+            rframe = df.rename({c:c.replace(prefix,"") for c in df.columns}, axis=1)
+            if setprefix:
+                 rframe._fieldPrefix = setprefix
+            return rframe
+
+
     def acl(df, permits=True, explode=False, resolve=False, admin=False, access=None, allows=None, sort="profile"):
         ''' transform {dataset,general}[Conditional]Access table:
         permits=True: show normal ACL (with the groups identified in field USER_ID)
@@ -82,40 +139,36 @@ class ProfileFrame(pd.DataFrame):
         '''
         RACFobject = df._RACFobject
 
-        tbName = df.columns[0].split('_')[0]
+        tbName = df._fieldPrefix.strip('_')
         tbEntity = tbName[0:2]
         if tbName in ["DSBD","DSACC","DSCACC"]:
             tbProfileKeys = ["NAME","VOL"]
-            _baseProfiles = getattr(RACFobject,'_datasets')
-            _accessLists = getattr(RACFobject,'_datasetAccess')
-            _condAccessLists = getattr(RACFobject,'_datasetConditionalAccess')
+            _baseProfiles = RACFobject.table('DSBD')
+            _accessLists = RACFobject.table('DSACC')
+            _condAccessLists = RACFobject.table('DSCACC')
         elif tbName in ["GRBD","GRACC","GRCACC"]:
             tbProfileKeys = ["CLASS_NAME","NAME"]
-            _baseProfiles = getattr(RACFobject,'_generals')
-            _accessLists = getattr(RACFobject,'_generalAccess')
-            _condAccessLists = getattr(RACFobject,'_generalConditionalAccess')
+            _baseProfiles = RACFobject.table('GRBD')
+            _accessLists = RACFobject.table('GRACC')
+            _condAccessLists = RACFobject.table('GRCACC')
         else:
             raise StoopidException(f'Table {tbName} not supported for acl( ), except DSBD, DSACC, DSCACC, GRBD, GRACC or GRCACC.')
 
         if tbName in ["DSBD","GRBD"]:
             # profiles selected, add corresp. access + cond.access frames
-            tbProfiles = df[[df._fieldPrefix+k for k in tbProfileKeys+["OWNER_ID","UACC"]]].copy()
-            tbProfiles.columns = [c.replace(tbProfiles._fieldPrefix,"") for c in tbProfiles.columns]
+            tbProfiles = df[[df._fieldPrefix+k for k in tbProfileKeys+["OWNER_ID","UACC"]]].stripPrefix()
             tbPermits = []
             for tb in [_accessLists, _condAccessLists]:
                 if not tb.empty:
-                    tbPermits.append(tb.merge(tbProfiles["UACC"], left_index=True, right_index=True))
-                    tbPermits[-1].columns = [c.replace(tb._fieldPrefix,"") for c in tbPermits[-1].columns]
+                    tbPermits.append(tb.merge(tbProfiles["UACC"], left_index=True, right_index=True).stripPrefix(setprefix=tb._fieldPrefix))
             tbPermits = pd.concat(tbPermits,sort=False)\
                           .drop(["RECORD_TYPE","ACCESS_CNT","UACC"],axis=1)\
                           .fillna(' ') 
         elif tbName in ["DSACC","DSCACC","GRACC","GRCACC"]:
             # access frame selected, add profiles from frame tbEntity+BD
-            tbPermits = df.copy()
-            tbPermits.columns = [c.replace(tbPermits._fieldPrefix,"") for c in tbPermits.columns]
+            tbPermits = df.stripPrefix()
             tbPermits.drop(["RECORD_TYPE","ACCESS_CNT"],axis=1,inplace=True)
-            tbProfiles = _baseProfiles.loc[tbPermits.droplevel([-2,-1]).index.drop_duplicates()].copy()
-            tbProfiles.columns = [c.replace(tbProfiles._fieldPrefix,'') for c in tbProfiles.columns]
+            tbProfiles = _baseProfiles.loc[tbPermits.droplevel([-2,-1]).index.drop_duplicates()].stripPrefix(setprefix=_baseProfiles._fieldPrefix)
             tbProfiles = tbProfiles[tbProfileKeys+["OWNER_ID","UACC"]]
         else:
             raise StoopidException(f'Table {tbName} not supported for acl( ), except DSBD, DSACC, DSCACC, GRBD, GRACC or GRCACC.')
@@ -138,13 +191,13 @@ class ProfileFrame(pd.DataFrame):
             groupMembers = RACFobject._connectData.droplevel(1)
 
         if explode or resolve:  # get user IDs connected to groups into field USER_ID
-            acl = pd.merge(tbPermits, groupMembers[["USCON_NAME"]], how="left", left_on="AUTH_ID", right_index=True)
+            acl = AclFrame(pd.merge(tbPermits, groupMembers[["USCON_NAME"]], how="left", left_on="AUTH_ID", right_index=True))
             acl.insert(3,"USER_ID",acl["USCON_NAME"].where(acl["USCON_NAME"].notna(),acl["AUTH_ID"]))
         elif permits:  # just the userid+access from RACF, add USER_ID column for consistency
-            acl = tbPermits
+            acl = AclFrame(tbPermits)
             acl.insert(3,"USER_ID",acl["AUTH_ID"].where(~ acl["AUTH_ID"].isin(RACFobject._groups.index.values),"-group-"))
         else:
-            acl = pd.DataFrame(columns=tbProfileKeys+returnFields)
+            acl = AclFrame(columns=tbProfileKeys+returnFields)
         if permits or explode or resolve:  # add -uacc- pseudo access
             uacc = tbProfiles.query("UACC!='NONE'").copy()
             if not uacc.empty:

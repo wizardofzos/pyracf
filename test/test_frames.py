@@ -1,8 +1,8 @@
 # verify the result of parsing, not the actual content of dfs
 
 import pytest 
-import pandas as pd
-# from pyracf.profile_frame import ProfileFrame
+# import pandas as pd
+from pyracf.profile_frame import ProfileFrame
 
 externalFrames = ['ALIAS',
  'CDTINFO',
@@ -238,6 +238,7 @@ methods = [
  'save_pickle',
  'save_pickles',
  'status',
+ 'table',
  'user',
  'parse_t',
  'xls',
@@ -275,6 +276,8 @@ frameMethods = [
  'gfilter',
  'rfilter',
  'giveMeProfiles',
+ 'read_pickle',
+ 'to_pickle',
 ]
 
 
@@ -311,11 +314,15 @@ def test_unexpected_attributes(testparms):
       elif f in internalFrames: pass
       elif f in externalFrames: pass
       elif f in methods: pass
-      elif f in frameMethods: pass
       elif f in otherAttributes: pass
       elif f in optionalAttributes: pass
       else:
           assert not hasattr(r,f), f'unexpected attribute {f}'
+
+def test_frame_methods(testparms):
+  r = testparms['object']
+  for f in frameMethods:
+      assert f in dir(r._users), f'documented frame must have {f} method'
 
 
 

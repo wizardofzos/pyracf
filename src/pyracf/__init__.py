@@ -325,7 +325,8 @@ class RACF:
             if rtype in thingswewant:
                 setattr(self, rinfo['df'], ProfileFrame.from_dict(self._parsed[rtype]))
 
-        # TODO: Reduce memory use, delete self._parsed after dataframes are made
+        # Reduce memory use, delete self._parsed after dataframes are made
+        del self._parsed
 
         # We need the correlate anyways all the times so let's run it
         self.THREAD_COUNT -= 1
@@ -340,7 +341,11 @@ class RACF:
         """ how many records with this name (type) were parsed """
         rtype = RACF._recordname_type[rname]
         return self._records[rtype]['parsed'] if rtype in self._records else 0
-        
+
+    def table(self, rname):
+        """ give me table with this name (type) """
+        return getattr(self, RACF._recordname_df[rname])
+
     def _correlate(self, thingswewant=_recordtype_info.keys()):
         """ construct tables that combine the raw dataframes for improved processing """
         
@@ -348,9 +353,11 @@ class RACF:
         # set consistent index columns for existing dfs: profile key, connect group+user, of profile class+key (for G.R.)
         # define properties to access the dfs, in addition to the properties defined as functions below
         for (rtype,rinfo) in RACF._recordtype_info.items():
-            fieldPrefix = rinfo["name"]+"_"
-            getattr(self,rinfo['df'])._fieldPrefix = fieldPrefix
             if rtype in thingswewant and rtype in self._records and self._records[rtype]['parsed']>0:
+                df = getattr(self,rinfo['df'])  # dataframe with these records
+                df._RACFobject = self  # used to access _groups and _connectData from ProfileFrame methods
+                fieldPrefix = rinfo["name"]+"_"
+                df._fieldPrefix = fieldPrefix
                 if "index" in rinfo:
                     keys = rinfo["index"]
                     names = [k.replace(fieldPrefix,"_") for k in keys]
@@ -360,16 +367,15 @@ class RACF:
                 else:
                     keys = fieldPrefix+"NAME"
                     names = "_NAME"
-                if getattr(self,rinfo['df']).index.names!=names:  # reuse existing index for pickles
-                    getattr(self,rinfo['df']).set_index(keys,drop=False,inplace=True)
-                    getattr(self,rinfo['df']).rename_axis(names,inplace=True)  # prevent ambiguous index / column names 
+                if df.index.names!=names:  # reuse existing index for pickles
+                    df.set_index(keys,drop=False,inplace=True)
+                    df.rename_axis(names,inplace=True)  # prevent ambiguous index / column names
             if 'publisher' in rinfo:
                 publisher = rinfo['publisher'] if rinfo['publisher']!='*' else rinfo['df'].lstrip('_')
                 if hasattr(self, rinfo['df']):
                     setattr(self, publisher, getattr(self, rinfo['df']))
                 else:
                     setattr(self, publisher, lambda x: warnings.warn(f"{publisher} has not been collected."))
-            getattr(self,rinfo['df'])._RACFobject = self  # access _groups and connectData from ProfileFrame methods
 
         # copy group auth (USE,CREATE,CONNECT,JOIN) to complete the connectData list, using index alignment
         if self.parsed("GPBD") > 0 and self.parsed("GPMEM") > 0 and self.parsed("USCON") > 0:
