@@ -10,7 +10,8 @@ class AclFrame(pd.DataFrame):
     def gfilter(df, *selection, **kw):
         ''' Search profiles using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data levels of the df.
         alternatively specify the field namesvia an alias keyword, r.datasets.acl().gfilter(user="IBM*") '''
-        _acl_filterKwds = {'user':'USER_ID', 'auth':'AUTH_ID', 'id':'AUTH_ID', 'access':'ACCESS'}
+
+        _aclFilterKwds = {'user':'USER_ID', 'auth':'AUTH_ID', 'id':'AUTH_ID', 'access':'ACCESS'}
         for s in range(len(selection)):
             if selection[s] not in (None,'**'):
                 column = df.columns[s]
@@ -19,27 +20,32 @@ class AclFrame(pd.DataFrame):
                 else:
                     df = df.loc[df[column].str.match(generic2regex(selection[s]))]
         for kwd,selection in kw.items():
-            if kwd in _acl_filterKwds:
-                column =_acl_filterKwds[kwd]
+            if kwd in _aclFilterKwds:
+                column =_aclFilterKwds[kwd]
                 if selection=='*':
                     df = df.loc[df[column]=='*']
                 else:
                     df = df.loc[df[column].str.match(generic2regex(selection))]
+            else:
+                raise TypeError(f"unknown selection gfilter({kwd}=), try {list(_aclFilterKwds.keys())} instead")
         return df
 
     def rfilter(df, *selection, **kw):
         ''' Search profiles using regex on the data fields.  selection can be one or more values, corresponding to data levels of the df
         alternatively specify the field namesvia an alias keyword, r.datasets.acl().rfilter(user="I.*R")  '''
-        _acl_filterKwds = {'user':'USER_ID', 'auth':'AUTH_ID', 'id':'AUTH_ID', 'access':'ACCESS'}
+
+        _aclFilterKwds = {'user':'USER_ID', 'auth':'AUTH_ID', 'id':'AUTH_ID', 'access':'ACCESS'}
         for s in range(len(selection)):
             if selection[s] not in (None,'**','.*'):
                 column = df.columns[s]
                 df = df.loc[df[column].str.match(selection[s])]
         for kwd,selection in kw.items():
-            if kwd in _acl_filterKwds:
-                column =_acl_filterKwds[kwd]
+            if kwd in _aclFilterKwds:
+                column =_aclFilterKwds[kwd]
                 if selection not in (None,'**','.*'):
                     df = df.loc[df[column].str.match(selection)]
+            else:
+                raise TypeError(f"unknown selection rfilter({kwd}=), try {list(_aclFilterKwds.keys())} instead")
         return df
 
 
@@ -113,6 +119,8 @@ class ProfileFrame(pd.DataFrame):
         ''' strip table prefix from column names, shallow is only in the returned value, deep changes the table.
             prefix can be specified f df._fieldPrefix is unavailable.
             if the ProfileFrame is processed with .merge, _fieldPrefix is lost and can be restored with setprefix parm.  '''
+        if df.shape==(0,0):
+            return df
         prefix = prefix if prefix else setprefix if setprefix else df._fieldPrefix
         if deep:  # reset column names in source frame
             df.columns = [c.replace(prefix,"") for c in df.columns]

@@ -1,3 +1,5 @@
+import warnings
+
 class GroupStructureTree(dict):
     ''' Dict with group names starting from SYS1 (group tree) or from (multiple) user IDs (owner tree).
     Printing these objects, the tree will be formatted as Unix tree (default, or after .setformat('unix') or with mainframe characters (after .setformat('simple').
@@ -28,22 +30,24 @@ class GroupStructureTree(dict):
             tree.pop(anchor)
         if '' in tree:  # bring SYS1 to the top, supgroup of SYS1 is ''
             tree = tree[''][0]
-        self.tree = tree
+        super().__init__(tree)
         self._format = 'unix'
-        
-    def __get__(self):
-        ''' class objects have a value too '''
-        return self.tree
 
     def __str__(self):
         ''' what happens when print(object) is issued '''
-        return self.simple_format(self.tree) if self._format=='simple' else self.unix_format(self.tree)
+        return self.simple_format(self) if self._format=='simple' else self.unix_format(self)
         
+    def format(self,format='unix'):
+        ''' return printable tree '''
+        if format in ['unix','simple']:
+            return self.simple_format(self) if format=='simple' else self.unix_format(self)
+        else:
+            warnings.warn(f'Unsupported format value {format}, select unix or simple.')
+
     def setformat(self,format='unix'):
         ''' set default format for next print '''
         if format in ['unix','simple']:
             self._format = format
-            return self
         else:
             warnings.warn(f'Unsupported format value {format}, select unix or simple.')
 
@@ -91,3 +95,9 @@ class GroupStructureTree(dict):
                 info += ' |'*depth + ' '  + str(node) + '\n'
                 info += self.simple_format(values,depth)
         return info
+
+    @property
+    def tree(self):
+        warnings.warn('.tree attribute is deprecated, this is now the default return value of the tree objected')
+        return self
+
