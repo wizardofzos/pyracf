@@ -7,45 +7,45 @@ class AclFrame(pd.DataFrame):
         ''' a result of a method is also a ProfileFrame  '''
         return AclFrame
 
+    _aclFilterKwds = {'user':'USER_ID', 'auth':'AUTH_ID', 'id':'AUTH_ID', 'access':'ACCESS'}
+
     def gfilter(df, *selection, **kw):
         ''' Search profiles using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data levels of the df.
         alternatively specify the field namesvia an alias keyword, r.datasets.acl().gfilter(user="IBM*") '''
 
-        _aclFilterKwds = {'user':'USER_ID', 'auth':'AUTH_ID', 'id':'AUTH_ID', 'access':'ACCESS'}
         for s in range(len(selection)):
             if selection[s] not in (None,'**'):
                 column = df.columns[s]
-                if selection[s]=='*':
-                    df = df.loc[df[column]=='*']
+                if selection[s]=='*' or (selection[s].find('*')==-1 and selection[s].find('%')==-1 ):
+                    df = df.loc[df[column]==selection]
                 else:
                     df = df.loc[df[column].str.match(generic2regex(selection[s]))]
         for kwd,selection in kw.items():
-            if kwd in _aclFilterKwds:
-                column =_aclFilterKwds[kwd]
-                if selection=='*':
-                    df = df.loc[df[column]=='*']
+            if kwd in df._aclFilterKwds:
+                column = df._aclFilterKwds[kwd]
+                if selection=='*' or (selection.find('*')==-1 and selection.find('%')==-1 ):
+                    df = df.loc[df[column]==selection]
                 else:
                     df = df.loc[df[column].str.match(generic2regex(selection))]
             else:
-                raise TypeError(f"unknown selection gfilter({kwd}=), try {list(_aclFilterKwds.keys())} instead")
+                raise TypeError(f"unknown selection gfilter({kwd}=), try {list(df._aclFilterKwds.keys())} instead")
         return df
 
     def rfilter(df, *selection, **kw):
         ''' Search profiles using regex on the data fields.  selection can be one or more values, corresponding to data levels of the df
         alternatively specify the field namesvia an alias keyword, r.datasets.acl().rfilter(user="I.*R")  '''
 
-        _aclFilterKwds = {'user':'USER_ID', 'auth':'AUTH_ID', 'id':'AUTH_ID', 'access':'ACCESS'}
         for s in range(len(selection)):
             if selection[s] not in (None,'**','.*'):
                 column = df.columns[s]
                 df = df.loc[df[column].str.match(selection[s])]
         for kwd,selection in kw.items():
-            if kwd in _aclFilterKwds:
-                column =_aclFilterKwds[kwd]
+            if kwd in df._aclFilterKwds:
+                column = df._aclFilterKwds[kwd]
                 if selection not in (None,'**','.*'):
                     df = df.loc[df[column].str.match(selection)]
             else:
-                raise TypeError(f"unknown selection rfilter({kwd}=), try {list(_aclFilterKwds.keys())} instead")
+                raise TypeError(f"unknown selection rfilter({kwd}=), try {list(df._aclFilterKwds.keys())} instead")
         return df
 
 
@@ -72,8 +72,8 @@ class ProfileFrame(pd.DataFrame):
         ''' Search profiles using GENERIC pattern on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
         for s in range(len(selection)):
             if selection[s] not in (None,'**'):
-                if selection[s]=='*':
-                    df = df.loc[df.index.get_level_values(s)=='*']
+                if selection[s]=='*' or (selection[s].find('*')==-1 and selection[s].find('%')==-1 ):
+                    df = df.loc[df.index.get_level_values(s)==selection[s]]
                 else: 
                     df = df.loc[df.index.get_level_values(s).str.match(generic2regex(selection[s]))]
         return df
@@ -92,7 +92,7 @@ class ProfileFrame(pd.DataFrame):
         LIST returns a series for 1 profile, much faster and easier to process.
         '''
         if not selection:
-            raise StoopidException('profile criteria not specified...')
+            raise TypeError('profile criteria not specified...')
         if option in (None,'LIST','L'):  # return 1 profile
             # 1 string, several strings in a tuple, or a mix of strings and None
             if type(selection)==str and not option:
@@ -112,7 +112,7 @@ class ProfileFrame(pd.DataFrame):
                 else:  # return Series 
                     return []
         else:
-            raise StoopidException(f'unexpected last parameter {option}')
+            raise TypeError(f'unexpected last parameter {option}')
 
 
     def stripPrefix(df, deep=False, prefix=None, setprefix=None):
@@ -160,7 +160,7 @@ class ProfileFrame(pd.DataFrame):
             _accessLists = RACFobject.table('GRACC')
             _condAccessLists = RACFobject.table('GRCACC')
         else:
-            raise StoopidException(f'Table {tbName} not supported for acl( ), except DSBD, DSACC, DSCACC, GRBD, GRACC or GRCACC.')
+            raise TypeError(f'Table {tbName} not supported for acl( ), except DSBD, DSACC, DSCACC, GRBD, GRACC or GRCACC.')
 
         if tbName in ["DSBD","GRBD"]:
             # profiles selected, add corresp. access + cond.access frames
@@ -179,7 +179,7 @@ class ProfileFrame(pd.DataFrame):
             tbProfiles = _baseProfiles.loc[tbPermits.droplevel([-2,-1]).index.drop_duplicates()].stripPrefix(setprefix=_baseProfiles._fieldPrefix)
             tbProfiles = tbProfiles[tbProfileKeys+["OWNER_ID","UACC"]]
         else:
-            raise StoopidException(f'Table {tbName} not supported for acl( ), except DSBD, DSACC, DSCACC, GRBD, GRACC or GRCACC.')
+            raise TypeError(f'Table {tbName} not supported for acl( ), except DSBD, DSACC, DSCACC, GRBD, GRACC or GRCACC.')
           
         # tbProfiles and tbPermits have column names without the tbName prefix
         
@@ -193,7 +193,7 @@ class ProfileFrame(pd.DataFrame):
                   "admin":"ADMIN_ID", 
                   "profile":tbProfileKeys+["USER_ID"]}
         if sort not in sortBy:
-            raise StoopidException(f'Sort value {sort} not supported for acl( ), use one of {",".join(sortBy.keys())}.')
+            raise TypeError(f'Sort value {sort} not supported for acl( ), use one of {",".join(sortBy.keys())}.')
         
         if explode or resolve or admin:  # get view of connectData with only one index level (the group name)
             groupMembers = RACFobject._connectData.droplevel(1)
