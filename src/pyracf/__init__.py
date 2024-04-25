@@ -467,30 +467,6 @@ class RACF(ProfilePublisher,RuleVerifier,XlsWriter):
                 pass
 
 
-
-
-    @property
-    def orphans(self):
-        
-        if self.parsed("DSACC") + self.parsed("GRACC") == 0:
-            raise StoopidException('No dataset/general access records parsed! (PEBKAM/ID-10T error)')
-            
-        datasetOrphans = None
-        generalOrphans = None
-
-        if self.parsed("DSACC") > 0:
-            self._datasetAccess = self._datasetAccess.assign(inGroups=self._datasetAccess.DSACC_AUTH_ID.isin(self._groups.GPBD_NAME))
-            self._datasetAccess = self._datasetAccess.assign(inUsers=self._datasetAccess.DSACC_AUTH_ID.isin(self._users.USBD_NAME))
-            datasetOrphans = self._datasetAccess.loc[(self._datasetAccess['inGroups'] == False) & (self._datasetAccess['inUsers'] == False) & (self._datasetAccess['DSACC_AUTH_ID'] != "*") & (self._datasetAccess['DSACC_AUTH_ID'] != "&RACUID")]
-        
-        if self.parsed("GRACC") > 0:
-                self._generalAccess = self._generalAccess.assign(inGroups=self._generalAccess.GRACC_AUTH_ID.isin(self._groups.GPBD_NAME))
-                self._generalAccess = self._generalAccess.assign(inUsers=self._generalAccess.GRACC_AUTH_ID.isin(self._users.USBD_NAME))
-                generalOrphans =  self._generalAccess.loc[(self._generalAccess['inGroups'] == False) & (self._generalAccess['inUsers'] == False) & (self._generalAccess['GRACC_AUTH_ID'] != "*") & (self._generalAccess['GRACC_AUTH_ID'] != "&RACUID")]
-
-        return datasetOrphans, generalOrphans
-
-
     def getdatasetrisk(self, profile=''):
         '''This will produce a dict as follows:
       
