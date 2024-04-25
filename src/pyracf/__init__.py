@@ -13,8 +13,6 @@ import threading
 import time
 from datetime import datetime
 
-import xlsxwriter
-
 import os
 import glob
 
@@ -25,6 +23,7 @@ from .profile_frame import ProfileFrame
 from .profile_publishers import ProfilePublisher
 from .racf_functions import accessKeywords
 from .utils import deprecated
+from .xls_writers import XlsWriter
 
 class StoopidException(Exception):
     def __init__(self, message):
@@ -32,7 +31,7 @@ class StoopidException(Exception):
         super().__init__(self.message)
 
 
-class RACF(ProfilePublisher):
+class RACF(ProfilePublisher,XlsWriter):
     
     # Our states
     STATE_BAD         = -1
@@ -493,128 +492,6 @@ class RACF(ProfilePublisher):
                 generalOrphans =  self._generalAccess.loc[(self._generalAccess['inGroups'] == False) & (self._generalAccess['inUsers'] == False) & (self._generalAccess['GRACC_AUTH_ID'] != "*") & (self._generalAccess['GRACC_AUTH_ID'] != "&RACUID")]
 
         return datasetOrphans, generalOrphans
-
-    def xls(self,fileName='irrdbu00.xlsx'):
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-
-        if self.parsed("DSACC") + self.parsed("GRACC") == 0:
-            raise StoopidException('No dataset/general access records parsed! (PEBKAM/ID-10T error)')
-
-        writer = pd.ExcelWriter(f'{fileName}', engine='xlsxwriter')
-        accessLevelFormats = {
-                    'N': writer.book.add_format({'bg_color': 'silver'}),
-                    'E': writer.book.add_format({'bg_color': 'purple'}),
-                    'R': writer.book.add_format({'bg_color': 'yellow'}),
-                    'U': writer.book.add_format({'bg_color': 'orange'}),
-                    'C': writer.book.add_format({'bg_color': 'red'}),
-                    'A': writer.book.add_format({'bg_color': 'red'}),
-                    'D': writer.book.add_format({'bg_color': 'cyan'}), 
-                    'T': writer.book.add_format({'bg_color': 'orange'}),
-                }
-
-        accessLevels = {
-                    'NONE': 'N',
-                    'EXECUTE': 'E',
-                    'READ': 'R',
-                    'UPDATE': 'U',
-                    'CONTROL': 'C',
-                    'ALTER': 'A',
-                    'NOTRUST': 'D',
-                    'TRUST': 'T'
-                }
-
-        format_br = writer.book.add_format({})
-        format_br.set_rotation(90)
-        format_nr = writer.book.add_format({})
-        format_center = writer.book.add_format({})
-        format_center.set_align('center')
-        format_center.set_align('vcenter')
-
-        ss = datetime.now()
-
-        classes = self.generalAccess.groupby(['GRACC_CLASS_NAME'])
-        for c in classes.groups:
-            s = datetime.now()
-            authIDsInClass = list(self.generalAccess.loc[self.generalAccess.GRACC_CLASS_NAME==c]['GRACC_AUTH_ID'].unique())
-            profilesInClass = list(self.generalAccess.loc[self.generalAccess.GRACC_CLASS_NAME==c]['GRACC_NAME'].unique())
-            longestProfile = 0
-            for p in profilesInClass:
-                if len(p) > longestProfile:
-                    longestProfile = len(p)
-            newdata = {}
-            newdata['Profiles'] = []
-            for id in authIDsInClass:
-                newdata[id] = [None] * len(profilesInClass)
-            classdata = classes.get_group(c)
-            profiles = classdata.groupby(['GRACC_NAME'])
-            for i,p in enumerate(profiles.groups):
-                profiledata = profiles.get_group(p)
-                newdata['Profiles'].append(p)
-                users = profiledata.groupby(['GRACC_AUTH_ID'])
-                for u in users.groups:
-                    useraccess = users.get_group(u)['GRACC_ACCESS'].values[0]
-                    newdata[u][i] = accessLevels[useraccess]
-            df1 = pd.DataFrame(newdata)
-            df1.to_excel(writer, sheet_name=c, index=False)
-            worksheet = writer.sheets[c]
-            worksheet.set_row(0, 64, format_br)
-            worksheet.set_column(1, len(authIDsInClass)+1, 2, format_center )
-            worksheet.set_column(0, 0, longestProfile + 2 )
-            worksheet.write(0, 0, 'Profile', format_nr)
-
-            shared_strings = sorted(worksheet.str_table.string_table, key=worksheet.str_table.string_table.get)
-            for i in range(len(authIDsInClass)+1):
-                for j in range(len(profilesInClass)+1):
-                    if i>0 and j>0:
-                        rdict = worksheet.table.get(j,None)
-                        centry = rdict.get(i,None)
-                        if centry:
-                            value = shared_strings[centry.string]
-                            worksheet.write(j, i, value, accessLevelFormats[value])
-
-        if self.parsed("DSBD") > 0:
-            ss = datetime.now()
-            profilesInClass = list(self.datasetAccess['DSACC_NAME'].unique())
-            authIDsInClass = list(self.datasetAccess['DSACC_AUTH_ID'].unique())
-            authids = 0
-            longestProfile = 0
-            for p in profilesInClass:
-                if len(p) > longestProfile:
-                    longestProfile = len(p)
-            newdata = {}
-            newdata['Profiles'] = []
-            for id in authIDsInClass:
-                    newdata[id] = [None] * len(profilesInClass)
-            profiles = self.datasetAccess.groupby(['DSACC_NAME'])
-            for i,p in enumerate(profiles.groups):
-                profiledata = profiles.get_group(p)
-                newdata['Profiles'].append(p)
-                users = profiledata.groupby(['DSACC_AUTH_ID'])
-                for u in users.groups:
-                    useraccess = users.get_group(u)['DSACC_ACCESS'].values[0]
-                    newdata[u][i] = accessLevels[useraccess]
-
-            df1 = pd.DataFrame(newdata)
-            df1.to_excel(writer, sheet_name='DATASET', index=False)
-            worksheet = writer.sheets['DATASET']
-            worksheet.set_row(0, 64, format_br)
-            worksheet.set_column(1, len(authIDsInClass)+1, 2, format_center )
-            worksheet.set_column(0, 0, longestProfile + 2 )
-            worksheet.write(0, 0, 'Profile', format_nr)
-
-            shared_strings = sorted(worksheet.str_table.string_table, key=worksheet.str_table.string_table.get)
-            for i in range(len(authIDsInClass)+1):
-                for j in range(len(profilesInClass)+1):
-                    if i>0 and j>0:
-                        rdict = worksheet.table.get(j,None)
-                        centry = rdict.get(i,None)
-                        if centry:
-                            value = shared_strings[centry.string]
-                            worksheet.write(j, i, value, accessLevelFormats[value])
-
-        writer.close()   
-
 
     @property
     def ownertree(self):

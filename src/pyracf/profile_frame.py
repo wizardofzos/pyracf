@@ -1,5 +1,6 @@
 import pandas as pd
 from .racf_functions import accessKeywords, generic2regex
+from .xls_writers import XlsWriter
 
 class AclFrame(pd.DataFrame):
     @property
@@ -49,7 +50,7 @@ class AclFrame(pd.DataFrame):
         return df
 
 
-class ProfileFrame(pd.DataFrame):
+class ProfileFrame(pd.DataFrame, XlsWriter):
     ''' properties that are copied to result frames '''
     _metadata = ['_RACFobject','_fieldPrefix']
     
