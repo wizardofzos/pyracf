@@ -20,6 +20,7 @@ import warnings
 
 from .profile_frame import ProfileFrame
 from .profile_publishers import ProfilePublisher
+from .rule_verify import RuleVerifier
 from .racf_functions import accessKeywords
 from .utils import deprecated
 from .xls_writers import XlsWriter
@@ -30,7 +31,7 @@ class StoopidException(Exception):
         super().__init__(self.message)
 
 
-class RACF(ProfilePublisher,XlsWriter):
+class RACF(ProfilePublisher,RuleVerifier,XlsWriter):
     
     # Our states
     STATE_BAD         = -1
