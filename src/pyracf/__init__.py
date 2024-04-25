@@ -18,7 +18,6 @@ import glob
 
 import warnings
 
-from .group_structure import GroupStructureTree
 from .profile_frame import ProfileFrame
 from .profile_publishers import ProfilePublisher
 from .racf_functions import accessKeywords
@@ -167,8 +166,6 @@ class RACF(ProfilePublisher,XlsWriter):
     except NameError:
         pass
 
-    _grouptree          = None  # dict with lists
-    _ownertree          = None  # dict with lists
     _grouptreeLines     = None  # df with all supgroups up to SYS1
     _ownertreeLines     = None  # df with owners up to SYS1 or user ID
     
@@ -344,7 +341,10 @@ class RACF(ProfilePublisher,XlsWriter):
 
     def table(self, rname):
         """ give me table with this name (type) """
-        return getattr(self, RACF._recordname_df[rname])
+        try:
+            return getattr(self, RACF._recordname_df[rname])
+        except KeyError:
+            warnings.warn(f'RACF object does not have a table {rname}')
 
     def _correlate(self, thingswewant=_recordtype_info.keys()):
         """ construct tables that combine the raw dataframes for improved processing """
@@ -410,10 +410,6 @@ class RACF(ProfilePublisher,XlsWriter):
             self._generals.insert(column+2,"ALL_USER_ACCESS",uaccs["ALL_USER_ACCESS"])
             del uaccs
         
-        # dicts containing lists of groups for printing group structure
-        self._ownertree = self.ownertree
-        self._grouptree = self.grouptree
-
         # self._grouptreeLines: frame of group + name of all superior groups until SYS1
         gtl = self._groups[['GPBD_NAME','GPBD_SUPGRP_ID']]
         gtlLen = 0
@@ -492,23 +488,6 @@ class RACF(ProfilePublisher,XlsWriter):
                 generalOrphans =  self._generalAccess.loc[(self._generalAccess['inGroups'] == False) & (self._generalAccess['inUsers'] == False) & (self._generalAccess['GRACC_AUTH_ID'] != "*") & (self._generalAccess['GRACC_AUTH_ID'] != "&RACUID")]
 
         return datasetOrphans, generalOrphans
-
-    @property
-    def ownertree(self):
-        ''' 
-        create dict with the user IDs that own groups as key, and a list of their owned groups as values.
-        if a group in this list owns group, the list is replaced by a dict.
-        '''
-        return self._ownertree if self._ownertree else GroupStructureTree(self._groups,"GPBD_OWNER_ID")
-
-    @property
-    def grouptree(self):
-        ''' 
-        create dict starting with SYS1, and a list of groups owned by SYS1 as values.
-        if a group in this list owns group, the list is replaced by a dict.
-        because SYS1s superior group is blank/missing, we return the first group that is owned by "".
-        '''
-        return self._grouptree if self._grouptree else GroupStructureTree(self._groups,"GPBD_SUPGRP_ID")
 
 
     def getdatasetrisk(self, profile=''):

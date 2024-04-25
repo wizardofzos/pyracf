@@ -13,3 +13,6 @@ def deprecated(func,oldname):
     deprecated_func.func = func
     return deprecated_func
 
+def readableList(iter):
+    '''' print entries from a dict index into a readable list, e.g., a, b or c '''
+    return list(iter)[0] if len(iter)==1 else ' or '.join([', '.join(list(iter)[0:-1]),list(iter)[-1]])

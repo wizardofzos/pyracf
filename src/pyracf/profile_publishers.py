@@ -1,3 +1,4 @@
+from .group_structure import GroupStructureTree
 from .profile_frame import ProfileFrame
 from .utils import deprecated
 
@@ -71,6 +72,27 @@ class ProfilePublisher():
     def groupsWithoutUsers(self):
         return self._groups.loc[~self.groups.GPBD_NAME.isin(self._connectData.USCON_GRP_ID)]
     
+    @property
+    def ownertree(self):
+        ''' 
+        create dict with the user IDs that own groups as key, and a list of their owned groups as values.
+        if a group in this list owns group, the list is replaced by a dict.
+        '''
+        if not (hasattr(self,"_ownertree") and self._ownertree):
+            self._ownertree = GroupStructureTree(self._groups,"GPBD_OWNER_ID")
+        return self._ownertree
+
+    @property
+    def grouptree(self):
+        ''' 
+        create dict starting with SYS1, and a list of groups owned by SYS1 as values.
+        if a group in this list owns group, the list is replaced by a dict.
+        because SYS1s superior group is blank/missing, we return the first group that is owned by "".
+        '''
+        if not (hasattr(self,"_grouptree") and self._grouptree):
+            self._grouptree = GroupStructureTree(self._groups,"GPBD_SUPGRP_ID")
+        return self._grouptree
+
 
     ### dataset frames
         

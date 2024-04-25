@@ -1,5 +1,6 @@
 import pandas as pd
 from .racf_functions import accessKeywords, generic2regex
+from .utils import readableList
 from .xls_writers import XlsWriter
 
 class AclFrame(pd.DataFrame):
@@ -29,7 +30,7 @@ class AclFrame(pd.DataFrame):
                 else:
                     df = df.loc[df[column].str.match(generic2regex(selection))]
             else:
-                raise TypeError(f"unknown selection gfilter({kwd}=), try {list(df._aclFilterKwds.keys())} instead")
+                raise TypeError(f"unknown selection gfilter({kwd}=), try {readableList(df._aclFilterKwds.keys())} instead")
         return df
 
     def rfilter(df, *selection, **kw):
@@ -46,7 +47,7 @@ class AclFrame(pd.DataFrame):
                 if selection not in (None,'**','.*'):
                     df = df.loc[df[column].str.match(selection)]
             else:
-                raise TypeError(f"unknown selection rfilter({kwd}=), try {list(df._aclFilterKwds.keys())} instead")
+                raise TypeError(f"unknown selection rfilter({kwd}=), try {readableList(df._aclFilterKwds.keys())} instead")
         return df
 
 
