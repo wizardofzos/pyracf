@@ -1,7 +1,8 @@
+import pandas as pd
 import importlib.resources
 import yaml
-import pandas as pd
 import warnings
+from .frame_filter import FrameFilter
 from .racf_functions import generic2regex
 from .utils import readableList
 
@@ -11,10 +12,22 @@ class RuleVerifier:
     rules can be passed as a list of tuples, or dict via parameter, or as function result from external module.
     '''
 
-    def load_rules(self, rules=None, domains=None, module=".profile_field_rules"):
+    def load_rules(self, rules=None, domains=None, module=None, reset=False, defaultmodule=".profile_field_rules"):
         ''' load rules + domains from structure or from packaged module '''
 
-        if not(rules and domains):
+        if reset and hasattr(self,'_verify'):  # clear prior load
+            del self._verify
+
+        if not((rules and domains) or module or hasattr(self,'_verify')):  # no complete parameters, no prior load?
+            module = defaultmodule  # backstop
+
+        if rules and domains: pass  # got everything, ignore module and history
+        elif hasattr(self,'_verify') and not module:  # get missing component(s) from prior load
+            if not rules:
+                rules = self._verify['rules']
+            if not domains:
+                domains = self._verify['domains']
+        else:  # get the missing component(s) from module
             ruleset = importlib.import_module(module, package="pyracf")
             ruleset = importlib.reload(ruleset)  # reload module for easier test of modifications
             if not rules:
@@ -22,18 +35,18 @@ class RuleVerifier:
             if not domains:
                 domains = ruleset.domains(self,pd)  # needs pandas
 
-        if type(rules)==str:
-            rules= yaml.safe_load(rules)
+        if rules and type(rules)==str:
+            rules = yaml.safe_load(rules)
 
         self._verify = dict(rules=rules, domains=domains)
         
         return self
 
-    def verify(self, rules=None, domains=None, module=None):
+    def verify(self, rules=None, domains=None, module=None, reset=False):
         ''' verify fields in profiles against the expected value, issues are returned in a df '''
 
-        if rules or domains or module:
-            self.load_rules(rules, domains, module)
+        if rules or domains or module or reset:
+            self.load_rules(rules, domains, module, reset)
 
         if not (hasattr(self,'_verify') and 'rules' in self._verify and 'domains' in self._verify):
             raise TypeError('rules and domains must be loaded before running verify')
@@ -126,50 +139,22 @@ class RuleVerifier:
                                                    sort=False, ignore_index=True)
         return RuleFrame(brokenSum)
 
-class RuleFrame(pd.DataFrame):
+
+class RuleFrame(pd.DataFrame,FrameFilter):
     @property
     def _constructor(self):
         ''' a result of a method is also a RuleFrame  '''
         return RuleFrame
 
-    _verFilterKwds = {'resclass':'CLASS', 'profile':'PROFILE', 'field':'FIELD_NAME', 'value':'VALUE', 'except':'EXPECT', 'found':'EXPECT'}
+    _verifyFilterKwds = {'resclass':'CLASS', 'profile':'PROFILE', 'field':'FIELD_NAME', 'value':'VALUE', 'found':'VALUE', 'expect':'EXPECT'}
 
-    def gfilter(df, *selection, **kw):
+    def gfilter(df, *selection, **kwds):
         ''' Search profiles using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data levels of the df.
         alternatively specify the field names via an alias keyword, r.verify().gfilter(field='OWN*') '''
+        return df.valueFilter(*selection, **kwds, kwdValues=df._verifyFilterKwds)
 
-        for s in range(len(selection)):
-            if selection[s] not in (None,'**'):
-                column = df.columns[s]
-                if selection[s]=='*' or (selection[s].find('*')==-1 and selection[s].find('%')==-1 ):
-                    df = df.loc[df[column]==selection]
-                else:
-                    df = df.loc[df[column].str.match(generic2regex(selection[s]))]
-        for kwd,selection in kw.items():
-            if kwd in df._verFilterKwds:
-                column = df._verFilterKwds[kwd]
-                if selection=='*' or (selection.find('*')==-1 and selection.find('%')==-1 ):
-                    df = df.loc[df[column]==selection]
-                else:
-                    df = df.loc[df[column].str.match(generic2regex(selection))]
-            else:
-                raise TypeError(f"unknown selection gfilter({kwd}=), try {readableList(df._verFilterKwds.keys())} instead")
-        return df
-
-    def rfilter(df, *selection, **kw):
+    def rfilter(df, *selection, **kwds):
         ''' Search profiles using regex on the data fields.  selection can be one or more values, corresponding to data levels of the df
         alternatively specify the field names via an alias keyword, r.verify().gfilter(field='(OWNER|DFLTGRP)')  '''
-
-        for s in range(len(selection)):
-            if selection[s] not in (None,'**','.*'):
-                column = df.columns[s]
-                df = df.loc[df[column].str.match(selection[s])]
-        for kwd,selection in kw.items():
-            if kwd in df._verFilterKwds:
-                column = df._verFilterKwds[kwd]
-                if selection not in (None,'**','.*'):
-                    df = df.loc[df[column].str.match(selection)]
-            else:
-                raise TypeError(f"unknown selection rfilter({kwd}=), try {readableList(df._verFilterKwds.keys())} instead")
-        return df
+        return df.valueFilter(*selection, **kwds, kwdValues=df._verifyFilterKwds, regexPattern=True)
 

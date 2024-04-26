@@ -1,9 +1,9 @@
 import pandas as pd
+from .frame_filter import FrameFilter
 from .racf_functions import accessKeywords, generic2regex
-from .utils import readableList
 from .xls_writers import XlsWriter
 
-class AclFrame(pd.DataFrame):
+class AclFrame(pd.DataFrame, FrameFilter):
     @property
     def _constructor(self):
         ''' a result of a method is also a ProfileFrame  '''
@@ -11,47 +11,18 @@ class AclFrame(pd.DataFrame):
 
     _aclFilterKwds = {'user':'USER_ID', 'auth':'AUTH_ID', 'id':'AUTH_ID', 'access':'ACCESS'}
 
-    def gfilter(df, *selection, **kw):
+    def gfilter(df, *selection, **kwds):
         ''' Search profiles using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data levels of the df.
         alternatively specify the field namesvia an alias keyword, r.datasets.acl().gfilter(user="IBM*") '''
+        return df.valueFilter(*selection, **kwds, kwdValues=df._aclFilterKwds)
 
-        for s in range(len(selection)):
-            if selection[s] not in (None,'**'):
-                column = df.columns[s]
-                if selection[s]=='*' or (selection[s].find('*')==-1 and selection[s].find('%')==-1 ):
-                    df = df.loc[df[column]==selection]
-                else:
-                    df = df.loc[df[column].str.match(generic2regex(selection[s]))]
-        for kwd,selection in kw.items():
-            if kwd in df._aclFilterKwds:
-                column = df._aclFilterKwds[kwd]
-                if selection=='*' or (selection.find('*')==-1 and selection.find('%')==-1 ):
-                    df = df.loc[df[column]==selection]
-                else:
-                    df = df.loc[df[column].str.match(generic2regex(selection))]
-            else:
-                raise TypeError(f"unknown selection gfilter({kwd}=), try {readableList(df._aclFilterKwds.keys())} instead")
-        return df
-
-    def rfilter(df, *selection, **kw):
+    def rfilter(df, *selection, **kwds):
         ''' Search profiles using regex on the data fields.  selection can be one or more values, corresponding to data levels of the df
         alternatively specify the field namesvia an alias keyword, r.datasets.acl().rfilter(user="I.*R")  '''
-
-        for s in range(len(selection)):
-            if selection[s] not in (None,'**','.*'):
-                column = df.columns[s]
-                df = df.loc[df[column].str.match(selection[s])]
-        for kwd,selection in kw.items():
-            if kwd in df._aclFilterKwds:
-                column = df._aclFilterKwds[kwd]
-                if selection not in (None,'**','.*'):
-                    df = df.loc[df[column].str.match(selection)]
-            else:
-                raise TypeError(f"unknown selection rfilter({kwd}=), try {readableList(df._aclFilterKwds.keys())} instead")
-        return df
+        return df.valueFilter(*selection, **kwds, kwdValues=df._aclFilterKwds, regexPattern=True)
 
 
-class ProfileFrame(pd.DataFrame, XlsWriter):
+class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
     ''' properties that are copied to result frames '''
     _metadata = ['_RACFobject','_fieldPrefix']
     
@@ -70,22 +41,13 @@ class ProfileFrame(pd.DataFrame, XlsWriter):
         pd.to_pickle(self,path)
         self._metadata = md
 
-    def gfilter(df, *selection):
+    def gfilter(df, *selection, exclude=False, regexPattern=False):
         ''' Search profiles using GENERIC pattern on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
-        for s in range(len(selection)):
-            if selection[s] not in (None,'**'):
-                if selection[s]=='*' or (selection[s].find('*')==-1 and selection[s].find('%')==-1 ):
-                    df = df.loc[df.index.get_level_values(s)==selection[s]]
-                else: 
-                    df = df.loc[df.index.get_level_values(s).str.match(generic2regex(selection[s]))]
-        return df
+        return df.indexFilter(*selection, exclude=exclude, regexPattern=False)
 
-    def rfilter(df, *selection):
+    def rfilter(df, *selection, exclude=False):
         ''' Search profiles using refex on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
-        for s in range(len(selection)):
-            if selection[s] not in (None,'**','.*'):
-                df = df.loc[df.index.get_level_values(s).str.match(selection[s])]
-        return df
+        return df.indexFilter(*selection, exclude=exclude, regexPattern=True)
 
     def giveMeProfiles(df, selection=None, option=None):
         ''' Search profiles using the index fields.  selection can be str or tuple.  Tuples check for group + user id in connects, or class + profile key in generals.

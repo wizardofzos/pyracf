@@ -220,6 +220,7 @@ deprecatedFrames = [
 
 
 methods = [
+ 'accessMatrix2xls',
  'parsed',
  'connect',
  'dataset',
@@ -242,6 +243,8 @@ methods = [
  'user',
  'parse_t',
  'xls',
+ 'verify',
+ 'load_rules',
 ]
 
 # attributes we should have
@@ -252,8 +255,6 @@ otherAttributes = [
  'STATE_PARSING',
  'STATE_READY',
  '_correlate',
- '_grouptree',
- '_ownertree',
  '_recordname_df',
  '_recordname_type',
  '_recordtype_info',
