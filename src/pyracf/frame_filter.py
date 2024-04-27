@@ -20,15 +20,17 @@ class FrameFilter():
         skipSelect = (None,'**','.*') if regexPattern else (None,'**')
         if exclude:  # reverse selection, so collect all comparison results
             locs = [True]*len(df)
-        for s in range(len(selection)):
-            if selection[s] not in skipSelect:
+        s = -1
+        for sel in selection:
+            s += 1
+            if sel not in skipSelect:
                 column = df.columns[s]
                 if regexPattern:
-                    result = df[column].str.match(selection[s])
-                elif selection[s]=='*' or (selection[s].find('*')==-1 and selection[s].find('%')==-1 ):
-                    result = df[column]==selection[s]
+                    result = df[column].str.match(sel)
+                elif sel=='*' or (sel.find('*')==-1 and sel.find('%')==-1 ):
+                    result = df[column]==sel
                 else:
-                    result = df[column].str.match(generic2regex(selection[s]))
+                    result = df[column].str.match(generic2regex(sel))
                 if exclude:
                     locs &= result
                 else:
@@ -58,14 +60,16 @@ class FrameFilter():
         skipSelect = (None,'**','.*') if regexPattern else (None,'**')
         if exclude:  # reverse selection, so collect all comparison results
             locs = [True]*len(df)
-        for s in range(len(selection)):
-            if selection[s] not in skipSelect:
+        s = -1
+        for sel in selection:
+            s += 1
+            if sel not in skipSelect:
                 if regexPattern:
-                    result = df.index.get_level_values(s).str.match(selection[s])
-                elif selection[s]=='*' or (selection[s].find('*')==-1 and selection[s].find('%')==-1 ):
-                    result = df.index.get_level_values(s)==selection[s]
+                    result = df.index.get_level_values(s).str.match(sel)
+                elif sel=='*' or (sel.find('*')==-1 and sel.find('%')==-1 ):
+                    result = df.index.get_level_values(s)==sel
                 else: 
-                    result = df.index.get_level_values(s).str.match(generic2regex(selection[s]))
+                    result = df.index.get_level_values(s).str.match(generic2regex(sel))
                 if exclude:
                     locs &= result
                 else:
