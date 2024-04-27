@@ -67,24 +67,31 @@ class GroupStructureTree(dict):
             tree.pop(anchor)
         if '' in tree:  # bring SYS1 to the top, supgroup of SYS1 is ''
             tree = tree[''][0]
-        self.tree = tree
+        super().__init__(tree)
         self._format = 'unix'
         
-    def __get__(self):
-        ''' class objects have a value too '''
-        return self.tree
-
     def __str__(self):
         ''' what happens when print(object) is issued '''
-        return self.simple_format(self.tree) if self._format=='simple' else self.unix_format(self.tree)
+        return self.simple_format(self) if self._format=='simple' else self.unix_format(self)
+         
+    def format(self,format='unix'):
+        ''' return printable tree '''
+        if format in ['unix','simple']:
+            return self.simple_format(self) if format=='simple' else self.unix_format(self)
+        else:
+            warnings.warn(f'Unsupported format value {format}, select unix or simple.')
         
     def setformat(self,format='unix'):
         ''' set default format for next print '''
         if format in ['unix','simple']:
             self._format = format
-            return self
         else:
             warnings.warn(f'Unsupported format value {format}, select unix or simple.')
+
+    @property
+    def tree(self):
+        warnings.warn('.tree attribute is deprecated, this is now the default return value of the tree objected')
+        return self
 
     def unix_format(self,branch=None,prefix=''):
         ''' print groups, prefixed with vertical bars to show depth '''
@@ -494,7 +501,7 @@ class RACF:
         if self.parsed("DSBD") > 0 and self.parsed("DSACC") > 0 and 'IDSTAR_ACCESS' not in self._datasets.columns:
             uaccs = pd.DataFrame()
             uaccs["UACC_NUM"] = self._datasets["DSBD_UACC"].map(RACF.accessKeywords.index)
-            uaccs["IDSTAR_ACCESS"] = self._datasetAccess.gfilter(None, '*').droplevel([1,2])['DSACC_ACCESS'].drop_duplicates()
+            uaccs["IDSTAR_ACCESS"] = self._datasetAccess.gfilter(None, '*').droplevel([1,2])['DSACC_ACCESS']
             uaccs["IDSTAR_ACCESS"] = uaccs["IDSTAR_ACCESS"].fillna(' ')
             uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(RACF.accessKeywords.index)
             uaccs["ALL_USER_NUM"] = uaccs[["IDSTAR_NUM","UACC_NUM"]].max(axis=1)
@@ -509,7 +516,7 @@ class RACF:
             uaccs["UACC"] = self._generals["GRBD_UACC"]
             uaccs["UACC"] = uaccs["UACC"].where(uaccs["UACC"].isin(RACF.accessKeywords),other=' ')  # DIGTCERT fields may be distorted
             uaccs["UACC_NUM"] = uaccs["UACC"].map(RACF.accessKeywords.index)
-            uaccs["IDSTAR_ACCESS"] = self._generalAccess.gfilter(None, '*').droplevel([1,2])['GRACC_ACCESS'].drop_duplicates()
+            uaccs["IDSTAR_ACCESS"] = self._generalAccess.gfilter(None, '*').droplevel([1,2]).drop_duplicates(['GRACC_CLASS_NAME','GRACC_NAME','GRACC_ACCESS'])['GRACC_ACCESS']
             uaccs["IDSTAR_ACCESS"] = uaccs["IDSTAR_ACCESS"].fillna(' ')
             uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(RACF.accessKeywords.index)
             uaccs["ALL_USER_NUM"] = uaccs[["IDSTAR_NUM","UACC_NUM"]].max(axis=1)
