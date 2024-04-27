@@ -627,8 +627,8 @@ class RACF:
             try:
                 return df.loc[selection]
             except KeyError:
-                if not option:  # return DataFrame with profiles
-                    return pd.DataFrame()
+                if not option:  # return empty DataFrame with all the original columns
+                    return df.head(0)
                 else:  # return Series 
                     return []
         else:
@@ -676,7 +676,7 @@ class RACF:
             try:
                 return self._connectData.loc[selection]
             except KeyError:
-                return pd.DataFrame()
+                return self._connectData.head(0)  # empty frame
 
 
     @property
