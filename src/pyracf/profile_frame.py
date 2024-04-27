@@ -41,7 +41,7 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
         pd.to_pickle(self,path)
         self._metadata = md
 
-    def gfilter(df, *selection, exclude=False, regexPattern=False):
+    def gfilter(df, *selection, exclude=False):
         ''' Search profiles using GENERIC pattern on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
         return df.indexFilter(*selection, exclude=exclude, regexPattern=False)
 
@@ -71,8 +71,8 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
             try:
                 return df.loc[selection]
             except KeyError:
-                if not option:  # return DataFrame with profiles
-                    return ProfileFrame()
+                if not option:  # return empty DataFrame with all the original columns
+                    return df.head(0)
                 else:  # return Series 
                     return []
         else:

@@ -28,7 +28,7 @@ class ProfilePublisher():
             try:
                 return self._connectData.loc[selection]
             except KeyError:
-                return ProfileFrame()
+                return self._connectData.head(0) # empty frame
 
 
     @property
