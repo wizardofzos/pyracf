@@ -628,7 +628,7 @@ class RACF:
                 return df.loc[selection]
             except KeyError:
                 if not option:  # return empty DataFrame with all the original columns
-                    return df.loc[[False]*df.shape[0]]
+                    return df.head(0)
                 else:  # return Series 
                     return []
         else:
@@ -676,7 +676,7 @@ class RACF:
             try:
                 return self._connectData.loc[selection]
             except KeyError:
-                return self._connectData.loc[[False]*self._connectData.shape[0]]  # empty frame
+                return self._connectData.head(0)  # empty frame
 
 
     @property
