@@ -1053,7 +1053,7 @@ class RACF:
             worksheet = writer.sheets[c]
             worksheet.set_row(0, 64, format_br)
             worksheet.set_column(1, len(authIDsInClass)+1, 2, format_center )
-            worksheet.set_column(0, 0, longestProfile + 2 )
+            worksheet.autofit()
             worksheet.write(0, 0, 'Profile', format_nr)
 
             shared_strings = sorted(worksheet.str_table.string_table, key=worksheet.str_table.string_table.get)
