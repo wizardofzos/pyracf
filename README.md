@@ -15,6 +15,14 @@ To get started with PyRACF, install it using `pip install pyracf` or explore the
 
 ## Updates
 
+### 0.8.7 (fixes for pickles, pytest, wiki)
+- grouptree and ownertree are now properties, no longer callables
+- accept * as a literal value in gfilter( )
+- r.connect('SYS1') and r.connect(None,'IBMUSER') return one level index
+- less contentious column name ALL_USER_ACCESS replaces EFFECTIVE_UACC
+- speed up single profile methods 
+- Single value selections return dataframe with columns again
+- 
 ### 0.8.5 (fixes for pickles, pytest, wiki)
 - parse_fancycli now creates empty data frames for pickles it could not find
 - index added to data frames from old pickles, not for pickles that already have index fields

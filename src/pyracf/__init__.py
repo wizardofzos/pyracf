@@ -589,7 +589,7 @@ class RACF:
                 pass
 
 
-    def generic2regex(selection, lenient='%&*'):
+    def _generic2regex(selection, lenient='%&*'):
         ''' Change a RACF generic pattern into regex to match with text strings in pandas cells.  use lenient="" to match with dsnames/resources '''
         if selection in ('**',''):
             return '.*$'
@@ -605,7 +605,7 @@ class RACF:
                     +'$'
 
 
-    def giveMeProfiles(self, df, selection=None, option=None):
+    def _giveMeProfiles(self, df, selection=None, option=None):
         ''' Search profiles using the index fields.  selection can be str or tuple.  Tuples check for group + user id in connects, or class + profile key in generals.
         option controls how selection is interpreted, and how data must be returned:
         None is for (expensive) backward compatibility, returns a df with 1 profile.
@@ -643,7 +643,7 @@ class RACF:
                 if selection[s]=='*':
                     locs &= (df.index.get_level_values(s)=='*')
                 else: 
-                    locs &= (df.index.get_level_values(s).str.match(RACF.generic2regex(selection[s])))
+                    locs &= (df.index.get_level_values(s).str.match(RACF._generic2regex(selection[s])))
         return df.loc[locs]
 
     def rfilter(df, *selection):
@@ -657,12 +657,12 @@ class RACF:
     # user frames
 
     def user(self, userid=None, pattern=None):
-        return self.giveMeProfiles(self._users, userid, pattern)
+        return self._giveMeProfiles(self._users, userid, pattern)
 
     def connect(self, group=None, userid=None, pattern=None):
         ''' connect('SYS1') returns 1 index level with user IDs, connect(None,'IBMUSER') returns 1 index level with group names '''
         if pattern=='L' or pattern=='LIST':
-            return self.giveMeProfiles(self._connectData, (group,userid), pattern)
+            return self._giveMeProfiles(self._connectData, (group,userid), pattern)
         else:
             if group and (not userid or userid=='**'):
                 # with group given, return connected user IDs via index (.loc['group'] strips level(0))
@@ -714,7 +714,7 @@ class RACF:
     # group frames
 
     def group(self, group=None, pattern=None):
-        return self.giveMeProfiles(self._groups, group, pattern)
+        return self._giveMeProfiles(self._groups, group, pattern)
 
     @property
     def groupsWithoutUsers(self):
@@ -726,13 +726,13 @@ class RACF:
     # dataset frames
         
     def dataset(self, profile=None, pattern=None):
-        return self.giveMeProfiles(self._datasets, profile, pattern)
+        return self._giveMeProfiles(self._datasets, profile, pattern)
 
     def datasetConditionalPermit(self, profile=None, id=None, access=None, pattern=None):
-        return self.giveMeProfiles(self._datasetConditionalAccess, (profile,id,access), pattern)
+        return self._giveMeProfiles(self._datasetConditionalAccess, (profile,id,access), pattern)
 
     def datasetPermit(self, profile=None, id=None, access=None, pattern=None):
-        return self.giveMeProfiles(self._datasetAccess, (profile,id,access), pattern)
+        return self._giveMeProfiles(self._datasetAccess, (profile,id,access), pattern)
 
     @property
     def uacc_read_datasets(self):
@@ -760,7 +760,7 @@ class RACF:
     generics = property(deprecated(generals,"generics"))
 
     def general(self, resclass=None, profile=None, pattern=None):
-        return self.giveMeProfiles(self._generals, (resclass,profile), pattern)
+        return self._giveMeProfiles(self._generals, (resclass,profile), pattern)
 
     @property
     def generalMembers(self, query=None):
@@ -781,7 +781,7 @@ class RACF:
     genericAccess = property(deprecated(generalAccess,"genericAccess"))
     
     def generalPermit(self, resclass=None, profile=None, id=None, access=None, pattern=None):
-        return self.giveMeProfiles(self._generalAccess, (resclass,profile,id,access), pattern)
+        return self._giveMeProfiles(self._generalAccess, (resclass,profile,id,access), pattern)
     
     
     @property
@@ -794,7 +794,7 @@ class RACF:
     genericConditionalAccess = property(deprecated(generalConditionalAccess,"genericConditionalAccess"))
     
     def generalConditionalPermit(self, resclass=None, profile=None, id=None, access=None, pattern=None):
-        return self.giveMeProfiles(self._generalConditionalAccess, (resclass,profile,id,access), pattern)
+        return self._giveMeProfiles(self._generalConditionalAccess, (resclass,profile,id,access), pattern)
 
     @property
     def SSIGNON(self): # GRSIGN
