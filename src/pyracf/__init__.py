@@ -67,24 +67,31 @@ class GroupStructureTree(dict):
             tree.pop(anchor)
         if '' in tree:  # bring SYS1 to the top, supgroup of SYS1 is ''
             tree = tree[''][0]
-        self.tree = tree
+        super().__init__(tree)
         self._format = 'unix'
         
-    def __get__(self):
-        ''' class objects have a value too '''
-        return self.tree
-
     def __str__(self):
         ''' what happens when print(object) is issued '''
-        return self.simple_format(self.tree) if self._format=='simple' else self.unix_format(self.tree)
+        return self.simple_format(self) if self._format=='simple' else self.unix_format(self)
+         
+    def format(self,format='unix'):
+        ''' return printable tree '''
+        if format in ['unix','simple']:
+            return self.simple_format(self) if format=='simple' else self.unix_format(self)
+        else:
+            warnings.warn(f'Unsupported format value {format}, select unix or simple.')
         
     def setformat(self,format='unix'):
         ''' set default format for next print '''
         if format in ['unix','simple']:
             self._format = format
-            return self
         else:
             warnings.warn(f'Unsupported format value {format}, select unix or simple.')
+
+    @property
+    def tree(self):
+        warnings.warn('.tree attribute is deprecated, this is now the default return value of the tree objected')
+        return self
 
     def unix_format(self,branch=None,prefix=''):
         ''' print groups, prefixed with vertical bars to show depth '''
@@ -494,7 +501,7 @@ class RACF:
         if self.parsed("DSBD") > 0 and self.parsed("DSACC") > 0 and 'IDSTAR_ACCESS' not in self._datasets.columns:
             uaccs = pd.DataFrame()
             uaccs["UACC_NUM"] = self._datasets["DSBD_UACC"].map(RACF.accessKeywords.index)
-            uaccs["IDSTAR_ACCESS"] = self._datasetAccess.gfilter(None, '*').droplevel([1,2])['DSACC_ACCESS'].drop_duplicates()
+            uaccs["IDSTAR_ACCESS"] = self._datasetAccess.gfilter(None, '*').droplevel([1,2])['DSACC_ACCESS']
             uaccs["IDSTAR_ACCESS"] = uaccs["IDSTAR_ACCESS"].fillna(' ')
             uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(RACF.accessKeywords.index)
             uaccs["ALL_USER_NUM"] = uaccs[["IDSTAR_NUM","UACC_NUM"]].max(axis=1)
@@ -509,7 +516,7 @@ class RACF:
             uaccs["UACC"] = self._generals["GRBD_UACC"]
             uaccs["UACC"] = uaccs["UACC"].where(uaccs["UACC"].isin(RACF.accessKeywords),other=' ')  # DIGTCERT fields may be distorted
             uaccs["UACC_NUM"] = uaccs["UACC"].map(RACF.accessKeywords.index)
-            uaccs["IDSTAR_ACCESS"] = self._generalAccess.gfilter(None, '*').droplevel([1,2])['GRACC_ACCESS'].drop_duplicates()
+            uaccs["IDSTAR_ACCESS"] = self._generalAccess.gfilter(None, '*').droplevel([1,2]).drop_duplicates(['GRACC_CLASS_NAME','GRACC_NAME','GRACC_ACCESS'])['GRACC_ACCESS']
             uaccs["IDSTAR_ACCESS"] = uaccs["IDSTAR_ACCESS"].fillna(' ')
             uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(RACF.accessKeywords.index)
             uaccs["ALL_USER_NUM"] = uaccs[["IDSTAR_NUM","UACC_NUM"]].max(axis=1)
@@ -582,7 +589,7 @@ class RACF:
                 pass
 
 
-    def generic2regex(selection, lenient='%&*'):
+    def _generic2regex(selection, lenient='%&*'):
         ''' Change a RACF generic pattern into regex to match with text strings in pandas cells.  use lenient="" to match with dsnames/resources '''
         if selection in ('**',''):
             return '.*$'
@@ -598,7 +605,7 @@ class RACF:
                     +'$'
 
 
-    def giveMeProfiles(self, df, selection=None, option=None):
+    def _giveMeProfiles(self, df, selection=None, option=None):
         ''' Search profiles using the index fields.  selection can be str or tuple.  Tuples check for group + user id in connects, or class + profile key in generals.
         option controls how selection is interpreted, and how data must be returned:
         None is for (expensive) backward compatibility, returns a df with 1 profile.
@@ -620,8 +627,8 @@ class RACF:
             try:
                 return df.loc[selection]
             except KeyError:
-                if not option:  # return DataFrame with profiles
-                    return pd.DataFrame()
+                if not option:  # return empty DataFrame with all the original columns
+                    return df.head(0)
                 else:  # return Series 
                     return []
         else:
@@ -636,7 +643,7 @@ class RACF:
                 if selection[s]=='*':
                     locs &= (df.index.get_level_values(s)=='*')
                 else: 
-                    locs &= (df.index.get_level_values(s).str.match(RACF.generic2regex(selection[s])))
+                    locs &= (df.index.get_level_values(s).str.match(RACF._generic2regex(selection[s])))
         return df.loc[locs]
 
     def rfilter(df, *selection):
@@ -650,12 +657,12 @@ class RACF:
     # user frames
 
     def user(self, userid=None, pattern=None):
-        return self.giveMeProfiles(self._users, userid, pattern)
+        return self._giveMeProfiles(self._users, userid, pattern)
 
     def connect(self, group=None, userid=None, pattern=None):
         ''' connect('SYS1') returns 1 index level with user IDs, connect(None,'IBMUSER') returns 1 index level with group names '''
         if pattern=='L' or pattern=='LIST':
-            return self.giveMeProfiles(self._connectData, (group,userid), pattern)
+            return self._giveMeProfiles(self._connectData, (group,userid), pattern)
         else:
             if group and (not userid or userid=='**'):
                 # with group given, return connected user IDs via index (.loc['group'] strips level(0))
@@ -669,7 +676,7 @@ class RACF:
             try:
                 return self._connectData.loc[selection]
             except KeyError:
-                return pd.DataFrame()
+                return self._connectData.head(0)  # empty frame
 
 
     @property
@@ -707,7 +714,7 @@ class RACF:
     # group frames
 
     def group(self, group=None, pattern=None):
-        return self.giveMeProfiles(self._groups, group, pattern)
+        return self._giveMeProfiles(self._groups, group, pattern)
 
     @property
     def groupsWithoutUsers(self):
@@ -719,13 +726,13 @@ class RACF:
     # dataset frames
         
     def dataset(self, profile=None, pattern=None):
-        return self.giveMeProfiles(self._datasets, profile, pattern)
+        return self._giveMeProfiles(self._datasets, profile, pattern)
 
     def datasetConditionalPermit(self, profile=None, id=None, access=None, pattern=None):
-        return self.giveMeProfiles(self._datasetConditionalAccess, (profile,id,access), pattern)
+        return self._giveMeProfiles(self._datasetConditionalAccess, (profile,id,access), pattern)
 
     def datasetPermit(self, profile=None, id=None, access=None, pattern=None):
-        return self.giveMeProfiles(self._datasetAccess, (profile,id,access), pattern)
+        return self._giveMeProfiles(self._datasetAccess, (profile,id,access), pattern)
 
     @property
     def uacc_read_datasets(self):
@@ -753,7 +760,7 @@ class RACF:
     generics = property(deprecated(generals,"generics"))
 
     def general(self, resclass=None, profile=None, pattern=None):
-        return self.giveMeProfiles(self._generals, (resclass,profile), pattern)
+        return self._giveMeProfiles(self._generals, (resclass,profile), pattern)
 
     @property
     def generalMembers(self, query=None):
@@ -774,7 +781,7 @@ class RACF:
     genericAccess = property(deprecated(generalAccess,"genericAccess"))
     
     def generalPermit(self, resclass=None, profile=None, id=None, access=None, pattern=None):
-        return self.giveMeProfiles(self._generalAccess, (resclass,profile,id,access), pattern)
+        return self._giveMeProfiles(self._generalAccess, (resclass,profile,id,access), pattern)
     
     
     @property
@@ -787,7 +794,7 @@ class RACF:
     genericConditionalAccess = property(deprecated(generalConditionalAccess,"genericConditionalAccess"))
     
     def generalConditionalPermit(self, resclass=None, profile=None, id=None, access=None, pattern=None):
-        return self.giveMeProfiles(self._generalConditionalAccess, (resclass,profile,id,access), pattern)
+        return self._giveMeProfiles(self._generalConditionalAccess, (resclass,profile,id,access), pattern)
 
     @property
     def SSIGNON(self): # GRSIGN
@@ -1046,7 +1053,7 @@ class RACF:
             worksheet = writer.sheets[c]
             worksheet.set_row(0, 64, format_br)
             worksheet.set_column(1, len(authIDsInClass)+1, 2, format_center )
-            worksheet.set_column(0, 0, longestProfile + 2 )
+            worksheet.autofit()
             worksheet.write(0, 0, 'Profile', format_nr)
 
             shared_strings = sorted(worksheet.str_table.string_table, key=worksheet.str_table.string_table.get)

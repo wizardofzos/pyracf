@@ -1,3 +1,21 @@
+Metadata-Version: 2.1
+Name: pyracf
+Version: 0.8.7
+Summary: Parsing IRRDBU00 unloads in panda dataframes.
+Home-page: https://github.com/wizardofzos/pyracf
+Author: Wizard of z/OS
+Author-email: wizard@zdevops.com
+Project-URL: Bug Tracker, https://github.com/wizardofzos/pyracf/issues
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: wheel
+Requires-Dist: pandas>=1.5.2
+Requires-Dist: xlsxwriter>=3.1.0
+
 # pyracf
 
 ## PyRACF: A Python module for analyzing RACF security
