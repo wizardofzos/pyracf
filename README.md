@@ -22,7 +22,9 @@ To get started with PyRACF, install it using `pip install pyracf` or explore the
 - less contentious column name ALL_USER_ACCESS replaces EFFECTIVE_UACC
 - speed up single profile methods 
 - Single value selections return dataframe with columns again
-- 
+- giveMeProfiles, generic2regex are now 'internal' (_) functions
+
+
 ### 0.8.5 (fixes for pickles, pytest, wiki)
 - parse_fancycli now creates empty data frames for pickles it could not find
 - index added to data frames from old pickles, not for pickles that already have index fields
