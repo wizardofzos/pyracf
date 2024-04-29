@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: pyracf
-Version: 0.8.7
+Version: 0.8.8
 Summary: Parsing IRRDBU00 unloads in panda dataframes.
 Home-page: https://github.com/wizardofzos/pyracf
 Author: Wizard of z/OS
