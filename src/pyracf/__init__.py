@@ -393,7 +393,7 @@ class RACF:
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - parsing {self._irrdbu00}')
         self.parse(recordtypes=recordtypes)
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - selected recordtypes: {",".join(recordtypes)}')
-        while self._state != self.STATE_CORRELATING:
+        while self._state <= self.STATE_CORRELATING:
             progress =  math.floor(((sum(r['seen'] for r in self._records.values() if r)) / self._unloadlines) * 63)
             pct = (progress/63) * 100 # not as strange as it seems:)
             done = progress * '▉'
@@ -401,7 +401,7 @@ class RACF:
             print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - progress: {done}{todo} ({pct:.2f}%)'.center(80), end="\r")
             time.sleep(0.5)
         print('')
-        while self._state != self.STATE_READY:
+        while self._state <= self.STATE_READY:
              print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - correlating data {40*" "}', end="\r")
              time.sleep(0.5)
         # make completed line always show 100% :)
