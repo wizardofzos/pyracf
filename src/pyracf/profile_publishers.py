@@ -171,10 +171,10 @@ class ProfilePublisher():
         ''' IDs on access lists with no matching USER or GROUP entities '''
         return self.load_rules(rules = [
                 (['DSACC','DSCACC','GRACC','GRCACC'],
-                 {'test': {'field':'AUTH_ID', 'expect':'ACLID'}})
+                 {'test': {'field':'AUTH_ID', 'fit':'ACLID'}})
                                         ] )\
                    .verify()\
-                   .drop(['FIELD_NAME','EXPECT'],axis=1)\
-                   .rename({'VALUE':'AUTH_ID'},axis=1)\
+                   .drop(['FIELD_NAME','EXPECT','COMMENT'],axis=1)\
+                   .rename({'ACTUAL':'AUTH_ID'},axis=1)\
                    .set_index('AUTH_ID')
 

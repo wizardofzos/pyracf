@@ -1,5 +1,5 @@
 ''' rules for the pyracf.verify() service.
-This file is imported from __init__.py and used in verify()
+This file is imported from load_rules()
 
 domains provides the sets of values that can be expected in profile fields and qualifiers.
 rules specifies where these domain values should be expected.
@@ -7,7 +7,7 @@ rules specifies where these domain values should be expected.
 
 def domains(self,pd):
     ''' dict returns a list, array or Series that will be used in .loc[field.isin( )] to verify valid values in profile fields.
-        keys of the dict are only referenced in the correspondig rules, feel free to change /extend.
+        keys of the dict are only referenced in the corresponding rules, feel free to change /extend.
         self and pd are passed down to access data frames from caller. '''
 
     _domains = {
@@ -42,22 +42,22 @@ def rules(self, format='yaml'):
 - - [DSACC, DSCACC, DSMEM, GRACC, GRCACC]
   - test:
       field: AUTH_ID
-      expect: ACLID
+      fit: ACLID
     comment: orphan permits
 
 - - DSDFP
   - test:
     - field: RESOWNER_ID
-      expect: ID
+      fit: ID
     comment: DFP resower must be user or group
 
 - - [DSBD, GRBD]
   - test:
     - field: NOTIFY_ID
-      expect: USER
+      fit: USER
       comment: notify on dataset and resource profiles must be user
     - field: OWNER_ID
-      expect: ID
+      fit: ID
       comment: owner must be user or group
 
 # general resource profile key qualifiers
@@ -66,77 +66,77 @@ def rules(self, format='yaml'):
     match: (id).
     test:
       field: id
-      expect: USER
+      fit: USER
     comment: DIGTRING should be associated with a user ID
   - class: JESSPOOL
     match: '\S+?.(id).\S+'
     test:
       field: id
-      expect: USERQUAL
-      or: ['*','+MASTER+']
+      fit: USERQUAL
+      value: ['*','+MASTER+']
     comment: 2nd qualifier in JESSPOOL should be a user ID
   - class: SURROGAT
     match: (id).SUBMIT
     test:
       field: id
-      expect: USERQUAL
+      fit: USERQUAL
   - class: SURROGAT
     match: BPX.(type).(user)
     test:
       field: user
-      expect: USERQUAL
+      fit: USERQUAL
     comment: surrogate profiles must refer to user ID or RACFVARS
 
 - - [GRACC, GRCACC]
   - class: [CDT, CFIELD, NODES, RACFVARS, SECDATA, STARTED, UNIXMAP]
     test:
     - field: AUTH_ID
-      expect: DELETE
+      fit: DELETE
     comment: class does not support PERMIT
 
 - - [GRFLTR, GRDMAP]
   - test:
       field: USER
-      expect: USER
+      fit: USER
     comment: orphan users in filters and maps
 
 - - GRST
   - test:
     - field: USER_ID
-      expect: USER
-      or: =MEMBER
+      fit: USER
+      value: =MEMBER
     - field: GROUP_ID
-      expect: GROUP
-      or: =MEMBER
+      fit: GROUP
+      value: =MEMBER
     comment: orphans in STARTED profiles
 
 - - USBD
   - test:
     - field: DEFGRP_ID
-      expect: GROUP
+      fit: GROUP
     - field: OWNER_ID
-      expect: ID
+      fit: ID
     comment: users should have valid default group and owner
 
 - - [DSCAT, GRCAT, GRMEM, USCAT]
   - -class: [SECDATA, SECLABEL]
     test:
     - field: CATEGORY
-      expect: CATEGORY
+      fit: CATEGORY
     comment: valid CATEGORY (except in SECDATA and SECLABEL profiles where the internal values are used)
 
 - - [DSBD, GRBD, GRMEM, USBD]
   - -class: [SECDATA, SECLABEL]
     test:
     - field: SECLEVEL
-      expect: SECLEVEL
-      or: '000'
+      fit: SECLEVEL
+      value: '000'
     comment: valid SECLEVEL (except in SECDATA and SECLABEL profiles where the internal values are used)
 
 - - [DSBD, GRBD, USBD, USTSO]
   - test:
     - field: SECLABEL
-      expect: SECLABEL
+      fit: SECLABEL
     comment: valid SECLABEL
 
 '''
@@ -148,21 +148,21 @@ def rules(self, format='yaml'):
             # orphan permits
             (['DSACC','DSCACC','DSMEM','GRACC','GRCACC'],
              {'test':
-                {'field':'AUTH_ID', 'expect':'ACLID'},
+                {'field':'AUTH_ID', 'fit':'ACLID'},
              }
             ),
             # DFP resower must be user or group
             (['DSDFP'],
              {'test':[
-                {'field':'RESOWNER_ID', 'expect':'ID'},
+                {'field':'RESOWNER_ID', 'fit':'ID'},
                 ]
              }
             ),
             # notify on dataset and resource profiles must be user, owner must be user or group
             (['DSBD','GRBD'],
              {'test':[
-                {'field':'NOTIFY_ID', 'expect':'USER'},
-                {'field':'OWNER_ID', 'expect':'ID'}
+                {'field':'NOTIFY_ID', 'fit':'USER'},
+                {'field':'OWNER_ID', 'fit':'ID'}
                 ]
              }
             ),
@@ -172,53 +172,53 @@ def rules(self, format='yaml'):
              {'class':'DIGTRING',
               'match':'(id).',
               'test':
-                  {'field':'id', 'expect':'USER'}
+                  {'field':'id', 'fit':'USER'}
              },
              # 2nd qualifier in JESSPOOL should be a user ID
              {'class':'JESSPOOL',
               'match':'\S+?.(id).\S+',
               'test':
-                  {'field':'id', 'expect':'USERQUAL', 'or': ['*','+MASTER+']}
+                  {'field':'id', 'fit':'USERQUAL', 'value': ['*','+MASTER+']}
              },
              # surrogate profiles must refer to user ID or RACFVARS
              {'class':'SURROGAT',
               'match':'(id).SUBMIT',
               'test':
-                  {'field':'id', 'expect':'USERQUAL'}
+                  {'field':'id', 'fit':'USERQUAL'}
              },
              {'class':'SURROGAT',
               'match':'BPX.(type).(user)',
               'test':
-                  {'field':'user', 'expect':'USERQUAL'}
+                  {'field':'user', 'fit':'USERQUAL'}
              }
             ),
             # classes that do not support PERMIT
             (['GRACC','GRCACC'],
              {'class':['CDT','Ctest','NODES','RACFVARS','SECDATA','STARTED','UNIXMAP'],
               'test':[
-                {'field':'AUTH_ID', 'expect':'DELETE'},
+                {'field':'AUTH_ID', 'fit':'DELETE'},
                 ]
              }
             ),
             # orphan users in filters and maps
             (['GRFLTR','GRDMAP'],
              {'test':
-                {'field':'USER', 'expect':'USER'}
+                {'field':'USER', 'fit':'USER'}
              }
             ),
             # orphans in STARTED profiles
             ('GRST',
              {'test':[
-                {'field':'USER_ID', 'expect':'USER', 'or':'=MEMBER'},
-                {'field':'GROUP_ID', 'expect':'GROUP', 'or':'=MEMBER'}
+                {'field':'USER_ID', 'fit':'USER', 'value':'=MEMBER'},
+                {'field':'GROUP_ID', 'fit':'GROUP', 'value':'=MEMBER'}
                 ]
              }
             ),
             # users should have valid default group and owner
             ('USBD',
              {'test':[
-                {'field':'DEFGRP_ID', 'expect':'GROUP'},
-                {'field':'OWNER_ID', 'expect':'ID'}
+                {'field':'DEFGRP_ID', 'fit':'GROUP'},
+                {'field':'OWNER_ID', 'fit':'ID'}
                 ]
              }
             ),
@@ -226,20 +226,20 @@ def rules(self, format='yaml'):
             (['DSCAT','GRCAT','GRMEM','USCAT'],
              {'-class':['SECDATA','SECLABEL'],
               'test':[
-                {'field':'CATEGORY', 'expect':'CATEGORY'},
+                {'field':'CATEGORY', 'fit':'CATEGORY'},
                 ]
              }
             ),
             (['DSBD','GRBD','GRMEM','USBD'],
              {'-class':['SECDATA','SECLABEL'],
               'test':[
-                {'field':'SECLEVEL', 'expect':'SECLEVEL', 'or':'000'},
+                {'field':'SECLEVEL', 'fit':'SECLEVEL', 'value':'000'},
                 ]
              }
             ),
             (['DSBD','GRBD','USBD','USTSO'],
              {'test':[
-                {'field':'SECLABEL', 'expect':'SECLABEL'},
+                {'field':'SECLABEL', 'fit':'SECLABEL'},
                 ]
              }
             )
