@@ -43,7 +43,7 @@ class RuleVerifier:
 
         return self
 
-    def verify(self, rules=None, domains=None, module=None, reset=False):
+    def verify(self, rules=None, domains=None, module=None, reset=False, id='manual'):
         ''' verify fields in profiles against the expected value, issues are returned in a df '''
 
         if rules or domains or module or reset:
@@ -51,6 +51,9 @@ class RuleVerifier:
 
         if not (hasattr(self,'_verify') and 'rules' in self._verify and 'domains' in self._verify):
             raise TypeError('rules and domains must be loaded before running verify')
+
+        if id not in ['manual','off']:
+            raise TypeError('issue id must be manual or off')
 
         def whereIsClass(df, classnames):
             ''' generate .loc[ ] argument for the _CLASS_NAME index field, supporting literals, generics, and lists of these '''
@@ -74,8 +77,11 @@ class RuleVerifier:
                 warnings.warn(f"fit argument {item} not in domain list, try {readableList(self._verify['domains'].keys())} instead")
                 return []
 
+        columns = ['CLASS','PROFILE','FIELD_NAME','EXPECT','ACTUAL','COMMENT','ID']
+        if id=='off':
+            columns = columns[:-1]
+        brokenSum = RuleFrame(columns=columns)
 
-        brokenSum = RuleFrame(columns=['CLASS','PROFILE','FIELD_NAME','EXPECT','ACTUAL','COMMENT'])
         for (tbNames,*tbCriteria) in self._verify['rules']:
             for tbName in listMe(tbNames):
                 try:
@@ -189,6 +195,8 @@ class RuleVerifier:
                                 broken['FIELD_NAME'] = fldName
                                 broken['EXPECT'] = fldCrit['fit'] if 'fit' in fldCrit else simpleListed(fldCrit['value']) if 'value' in fldCrit else '?'
                                 broken['COMMENT'] = fldCrit['comment'] if 'comment' in fldCrit else tbCrit['comment'] if 'comment' in tbCrit else ''
+                                if id!='off':
+                                    broken['ID'] = fldCrit['id'] if 'id' in fldCrit else tbCrit['id'] if 'id' in tbCrit else ''
                                 brokenSum = pd.concat([brokenSum,broken[brokenSum.columns]],
                                                        sort=False, ignore_index=True)
                     else:
@@ -226,7 +234,7 @@ class RuleVerifier:
                 for tbCrit in tbCriteria:
 
                     for action in tbCrit.keys():
-                        if action not in ['class','-class','profile','-profile','match','test','comment']:
+                        if action not in ['class','-class','profile','-profile','match','test','comment','id']:
                             if action[0:6]!='filter' and action[0:7]!='-filter':
                                 broken('action',action,f"unsupported action {action} with table {tbNames}")
 
@@ -275,7 +283,7 @@ class RuleVerifier:
                             if type(fldCrit)!=dict:
                                 broken('test',fldCrit,'each of criteria should be a dict')
                             for section in fldCrit.keys():
-                                if section not in ['field','fit','value','comment']:
+                                if section not in ['field','fit','value','comment','id']:
                                     broken('test',fldCrit,f"unsupported section {section} in {action}")
                             if 'field' not in fldCrit:
                                 broken('test',fldCrit,f"field must be specified in test {fldCrit}")

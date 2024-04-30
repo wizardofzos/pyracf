@@ -245,6 +245,7 @@ methods = [
  'xls',
  'verify',
  'load_rules',
+ 'syntax_check',
 ]
 
 # attributes we should have
