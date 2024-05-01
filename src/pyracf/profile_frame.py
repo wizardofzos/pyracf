@@ -14,12 +14,12 @@ class AclFrame(pd.DataFrame, FrameFilter):
     def gfilter(df, *selection, **kwds):
         ''' Search profiles using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data levels of the df.
         alternatively specify the field namesvia an alias keyword, r.datasets.acl().gfilter(user="IBM*") '''
-        return df.frameFilter(*selection, **kwds, kwdValues=df._aclFilterKwds, useIndex=False)
+        return df._frameFilter(*selection, **kwds, kwdValues=df._aclFilterKwds, useIndex=False)
 
     def rfilter(df, *selection, **kwds):
         ''' Search profiles using regex on the data fields.  selection can be one or more values, corresponding to data levels of the df
         alternatively specify the field namesvia an alias keyword, r.datasets.acl().rfilter(user="I.*R")  '''
-        return df.frameFilter(*selection, **kwds, kwdValues=df._aclFilterKwds, useIndex=False, regexPattern=True)
+        return df._frameFilter(*selection, **kwds, kwdValues=df._aclFilterKwds, useIndex=False, regexPattern=True)
 
 
 class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
@@ -43,17 +43,18 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
 
     def gfilter(df, *selection, **kwds):
         ''' Search profiles using GENERIC pattern on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
-        return df.frameFilter(*selection, **kwds, useIndex=True)
+        return df._frameFilter(*selection, **kwds, useIndex=True)
 
     def rfilter(df, *selection, **kwds):
         ''' Search profiles using refex on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
-        return df.frameFilter(*selection, **kwds, useIndex=True, regexPattern=True)
+        return df._frameFilter(*selection, **kwds, useIndex=True, regexPattern=True)
 
-    def giveMeProfiles(df, selection=None, option=None):
-        ''' Search profiles using the index fields.  selection can be str or tuple.  Tuples check for group + user id in connects, or class + profile key in generals.
+    def _giveMeProfiles(df, selection=None, option=None):
+        ''' 
+        Search profiles using the index fields.  selection can be str or tuple.  Tuples check for group + user id in connects, or class + profile key in generals.
         option controls how selection is interpreted, and how data must be returned:
-        None is for (expensive) backward compatibility, returns a df with 1 profile.
-        LIST returns a series for 1 profile, much faster and easier to process.
+          None is for (expensive) backward compatibility, returns a df with 1 profile.
+          LIST returns a series for 1 profile, much faster and easier to process.
         '''
         if not selection:
             raise TypeError('profile criteria not specified...')
@@ -99,7 +100,8 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
 
 
     def acl(df, permits=True, explode=False, resolve=False, admin=False, access=None, allows=None, sort="profile"):
-        ''' transform {dataset,general}[Conditional]Access table:
+        ''' 
+        transform {dataset,general}[Conditional]Access table:
         permits=True: show normal ACL (with the groups identified in field USER_ID)
         explode=True: replace all groups with the users connected to the groups (in field USER_ID)
         resolve=True: show user specific permit, or the highest group permit for each user

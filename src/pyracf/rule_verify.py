@@ -9,7 +9,8 @@ from .utils import listMe, readableList, simpleListed
 
 
 class RuleVerifier:
-    ''' verify fields in profiles against expected values, issues are returned in a df.
+    ''' 
+    verify fields in profiles against expected values, issues are returned in a df.
     rules can be passed as a list of tuples, or dict via parameter, or as function result from external module.
     '''
 
@@ -150,7 +151,7 @@ class RuleVerifier:
                                     fldName = fldCrit['field']
                                     fldColumn = matched[fldName]  # look in the match result
                                 else:  # not a matching field name in match result
-                                    fldName = tbName+'_'+fldCrit['field']
+                                    fldName = '_'.join([tbName,fldCrit['field']])
                                     fldColumn = subjectDF[fldName]  # look in the main table
                                 if 'fit' in fldCrit:
                                     fldLocs |= fldColumn.gt('') & fldColumn.isin(safeDomain(fldCrit['fit']))
@@ -178,7 +179,7 @@ class RuleVerifier:
                                 fldName = fldCrit['field']
                                 fldColumn = matched[fldName]  # look in the match result
                             else:  # not a matching field name in match result
-                                fldName = tbName+'_'+fldCrit['field']
+                                fldName = '_'.join([tbName,fldCrit['field']])
                                 fldColumn = subjectDF[fldName]  # look in the main table
                             if 'fit' in fldCrit:
                                 fldLocs &= fldColumn.gt('') & ~ fldColumn.isin(safeDomain(fldCrit['fit']))
@@ -269,7 +270,7 @@ class RuleVerifier:
                                 if not('fit' in fldCrit or 'value' in fldCrit):
                                     broken('filter',fldCrit,f"fit or value must be specified in filter {fldCrit}")
     
-                                if tbDefined and tbName+'_'+fldCrit['field'] not in tbDF.columns:
+                                if tbDefined and '_'.join([tbName,fldCrit['field']]) not in tbDF.columns:
                                     if matchFields and fldCrit['field'] in matchFields: pass
                                     else:
                                         broken('field',fldCrit['field'],f"field name {fldCrit['field']} not found in {tbName} or match definition")
@@ -290,7 +291,7 @@ class RuleVerifier:
                             if not('fit' in fldCrit or 'value' in fldCrit):
                                 broken('test',fldCrit,f"fit or value must be specified in test {fldCrit}")
 
-                            if tbDefined and tbName+'_'+fldCrit['field'] not in tbDF.columns:
+                            if tbDefined and '_'.join([tbName,fldCrit['field']]) not in tbDF.columns:
                                 if matchFields and fldCrit['field'] in matchFields: pass
                                 else:
                                     broken('field',fldCrit['field'],f"field name {fldCrit['field']} not found in {tbName} or match definition")
@@ -313,10 +314,10 @@ class RuleFrame(pd.DataFrame,FrameFilter):
     def gfilter(df, *selection, **kwds):
         ''' Search profiles using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data levels of the df.
         alternatively specify the field names via an alias keyword, r.verify().gfilter(field='OWN*') '''
-        return df.frameFilter(*selection, **kwds, kwdValues=df._verifyFilterKwds)
+        return df._frameFilter(*selection, **kwds, kwdValues=df._verifyFilterKwds)
 
     def rfilter(df, *selection, **kwds):
         ''' Search profiles using regex on the data fields.  selection can be one or more values, corresponding to data levels of the df
         alternatively specify the field names via an alias keyword, r.verify().gfilter(field='(OWNER|DFLTGRP)')  '''
-        return df.frameFilter(*selection, **kwds, kwdValues=df._verifyFilterKwds, regexPattern=True)
+        return df._frameFilter(*selection, **kwds, kwdValues=df._verifyFilterKwds, regexPattern=True)
 

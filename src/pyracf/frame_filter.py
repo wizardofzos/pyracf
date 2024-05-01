@@ -14,7 +14,7 @@ class FrameFilter():
     specify exclude=True to exclude entries that match all criteria from the result.
     in this case we prune the entries that must be excluded from an intial array, and only call .loc[ ] once. '''
 
-    def frameFilter(df, *selection, kwdValues={'':None}, useIndex=False, exclude=False, regexPattern=False, **kwds):
+    def _frameFilter(df, *selection, kwdValues={}, useIndex=False, exclude=False, regexPattern=False, **kwds):
 
         skipSelect = (None,'**','.*') if regexPattern else (None,'**')
         if exclude:  # reverse selection, so collect all comparison results
@@ -54,7 +54,10 @@ class FrameFilter():
             elif hasattr(df,'_fieldPrefix') and df._fieldPrefix+kwd in df.columns:
                 columnSelect.append([df._fieldPrefix+kwd,sel])
             else:
-                 raise TypeError(f"unknown selection filter({kwd}={sel}), try {readableList(kwdValues.keys())}, or a column name in uppercase instead")
+                 if len(kwdValues)==0:
+                     raise TypeError(f"unknown selection filter({kwd}={sel}), try a column name in uppercase instead, with or without prefix")
+                 else:
+                     raise TypeError(f"unknown selection filter({kwd}={sel}), try {readableList(kwdValues.keys())}, or a column name in uppercase instead, with or without prefix")
 
         for [column,sel] in columnSelect:
             if regexPattern:

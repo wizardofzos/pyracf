@@ -3,18 +3,20 @@ from .profile_frame import ProfileFrame
 from .utils import deprecated
 
 class ProfilePublisher():
-    ''' straight forward presentation and easy filtered results of Profile Frames from the RACF object.
-    these are in hand-crafted additions to the protperties automatically defined from _recordtype_info. '''
+    ''' 
+    straight-forward presentation and easy filtered results of Profile Frames from the RACF object.
+    these are in hand-crafted additions to the protperties automatically defined from _recordtype_info.
+    '''
 
     ### user frames
 
-    def user(self, userid=None, pattern=None):
-        return self._users.giveMeProfiles(userid, pattern)
+    def user(self, userid=None, option=None):
+        return self._users._giveMeProfiles(userid, option=option)
 
-    def connect(self, group=None, userid=None, pattern=None):
+    def connect(self, group=None, userid=None, option=None):
         ''' connect('SYS1') returns 1 index level with user IDs, connect(None,'IBMUSER') returns 1 index level with group names '''
-        if pattern=='L' or pattern=='LIST':
-            return self._connectData.giveMeProfiles((group,userid), pattern)
+        if option=='L' or option=='LIST':
+            return self._connectData._giveMeProfiles((group,userid), option=option)
         else:
             if group and (not userid or userid=='**'):
                 # with group given, return connected user IDs via index (.loc['group'] strips level(0))
@@ -65,8 +67,8 @@ class ProfilePublisher():
 
     ### group frames
 
-    def group(self, group=None, pattern=None):
-        return self._groups.giveMeProfiles(group, pattern)
+    def group(self, group=None, option=None):
+        return self._groups._giveMeProfiles(group, option=option)
 
     @property
     def groupsWithoutUsers(self):
@@ -96,14 +98,14 @@ class ProfilePublisher():
 
     ### dataset frames
         
-    def dataset(self, profile=None, pattern=None):
-        return self._datasets.giveMeProfiles(profile, pattern)
+    def dataset(self, profile=None, option=None):
+        return self._datasets._giveMeProfiles(profile, option=option)
 
-    def datasetConditionalPermit(self, profile=None, id=None, access=None, pattern=None):
-        return self._datasetConditionalAccess.giveMeProfiles((profile,id,access), pattern)
+    def datasetConditionalPermit(self, profile=None, id=None, access=None, option=None):
+        return self._datasetConditionalAccess._giveMeProfiles((profile,id,access), option=option)
 
-    def datasetPermit(self, profile=None, id=None, access=None, pattern=None):
-        return self._datasetAccess.giveMeProfiles((profile,id,access), pattern)
+    def datasetPermit(self, profile=None, id=None, access=None, option=None):
+        return self._datasetAccess._giveMeProfiles((profile,id,access), option=option)
 
     @property
     def uacc_read_datasets(self):
@@ -128,8 +130,8 @@ class ProfilePublisher():
 
     generics = property(deprecated(generals,"generics"))
 
-    def general(self, resclass=None, profile=None, pattern=None):
-        return self._generals.giveMeProfiles((resclass,profile), pattern)
+    def general(self, resclass=None, profile=None, option=None):
+        return self._generals._giveMeProfiles((resclass,profile), option=option)
 
     @property
     def generalMembers(self, query=None):
@@ -145,8 +147,8 @@ class ProfilePublisher():
 
     genericAccess = property(deprecated(generalAccess,"genericAccess"))
     
-    def generalPermit(self, resclass=None, profile=None, id=None, access=None, pattern=None):
-        return self._generalAccess.giveMeProfiles((resclass,profile,id,access), pattern)
+    def generalPermit(self, resclass=None, profile=None, id=None, access=None, option=None):
+        return self._generalAccess._giveMeProfiles((resclass,profile,id,access), option=option)
     
     
     @property
@@ -156,8 +158,8 @@ class ProfilePublisher():
 
     genericConditionalAccess = property(deprecated(generalConditionalAccess,"genericConditionalAccess"))
     
-    def generalConditionalPermit(self, resclass=None, profile=None, id=None, access=None, pattern=None):
-        return self._generalConditionalAccess.giveMeProfiles((resclass,profile,id,access), pattern)
+    def generalConditionalPermit(self, resclass=None, profile=None, id=None, access=None, option=None):
+        return self._generalConditionalAccess._giveMeProfiles((resclass,profile,id,access), option=option)
 
     @property
     def SSIGNON(self): # GRSIGN
@@ -168,13 +170,32 @@ class ProfilePublisher():
     
     @property
     def orphans(self):
-        ''' IDs on access lists with no matching USER or GROUP entities '''
+        ''' IDs on access lists with no matching USER or GROUP entities, in a tuple with 2 lists '''
+        return (self.load_rules(rules = [
+                (['DSACC','DSCACC'],
+                 {'test': {'field':'AUTH_ID', 'fit':'ACLID'}})
+                                        ] )
+                   .verify()
+                   .drop(['FIELD_NAME','EXPECT','COMMENT','ID'],axis=1)
+                   .rename({'ACTUAL':'AUTH_ID'},axis=1)
+               ,
+                self.verify(rules = [
+                (['GRACC','GRCACC'],
+                 {'test': {'field':'AUTH_ID', 'fit':'ACLID'}})
+                                        ] )
+                   .drop(['FIELD_NAME','EXPECT','COMMENT','ID'],axis=1)
+                   .rename({'ACTUAL':'AUTH_ID'},axis=1)
+               )
+
+    @property
+    def orphans_joined(self):
+        ''' IDs on access lists with no matching USER or GROUP entities, in one list combined '''
         return self.load_rules(rules = [
                 (['DSACC','DSCACC','GRACC','GRCACC'],
                  {'test': {'field':'AUTH_ID', 'fit':'ACLID'}})
                                         ] )\
                    .verify()\
-                   .drop(['FIELD_NAME','EXPECT','COMMENT'],axis=1)\
+                   .drop(['FIELD_NAME','EXPECT','COMMENT','ID'],axis=1)\
                    .rename({'ACTUAL':'AUTH_ID'},axis=1)\
                    .set_index('AUTH_ID')
 
