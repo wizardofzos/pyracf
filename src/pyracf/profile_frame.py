@@ -14,12 +14,12 @@ class AclFrame(pd.DataFrame, FrameFilter):
     def gfilter(df, *selection, **kwds):
         ''' Search profiles using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data levels of the df.
         alternatively specify the field namesvia an alias keyword, r.datasets.acl().gfilter(user="IBM*") '''
-        return df.valueFilter(*selection, **kwds, kwdValues=df._aclFilterKwds)
+        return df.frameFilter(*selection, **kwds, kwdValues=df._aclFilterKwds, useIndex=False)
 
     def rfilter(df, *selection, **kwds):
         ''' Search profiles using regex on the data fields.  selection can be one or more values, corresponding to data levels of the df
         alternatively specify the field namesvia an alias keyword, r.datasets.acl().rfilter(user="I.*R")  '''
-        return df.valueFilter(*selection, **kwds, kwdValues=df._aclFilterKwds, regexPattern=True)
+        return df.frameFilter(*selection, **kwds, kwdValues=df._aclFilterKwds, useIndex=False, regexPattern=True)
 
 
 class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
@@ -41,13 +41,13 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
         pd.to_pickle(self,path)
         self._metadata = md
 
-    def gfilter(df, *selection, exclude=False):
+    def gfilter(df, *selection, **kwds):
         ''' Search profiles using GENERIC pattern on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
-        return df.indexFilter(*selection, exclude=exclude, regexPattern=False)
+        return df.frameFilter(*selection, **kwds, useIndex=True)
 
-    def rfilter(df, *selection, exclude=False):
+    def rfilter(df, *selection, **kwds):
         ''' Search profiles using refex on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
-        return df.indexFilter(*selection, exclude=exclude, regexPattern=True)
+        return df.frameFilter(*selection, **kwds, useIndex=True, regexPattern=True)
 
     def giveMeProfiles(df, selection=None, option=None):
         ''' Search profiles using the index fields.  selection can be str or tuple.  Tuples check for group + user id in connects, or class + profile key in generals.

@@ -135,8 +135,8 @@ class RuleVerifier:
                         # each field compare consists of 2 or 3 tests (fldLocs) that are AND-ed
                         # result of those AND-ed test are OR-ed into actLocs
                         # entries in subjectDF and in matched must be compared, so combine test results in Locs arrays.
-                        # *actCrits supports filter directives with 1 tuple or a list of tuples
-                        # listMe(actCrit) helps unrole the list of tuples
+                        # *actCrits accepts filter directives with 1 tuple or a list of tuples
+                        # listMe(actCrit) helps unroll the list of tuples
 
                         for actCrit in actCrits:
                             actLocs = pd.array([True] * subjectDF.shape[0])
@@ -204,9 +204,9 @@ class RuleVerifier:
 
         return RuleFrame(brokenSum)
 
-    def syntax_check(self, confirm=False):
+    def syntax_check(self, confirm=True):
         ''' check rules and domains for consistency and unknown directives
-            specify confirm=True to get a message when all is OK '''
+            specify confirm=False to suppress the message when all is OK '''
 
         def broken(field,value,comment):
             brokenList.append(dict(FIELD=field, VALUE=value, COMMENT=comment))
@@ -308,15 +308,15 @@ class RuleFrame(pd.DataFrame,FrameFilter):
         ''' a result of a method is also a RuleFrame  '''
         return RuleFrame
 
-    _verifyFilterKwds = {'resclass':'CLASS', 'profile':'PROFILE', 'field':'FIELD_NAME', 'actual':'ACTUAL', 'found':'ACTUAL', 'expect':'EXPECT', 'fit':'EXPECT', 'value':'EXPECT'}
+    _verifyFilterKwds = {'resclass':'CLASS', 'profile':'PROFILE', 'field':'FIELD_NAME', 'actual':'ACTUAL', 'found':'ACTUAL', 'expect':'EXPECT', 'fit':'EXPECT', 'value':'EXPECT', 'id':'ID'}
 
     def gfilter(df, *selection, **kwds):
         ''' Search profiles using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data levels of the df.
         alternatively specify the field names via an alias keyword, r.verify().gfilter(field='OWN*') '''
-        return df.valueFilter(*selection, **kwds, kwdValues=df._verifyFilterKwds)
+        return df.frameFilter(*selection, **kwds, kwdValues=df._verifyFilterKwds)
 
     def rfilter(df, *selection, **kwds):
         ''' Search profiles using regex on the data fields.  selection can be one or more values, corresponding to data levels of the df
         alternatively specify the field names via an alias keyword, r.verify().gfilter(field='(OWNER|DFLTGRP)')  '''
-        return df.valueFilter(*selection, **kwds, kwdValues=df._verifyFilterKwds, regexPattern=True)
+        return df.frameFilter(*selection, **kwds, kwdValues=df._verifyFilterKwds, regexPattern=True)
 
