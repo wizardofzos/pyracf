@@ -12,17 +12,17 @@ def domains(self,pd):
 
     _domains = {
         'SPECIAL':pd.Index(['*','&RACUID','&RACGRP'],name='_NAME'),
-        'USER':self.users.index,
-        'GROUP':self.groups.index,
+        'USER':self._RACFobject.users.index,
+        'GROUP':self._RACFobject.groups.index,
         'DELETE':['']
     }
-    _domains.update({'ID':self.users.index.union(self.groups.index)})
+    _domains.update({'ID':self._RACFobject.users.index.union(self._RACFobject.groups.index)})
     _domains.update({'ACLID':_domains['SPECIAL'].union(_domains['ID'])})
-    _domains.update({'RACFVARS':self.generals.gfilter('RACFVARS').index.get_level_values(1)})
-    _domains.update({'CATEGORY':self.generalMembers.gfilter('SECDATA','CATEGORY')['GRMEM_MEMBER'].values})
-    _domains.update({'SECLEVEL':self.generalMembers.gfilter('SECDATA','SECLEVEL')['GRMEM_MEMBER'].values})
-    _domains.update({'SECLABEL':self.generals.gfilter('SECLABEL').index.get_level_values(1)})
-    _domains.update({'USERQUAL':self.users.index.union(_domains['RACFVARS'])})
+    _domains.update({'RACFVARS':self._RACFobject.generals.gfilter('RACFVARS').index.get_level_values(1)})
+    _domains.update({'CATEGORY':self._RACFobject.generalMembers.gfilter('SECDATA','CATEGORY')['GRMEM_MEMBER'].values})
+    _domains.update({'SECLEVEL':self._RACFobject.generalMembers.gfilter('SECDATA','SECLEVEL')['GRMEM_MEMBER'].values})
+    _domains.update({'SECLABEL':self._RACFobject.generals.gfilter('SECLABEL').index.get_level_values(1)})
+    _domains.update({'USERQUAL':self._RACFobject.users.index.union(_domains['RACFVARS'])})
     return _domains
 
 

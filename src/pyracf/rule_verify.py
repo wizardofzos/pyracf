@@ -9,26 +9,40 @@ from .utils import listMe, readableList, simpleListed
 
 
 class RuleVerifier:
-    ''' 
+    '''
     verify fields in profiles against expected values, issues are returned in a df.
     rules can be passed as a list of tuples, or dict via parameter, or as function result from external module.
+    created from RACF object with .rules property.
     '''
 
-    def load_rules(self, rules=None, domains=None, module=None, reset=False, defaultmodule=".profile_field_rules"):
+    def __init__(self, RACFobject):
+        self._RACFobject = RACFobject
+        self._rules = None
+        self._domains = None
+        self._module = None
+
+    def load(self, rules=None, domains=None, module=None, reset=False, defaultmodule=".profile_field_rules"):
         ''' load rules + domains from structure or from packaged module '''
 
-        if reset and hasattr(self,'_verify'):  # clear prior load
-            del self._verify
+        if reset:  # clear prior load
+            self._rules = None
+            self._domains = None
+            self._module = None
 
-        if not((rules and domains) or module or hasattr(self,'_verify')):  # no complete parameters, no prior load?
+        if rules and domains: pass  # complete parameters ?
+        elif module: pass  # complete parameters ?
+        elif self._rules and self._domains: pass  # previously loaded or specified ?
+        elif self._module:  # previously specified ?
+            module = self._module
+        else:
             module = defaultmodule  # backstop
 
-        if rules and domains: pass  # got everything, ignore module and history
-        elif hasattr(self,'_verify') and not module:  # get missing component(s) from prior load
+        if rules and domains: pass  # got everything from parms, ignore module and history
+        elif (self._rules and self._domains) and not module:  # get missing component(s) from prior load
             if not rules:
-                rules = self._verify['rules']
+                rules = self._rules
             if not domains:
-                domains = self._verify['domains']
+                domains = self._domains
         else:  # get the missing component(s) from module
             ruleset = importlib.import_module(module, package="pyracf")
             ruleset = importlib.reload(ruleset)  # reload module for easier test of modifications
@@ -40,21 +54,39 @@ class RuleVerifier:
         if rules and type(rules)==str:
             rules = yaml.safe_load(rules)
 
-        self._verify = dict(rules=rules, domains=domains)
+        self._rules=rules
+        self._domains=domains
 
         return self
 
-    def verify(self, rules=None, domains=None, module=None, reset=False, id='manual'):
+    def domain_add(self, name, items):
+        ''' add domain(s) to the end of the domain list '''
+        if type(name)!=str:
+            raise TypeError('domain entry name must be a str field')
+        if type(items)==list: pass
+        else:
+            try:
+                shape = items.shape
+            except:
+                raise TypeError('domain entry must have a list or a pandas object')
+            else:
+                if len(shape)>1:
+                    raise TypeError('domain entry must have a one-dimensional, list-like value')
+        self._domains.update({name:items})
+
+        return self
+
+    def verify(self, rules=None, domains=None, module=None, reset=False, id=True):
         ''' verify fields in profiles against the expected value, issues are returned in a df '''
 
-        if rules or domains or module or reset:
-            self.load_rules(rules, domains, module, reset)
+        if rules or domains or module or reset or not (self._rules and self._domains):
+            self.load(rules, domains, module, reset)
 
-        if not (hasattr(self,'_verify') and 'rules' in self._verify and 'domains' in self._verify):
+        if not (self._rules and self._domains):
             raise TypeError('rules and domains must be loaded before running verify')
 
-        if id not in ['manual','off']:
-            raise TypeError('issue id must be manual or off')
+        if type(id)!=bool:
+            raise TypeError('issue id must be True or False')
 
         def whereIsClass(df, classnames):
             ''' generate .loc[ ] argument for the _CLASS_NAME index field, supporting literals, generics, and lists of these '''
@@ -73,20 +105,20 @@ class RuleVerifier:
         def safeDomain(item):
             ''' lookup domain identifier, return content or issue message '''
             try:
-                return self._verify['domains'][item]
+                return self._domains[item]
             except KeyError:
-                warnings.warn(f"fit argument {item} not in domain list, try {readableList(self._verify['domains'].keys())} instead")
+                warnings.warn(f"fit argument {item} not in domain list, try {readableList(self._domains.keys())} instead")
                 return []
 
         columns = ['CLASS','PROFILE','FIELD_NAME','EXPECT','ACTUAL','COMMENT','ID']
-        if id=='off':
+        if not id:
             columns = columns[:-1]
         brokenSum = RuleFrame(columns=columns)
 
-        for (tbNames,*tbCriteria) in self._verify['rules']:
+        for (tbNames,*tbCriteria) in self._rules:
             for tbName in listMe(tbNames):
                 try:
-                    tbDF = self.table(tbName)
+                    tbDF = self._RACFobject.table(tbName)
                 except KeyError:
                     warnings.warn(f'no table {tbName} in RACF object')
                     continue
@@ -118,7 +150,7 @@ class RuleVerifier:
                         subjectDF = subjectDF.loc[ ~ subjectDF.index.get_level_values(ixLevel).str.match(generic2regex(tbCrit['-profile']))]
 
                     if 'match' in tbCrit:
-                        matchPattern = tbCrit['match'].replace('.','\.').replace('*','\*')\
+                        matchPattern = tbCrit['match'].replace('.',r'\.').replace('*',r'\*')\
                                                       .replace('(','(?P<').replace(')','>[^.]*)')
                         matched = subjectDF[tbName+'_NAME'].str.extract(matchPattern)  # extract 1 qualifier
 
@@ -130,7 +162,7 @@ class RuleVerifier:
                         elif action[0:7]=='-filter': action = '-filter'
                         else: break
                         if action not in actionLocs:
-                            actionLocs[action] = pd.array([False] * subjectDF.shape[0])
+                            actionLocs[action] = pd.Series(False, index=subjectDF.index)
 
                         # 1 or more fields can be compared in each select/-select
                         # each field compare consists of 2 or 3 tests (fldLocs) that are AND-ed
@@ -140,13 +172,13 @@ class RuleVerifier:
                         # listMe(actCrit) helps unroll the list of tuples
 
                         for actCrit in actCrits:
-                            actLocs = pd.array([True] * subjectDF.shape[0])
+                            actLocs = pd.Series(True, index=subjectDF.index)
                             for fldCrit in listMe(actCrit):
                                 if 'field' not in fldCrit:
                                     warnings.warn(f'field must be specified in filter {fldCrit}')
                                 if not('fit' in fldCrit or 'value' in fldCrit):
                                     warnings.warn(f'fit or value must be specified in filter {fldCrit}')
-                                fldLocs = pd.array([False] * subjectDF.shape[0])
+                                fldLocs = pd.Series(False, index=subjectDF.index)
                                 if matchPattern and fldCrit['field'] in matched.columns:
                                     fldName = fldCrit['field']
                                     fldColumn = matched[fldName]  # look in the match result
@@ -166,7 +198,7 @@ class RuleVerifier:
                     # we run each field, from all tests separately, and combine results in brokenSum
 
                     if 'test' in tbCrit:
-                        tbLocs = pd.array([True] * subjectDF.shape[0])
+                        tbLocs = pd.Series(True, index=subjectDF.index)
                         if 'filter' in actionLocs: tbLocs &= actionLocs['filter']
                         if '-filter' in actionLocs: tbLocs &= ~ actionLocs['-filter']
 
@@ -196,7 +228,7 @@ class RuleVerifier:
                                 broken['FIELD_NAME'] = fldName
                                 broken['EXPECT'] = fldCrit['fit'] if 'fit' in fldCrit else simpleListed(fldCrit['value']) if 'value' in fldCrit else '?'
                                 broken['COMMENT'] = fldCrit['comment'] if 'comment' in fldCrit else tbCrit['comment'] if 'comment' in tbCrit else ''
-                                if id!='off':
+                                if id:
                                     broken['ID'] = fldCrit['id'] if 'id' in fldCrit else tbCrit['id'] if 'id' in tbCrit else ''
                                 brokenSum = pd.concat([brokenSum,broken[brokenSum.columns]],
                                                        sort=False, ignore_index=True)
@@ -209,14 +241,31 @@ class RuleVerifier:
         ''' check rules and domains for consistency and unknown directives
             specify confirm=False to suppress the message when all is OK '''
 
+        if not (self._rules and self._domains):
+            raise TypeError('rules and domains must be loaded before running syntax check')
+
         def broken(field,value,comment):
             brokenList.append(dict(FIELD=field, VALUE=value, COMMENT=comment))
 
         brokenList = []
 
-        for (tbNames,*tbCriteria) in self._verify['rules']:
+        for (name,*items) in self._domains:
+            if type(name)!=str:
+                broken('domain',Name,f"domain entry {Name} must have a string lable")
+            if isinstance(items,list) :pass
+            else:
+                try:
+                    shape = items.shape
+                except:
+                    broken('domain',Name,f"domain entry {Name} does not have a pandas value object")
+                else:
+                    if len(shape)>1:
+                        broken('domain',Name,f"domain entry {Name} must have a one-dimensional, list-like value")
+                
+
+        for (tbNames,*tbCriteria) in self._rules:
             for tbName in listMe(tbNames):
-                tbDF = self.table(tbName)
+                tbDF = self._RACFobject.table(tbName)
                 if isinstance(tbDF,pd.DataFrame):
                     if tbDF.empty:
                         tbDefined = False  # empty frame has no columns
@@ -269,12 +318,12 @@ class RuleVerifier:
                                     broken('filter',fldCrit,f"field must be specified in filter {fldCrit}")
                                 if not('fit' in fldCrit or 'value' in fldCrit):
                                     broken('filter',fldCrit,f"fit or value must be specified in filter {fldCrit}")
-    
+
                                 if tbDefined and '_'.join([tbName,fldCrit['field']]) not in tbDF.columns:
                                     if matchFields and fldCrit['field'] in matchFields: pass
                                     else:
                                         broken('field',fldCrit['field'],f"field name {fldCrit['field']} not found in {tbName} or match definition")
-                                if 'fit' in fldCrit and fldCrit['fit'] not in self._verify['domains']:
+                                if 'fit' in fldCrit and fldCrit['fit'] not in self._domains:
                                     broken('fit',fldCrit['fit'],f"domain name {fldCrit['fit']} in filter not defined")
 
                     if 'test' not in tbCrit:
@@ -295,7 +344,7 @@ class RuleVerifier:
                                 if matchFields and fldCrit['field'] in matchFields: pass
                                 else:
                                     broken('field',fldCrit['field'],f"field name {fldCrit['field']} not found in {tbName} or match definition")
-                            if 'fit' in fldCrit and fldCrit['fit'] not in self._verify['domains']:
+                            if 'fit' in fldCrit and fldCrit['fit'] not in self._domains:
                                 broken('fit',fldCrit['fit'],f"domain name {fldCrit['fit']} in test not defined")
 
         if not brokenList and confirm:

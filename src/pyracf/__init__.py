@@ -22,7 +22,7 @@ from .profile_frame import ProfileFrame
 from .profile_publishers import ProfilePublisher
 from .rule_verify import RuleVerifier
 from .racf_functions import accessKeywords
-from .utils import deprecated
+from .utils import deprecated, readableList
 from .xls_writers import XlsWriter
 
 class StoopidException(Exception):
@@ -31,7 +31,7 @@ class StoopidException(Exception):
         super().__init__(self.message)
 
 
-class RACF(ProfilePublisher,RuleVerifier,XlsWriter):
+class RACF(ProfilePublisher,XlsWriter):
     
     # Our states
     STATE_BAD         = -1
@@ -340,12 +340,15 @@ class RACF(ProfilePublisher,RuleVerifier,XlsWriter):
         rtype = RACF._recordname_type[rname]
         return self._records[rtype]['parsed'] if rtype in self._records else 0
 
-    def table(self, rname):
+    def table(self, rname=None):
         """ give me table with this name (type) """
-        try:
-            return getattr(self, RACF._recordname_df[rname])
-        except KeyError:
-            warnings.warn(f'RACF object does not have a table {rname}')
+        if rname:
+            try:
+                return getattr(self, RACF._recordname_df[rname])
+            except KeyError:
+                warnings.warn(f'RACF object does not have a table {rname}')
+        else:
+            raise TypeError(f"table name missing, try {readableList(sorted(RACF._recordname_df.keys()))}")
 
     def _correlate(self, thingswewant=_recordtype_info.keys()):
         """ construct tables that combine the raw dataframes for improved processing """
@@ -465,6 +468,12 @@ class RACF(ProfilePublisher,RuleVerifier,XlsWriter):
             else:
                 # TODO: ensure consistent data, delete old pickles that were not saved
                 pass
+
+
+    @property
+    def rules(self):
+        ''' create a RuleVerifier instance '''
+        return RuleVerifier(self)
 
 
     def getdatasetrisk(self, profile=''):

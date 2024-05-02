@@ -233,9 +233,11 @@ methods = [
  'group',
  'grouptree',
  'orphans',
+ 'orphans_joined',
  'ownertree',
  'parse',
  'parse_fancycli',
+ 'rules',
  'save_pickle',
  'save_pickles',
  'status',
@@ -243,9 +245,6 @@ methods = [
  'user',
  'parse_t',
  'xls',
- 'verify',
- 'load_rules',
- 'syntax_check',
 ]
 
 # attributes we should have

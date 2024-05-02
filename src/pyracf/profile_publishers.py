@@ -171,18 +171,20 @@ class ProfilePublisher():
     @property
     def orphans(self):
         ''' IDs on access lists with no matching USER or GROUP entities, in a tuple with 2 lists '''
-        return (self.load_rules(rules = [
+        v = self.rules  # verify object
+        return (v.load(rules = [
                 (['DSACC','DSCACC'],
                  {'test': {'field':'AUTH_ID', 'fit':'ACLID'}})
-                                        ] )
+                               ] )
                    .verify()
                    .drop(['FIELD_NAME','EXPECT','COMMENT','ID'],axis=1)
                    .rename({'ACTUAL':'AUTH_ID'},axis=1)
                ,
-                self.verify(rules = [
+                v.load(rules = [
                 (['GRACC','GRCACC'],
                  {'test': {'field':'AUTH_ID', 'fit':'ACLID'}})
-                                        ] )
+                               ] )
+                   .verify()
                    .drop(['FIELD_NAME','EXPECT','COMMENT','ID'],axis=1)
                    .rename({'ACTUAL':'AUTH_ID'},axis=1)
                )
@@ -190,10 +192,10 @@ class ProfilePublisher():
     @property
     def orphans_joined(self):
         ''' IDs on access lists with no matching USER or GROUP entities, in one list combined '''
-        return self.load_rules(rules = [
+        return self.rules.load(rules = [
                 (['DSACC','DSCACC','GRACC','GRCACC'],
                  {'test': {'field':'AUTH_ID', 'fit':'ACLID'}})
-                                        ] )\
+                                          ] )\
                    .verify()\
                    .drop(['FIELD_NAME','EXPECT','COMMENT','ID'],axis=1)\
                    .rename({'ACTUAL':'AUTH_ID'},axis=1)\
