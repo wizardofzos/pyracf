@@ -88,6 +88,21 @@ class RuleVerifier:
         if type(id)!=bool:
             raise TypeError('issue id must be True or False')
 
+        def initArray(value, like):
+            ''' create an array of True to apply (AND) EXCLUDE type actions, or an array for False to OR SELECT type actions '''
+            if value:
+                return pd.Series(True, index=like.index)
+            else:
+                return pd.Series(False, index=like.index)
+            #if value:
+            #    return pd.array([True]*like.shape[0],bool)
+            #else:
+            #    return pd.array([False]*like.shape[0],bool)
+            #if value:
+            #    return np.ones(like.shape[0],bool)
+            #else:
+            #    return np.zeros(like.shape[0],bool)
+
         def whereIsClass(df, classnames):
             ''' generate .loc[ ] argument for the _CLASS_NAME index field, supporting literals, generics, and lists of these '''
             classPattern = ''
@@ -162,7 +177,7 @@ class RuleVerifier:
                         elif action[0:7]=='-filter': action = '-filter'
                         else: break
                         if action not in actionLocs:
-                            actionLocs[action] = pd.Series(False, index=subjectDF.index)
+                            actionLocs[action] = initArray(False, like=subjectDF)
 
                         # 1 or more fields can be compared in each select/-select
                         # each field compare consists of 2 or 3 tests (fldLocs) that are AND-ed
@@ -172,13 +187,9 @@ class RuleVerifier:
                         # listMe(actCrit) helps unroll the list of tuples
 
                         for actCrit in actCrits:
-                            actLocs = pd.Series(True, index=subjectDF.index)
+                            actLocs = initArray(True, like=subjectDF)
                             for fldCrit in listMe(actCrit):
-                                if 'field' not in fldCrit:
-                                    warnings.warn(f'field must be specified in filter {fldCrit}')
-                                if not('fit' in fldCrit or 'value' in fldCrit):
-                                    warnings.warn(f'fit or value must be specified in filter {fldCrit}')
-                                fldLocs = pd.Series(False, index=subjectDF.index)
+                                fldLocs = initArray(False, like=subjectDF)
                                 if matchPattern and fldCrit['field'] in matched.columns:
                                     fldName = fldCrit['field']
                                     fldColumn = matched[fldName]  # look in the match result
@@ -188,7 +199,10 @@ class RuleVerifier:
                                 if 'fit' in fldCrit:
                                     fldLocs |= fldColumn.gt('') & fldColumn.isin(safeDomain(fldCrit['fit']))
                                 if 'value' in fldCrit:
-                                    fldLocs |= fldColumn.isin(listMe(fldCrit['value']))
+                                    if type(fldCrit['value'])==str:
+                                        fldLocs |= fldColumn.eq(fldCrit['value'])
+                                    else:
+                                        fldLocs |= fldColumn.gt('') & fldColumn.isin(fldCrit['value'])
                                 actLocs &= fldLocs
                             actionLocs[action] |= actLocs
 
@@ -198,15 +212,15 @@ class RuleVerifier:
                     # we run each field, from all tests separately, and combine results in brokenSum
 
                     if 'test' in tbCrit:
-                        tbLocs = pd.Series(True, index=subjectDF.index)
+                        tbLocs = initArray(True, like=subjectDF)
                         if 'filter' in actionLocs: tbLocs &= actionLocs['filter']
                         if '-filter' in actionLocs: tbLocs &= ~ actionLocs['-filter']
 
                         for fldCrit in listMe(tbCrit['test']):
+                            fldLocs = tbLocs.copy()  # updates to fldLocs clobber tbLocs too, unless you copy()
                             # test can contain 1 dict or a list of dicts
                             # entries in subjectDF and in matched must be compared, so combine test results in fldLocs array.
                             # final .loc[ ] test is done once in assignment to 'broken' frame.
-                            fldLocs = tbLocs
                             if matchPattern and fldCrit['field'] in matched.columns:
                                 fldName = fldCrit['field']
                                 fldColumn = matched[fldName]  # look in the match result
@@ -216,7 +230,10 @@ class RuleVerifier:
                             if 'fit' in fldCrit:
                                 fldLocs &= fldColumn.gt('') & ~ fldColumn.isin(safeDomain(fldCrit['fit']))
                             if 'value' in fldCrit:
-                                fldLocs &= ~ fldColumn.isin(listMe(fldCrit['value']))
+                                if type(fldCrit['value'])==str:
+                                    fldLocs &= ~ fldColumn.eq(fldCrit['value'])
+                                else:
+                                    fldLocs &= ~ fldColumn.gt('') & fldColumn.isin(fldCrit['value'])
 
                             if any(fldLocs):
                                 broken = subjectDF.loc[fldLocs].copy()\
@@ -261,7 +278,7 @@ class RuleVerifier:
                 else:
                     if len(shape)>1:
                         broken('domain',Name,f"domain entry {Name} must have a one-dimensional, list-like value")
-                
+
 
         for (tbNames,*tbCriteria) in self._rules:
             for tbName in listMe(tbNames):
@@ -317,7 +334,7 @@ class RuleVerifier:
                                 if 'field' not in fldCrit:
                                     broken('filter',fldCrit,f"field must be specified in filter {fldCrit}")
                                 if not('fit' in fldCrit or 'value' in fldCrit):
-                                    broken('filter',fldCrit,f"fit or value must be specified in filter {fldCrit}")
+                                    broken('filter',fldCrit,f"fit or value should be specified in filter {fldCrit}")
 
                                 if tbDefined and '_'.join([tbName,fldCrit['field']]) not in tbDF.columns:
                                     if matchFields and fldCrit['field'] in matchFields: pass
