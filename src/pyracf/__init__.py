@@ -857,8 +857,7 @@ class RACF:
         # tbProfiles and tbPermits have column names without the tbName prefix
         
         returnFields = ["USER_ID","AUTH_ID","ACCESS"]
-        if tbName in ["DSCACC","GRCACC"]:
-            returnFields = returnFields+["CATYPE","CANAME","NET_ID","CACRITERIA"]
+        conditionalFields = ["CATYPE","CANAME","NET_ID","CACRITERIA"]
 
         sortBy = {"user":["USER_ID"]+tbProfileKeys, 
                   "access":["RANKED_ACCESS","USER_ID"],
@@ -878,7 +877,10 @@ class RACF:
             acl = tbPermits
             acl.insert(3,"USER_ID",acl["AUTH_ID"].where(~ acl["AUTH_ID"].isin(self._groups.index.values),"-group-"))
         else:
-            acl = pd.DataFrame(columns=tbProfileKeys+returnFields)
+            acl = AclFrame(tbPermits.head(0))
+            if not admin:  # no option that produces data?
+                return acl  # give up early, prevent KeyErrors due to empty tables
+
         if permits or explode or resolve:  # add -uacc- pseudo access
             uacc = tbProfiles.query("UACC!='NONE'").copy()
             if not uacc.empty:
@@ -963,7 +965,9 @@ class RACF:
             acl = acl.loc[acl["ACCESS"].map(RACF.accessKeywords.index)==RACF.accessKeywords.index(access.upper())]
         if allows:
             acl = acl.loc[acl["ACCESS"].map(RACF.accessKeywords.index)>=RACF.accessKeywords.index(allows.upper())]
-        return acl.sort_values(by=sortBy[sort])[tbProfileKeys+returnFields].reset_index(drop=True)
+
+        condAcc = conditionalFields if "CATYPE" in acl.columns and any(acl["CATYPE"].gt(' ')) else []
+        return acl.sort_values(by=sortBy[sort])[tbProfileKeys+returnFields+condAcc].reset_index(drop=True)
 
     
     @property
