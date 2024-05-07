@@ -9,6 +9,8 @@ these DataFrames. The result of these selections is another DataFrame.
 In the examples below, ``r`` is a RACF object created from
 :ref:`parsing`.
 
+.. _selection-methods:
+
 Selection Methods
 -----------------
 
@@ -54,29 +56,29 @@ profile key, as literals or patterns, for example
 ::
 
    # all FACILITY profiles starting with BPX
-   r.generals.gfilter('FACILITY', 'BPX.**')    
-   
+   r.generals.gfilter('FACILITY', 'BPX.**')
+
    # all general resource profiles starting with BPX
-   r.generals.gfilter('**', 'BPX.**')          
-   
+   r.generals.gfilter('**', 'BPX.**')
+
    # all UNIXPRIV profiles
-   r.generals.gfilter('UNIXPRIV')              
+   r.generals.gfilter('UNIXPRIV')
 
 For PERMITs, the ID and ACCESS values are available for selection too:
 
 ::
 
    # dataset profiles where IBMUSER is permitted
-   r.datasetAccess.gfilter('**', 'IBMUSER')     
-   
-   # IDs with UPDATE PERMIT on a SYS1 dataset profile    
+   r.datasetAccess.gfilter('**', 'IBMUSER')
+
+   # IDs with UPDATE PERMIT on a SYS1 dataset profile
    r.datasetAccess.gfilter('SYS1.**', None, 'UPDATE')
-   
-   # dataset where ID(*) has conditional access   
-   r.datasetConditionalAccess.gfilter(None, '*')    
+
+   # dataset where ID(*) has conditional access
+   r.datasetConditionalAccess.gfilter(None, '*')
 
    # UPDATE on a UNIXPRIV profile
-   r.generalAccesss.gfilter('UNIXPRIV', '**', '**', 'UPDATE')   
+   r.generalAccesss.gfilter('UNIXPRIV', '**', '**', 'UPDATE')
 
 For group and user profiles, only one parameter is needed. Two
 parameters can be given for connect information:
@@ -84,14 +86,14 @@ parameters can be given for connect information:
 ::
 
    r.groups.gfilter('CSF*')
-   
+
    r.users.gfilter('IBM*')
 
    # users connected to SYS1, SYS2, etc.
-   r.connectData.gfilter('SYS%')   
-   
+   r.connectData.gfilter('SYS%')
+
    # groups connected to PROD user IDs
-   r.connectData.gfilter('**', '%%%%PROD')   
+   r.connectData.gfilter('**', '%%%%PROD')
 
 Note: to check the index names defined in a DataFrame, use
 ``.index.names``
@@ -113,17 +115,17 @@ want to search for ``*`` and ``.`` in the RACF fields.
 
 ::
 
-   # SYS1 and SYS2 profiles 
-   r.datasets.rfilter('SYS[12]\..*')   
-   
+   # SYS1 and SYS2 profiles
+   r.datasets.rfilter('SYS[12]\..*')
+
    # dataset where ID(*) has conditional access
    r.datasetConditionalAccess.rfilter(None, '\*')
-   
+
    # user IDs with ADM anywhere
-   r.users.rfilter('.*ADM')         
-   
-   # groups ending in USER   
-   r.groups.rfilter('\S+USER$')        
+   r.users.rfilter('.*ADM')
+
+   # groups ending in USER
+   r.groups.rfilter('\S+USER$')
 
 .. _pandas-methods:
 
@@ -167,7 +169,7 @@ value given.
    GRST_NAME            ASCH.*
    GRST_CLASS_NAME     STARTED
    GRST_USER_ID         START2
-   GRST_GROUP_ID              
+   GRST_GROUP_ID
    GRST_TRUSTED             NO
    GRST_PRIVILEGED          NO
    GRST_TRACE               NO
@@ -208,28 +210,41 @@ name, like so:
 ::
 
    # IBM anywhere in the programmer name field
-   r.users.loc[ (r.users.USBD_PROGRAMMER.str.contains('IBM')) ]    
+   r.users.loc[ r.users.USBD_PROGRAMMER.str.contains('IBM') ]
 
    # trusted and privileged started tasks
    r.STDATA.loc[ (r.STDATA.GRST_TRUSTED=='YES')
-               | (r.STDATA.GRST_PRIVILEGED=='YES') ]   
+               | (r.STDATA.GRST_PRIVILEGED=='YES') ]
 
    # permits given to user IDs
-   r.datasetAccess.loc[ r.datasetAccess.DSACC_AUTH_ID.isin(r.users.index) ]   
+   r.datasetAccess.loc[ r.datasetAccess.DSACC_AUTH_ID.isin(r.users.index) ]
 
    # orphan permits
    r.datasetAccess.loc[
-        ~ ( (r.datasetAccess.DSACC_AUTH_ID.isin(r.users.index) ) 
-          | (r.datasetAccess.DSACC_AUTH_ID.isin(r.groups.index) )
-          | (r.datasetAccess.DSACC_AUTH_ID=='*' ) ) 
-   ]         
+        ~ ( r.datasetAccess.DSACC_AUTH_ID.isin(r.users.index)
+          | r.datasetAccess.DSACC_AUTH_ID.isin(r.groups.index)
+          | (r.datasetAccess.DSACC_AUTH_ID=='*')
+          )
+   ]
 
-Note: - .loc uses square brackets to specify the selection. - yes, you
-have to enter the full names of the data table inside the brackets. -
-use ``.r.users.columns`` to find the name of the columns in a table. -
-.loc[ ] with one array is somewhat intuitive, with two or more arrays,
-each selection must be captured in parentheses, and the groups combined
-with the logical operators ``&``, ``|`` and ``~``.
+   # another way to write this, bypassing the issue with priority of ==
+   r.datasetAccess.loc[
+        ~ ( r.datasetAccess.DSACC_AUTH_ID.isin(r.users.index)
+          | r.datasetAccess.DSACC_AUTH_ID.isin(r.groups.index)
+          | r.datasetAccess.DSACC_AUTH_ID.eq('*')
+          )
+   ]
+Note:
+
+  * .loc uses square brackets to specify the selection.
+
+  * yes, you have to enter the full names of the data table inside the brackets.
+
+  * use ``r.users.columns`` to find the name of the columns in a table ``r.users``.
+
+  * .loc[ ] with one array is somewhat intuitive, with two or more arrays you should use more parentheses rather than less,
+    for example, around each comparison (==), and around the groups combined with the logical operators ``&``, ``|`` and ``~``.
+    This is because these logical operators on vector data (arrays) have a higher priority than the comparison (==, !=, >, <) operators.
 
 .query(*query string*)
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -255,7 +270,7 @@ chained) into another. The ``\`` serves as a continuation mark, like
           .query("USBD_REVOKE=='YES'")
 
    # datasets with UACC>READ
-   r.datasets.query("DSBD_UACC==['UPDATE','CONTROL','ALTER']")  
+   r.datasets.query("DSBD_UACC==['UPDATE','CONTROL','ALTER']")
 
 You can also correlate fields in one table with entries in another
 table.
@@ -263,7 +278,7 @@ table.
 ::
 
    # system special user forgot to remove themselves from OWNER( )
-   r.datasets.query("DSBD_OWNER_ID in @r.specials.index")   
+   r.datasets.query("DSBD_OWNER_ID in @r.specials.index")
 
 You can find all entries in .users that have a group connection to
 SYSPROG as follows. This references the user ID in index field
@@ -370,16 +385,16 @@ quoted string.
 ::
 
    # user IDs with access on SYS1.PARMLIB (if this profile exists)
-   r.dataset('SYS1.PARMLIB').acl(resolve=True)  
-   
+   r.dataset('SYS1.PARMLIB').acl(resolve=True)
+
    # permits with UPDATE on any SYS1 dataset profile
-   r.datasets.gfilter('SYS1.**').acl(access='UPDATE')  
+   r.datasets.gfilter('SYS1.**').acl(access='UPDATE')
 
    # permits with UPDATE, CONTROL or ALTER on any SYS1 dataset profile
-   r.datasets.gfilter('SYS1.**').acl(allows='UPDATE')  
-   
+   r.datasets.gfilter('SYS1.**').acl(allows='UPDATE')
+
    # users that can make changes to SYS1 datasets
-   r.datasets.gfilter('SYS1.**').acl(allows='UPDATE',resolve=True)  
+   r.datasets.gfilter('SYS1.**').acl(allows='UPDATE',resolve=True)
 
 To filter the output of ``.acl()`` you can chain ``.query()``,
 referencing the column names like so:
@@ -389,4 +404,4 @@ referencing the column names like so:
    # access scope of IBMUSER in SYS1 data sets
    r.datasets.gfilter('SYS1.**')\
              .acl(resolve=True)\
-             .query("USER_ID=='IBMUSER'")   
+             .query("USER_ID=='IBMUSER'")

@@ -11,6 +11,7 @@ pyRACF user documentation
    :caption: Contents:
 
    Home
+   ReleaseNotes
    Installation
    LoadData
    DataFrames

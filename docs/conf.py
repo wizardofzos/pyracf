@@ -7,9 +7,9 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'pyRACF'
-copyright = ''
-author = ''
-release = '0.8.5'
+copyright = '2022-2024 Henri Kuiper; 2024 Rob van Hoboken'
+author = 'Rob van Hoboken'
+release = '0.8.8'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

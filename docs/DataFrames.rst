@@ -210,16 +210,16 @@ fields. To check the index names used in a DataFrame, use
 Data selection methods
 ----------------------
 
-The data table properties return all profiles and profile data loaded
+The data table properties from the first section return all profiles and profile data loaded
 from the RACF input source. Since they typically return more than one
 entry, the property name represents a plural, such as ``.users``. To
 make selections you have to use methods such as ``.loc[ ]``,
-``.query( )``, ``.gfilter( )`` or ``rfilter( )``, see :ref:`pandas-methods` for guidance and examples.
+``.query( )``, ``.gfilter( )`` or ``rfilter( )``, see :ref:`selection-methods` for guidance and examples.
 
 In addition to the data table properties, data selection methods are
 available to retrieve one profile, or profiles from one class, with an
-easy syntax. The parameter(s) to these properties are used as a literal
-search argument, and return entries that fully match the argument(s).
+easy syntax. The parameter(s) to these methods are used as a literal
+search argument, and return entries that fully match the argument(s), that means, the selection criteria have to be match the profile exactly.
 These properties typically have a name referring to the singular.
 
 .group(*groupname*)
@@ -346,7 +346,7 @@ To show entries from all conditional permits for ID(\*) use one of the following
 Analytic Properties
 -------------------
 
-These properties present a subset of DataFrames, or the result of
+These properties present a subset of a DataFrame, or the result of
 DataFrame intersections, to identify points of interest.
 
 .specials
