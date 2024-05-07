@@ -1,4 +1,5 @@
 irrdbu00
 *.pickle
 __pycache__
+docs/_build/*
 venv/*

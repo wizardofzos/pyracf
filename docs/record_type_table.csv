@@ -1,0 +1,97 @@
+0100,GPBD,groups,Group Basic Data
+0101,GPSGRP,subgroups,Group Subgroups
+0102,GPMEM,connects,Group Members
+0103,GPINSTD,groupUSRDATA,Group Installation Data
+0110,GPDFP,groupDFP,Group DFP Data
+0120,GPOMVS,groupOMVS,Group OMVS Data
+0130,GPOVM,,Group OVM Data
+0141,GPTME,groupTME,Group TME Data
+0151,GPCSD,groupCSDATA,Group CSDATA custom fields
+0200,USBD,users,User Basic Data
+0201,USCAT,userCategories,User Categories
+0202,USCLA,userClasses,User Classes
+0203,USGCON,groupConnect,User Group Connections
+0204,USINSTD,groupConnect,User Installation Data
+0205,USCON,connectData,User Connect Data
+0206,USRSF,userRRSFDATA,RRSF data
+0207,USCERT,userCERTname,user certificate name
+0208,USNMAP,userAssociationMapping,User Associated Mappings
+0209,USDMAP,userAssociationMapping,User Associated Distributed Mappings
+020A,USMFA,userMFAfactor,user Multifactor authentication data
+020B,USMPOL,userMFApolicies,user Multi-factor authentication policies
+0210,USDFP,userDFP,User DFP data
+0220,USTSO,userTSO,User TSO Data
+0230,USCICS,userCICS,User CICS Data
+0231,USCOPC,userCICSoperatorClasses,User CICS Operator Class
+0232,USCRSL,userCICSrslKeys,User CICS RSL keys
+0233,USCTSL,userCICStslKeys,User CICS TSL keys
+0240,USLAN,userLANGUAGE,User Language Data
+0250,USOPR,userOPERPARM,User OPERPARM Data
+0251,USOPRP,userOPERPARMscope,User OPERPARM Scope
+0260,USWRK,userWORKATTR,User WORKATTR Data
+0270,USOMVS,userOMVS,User Data
+0280,USNETV,userNETVIEW,user NETVIEW segment
+0281,USNOPC,userNETVIEWopclass,user OPCLASS
+0282,USNDOM,userNETVIEWdomains,user DOMAINS
+0290,USDCE,,user DCE data
+02A0,USOVM,,user OVM data
+02B0,USLNOT,,LNOTES data
+02C0,USNDS,,NDS data
+02D0,USKERB,,User KERB segment
+02E0,USPROXY,,user PROXY
+02F0,USEIM,,user EIM segment
+02G1,USCSD,userCSDATA,user CSDATA custom fields
+1210,USMFAC,userMFAfactorTags,user Multifactor authentication factor configuration data
+0400,DSBD,datasets,Data Set Basic Data
+0401,DSCAT,datasetCategories,Data Set Categories
+0402,DSCACC,datasetConditionalAccess,Data Set Conditional Access
+0403,DSVOL,,Data Set Volumes
+0404,DSACC,datasetAccess,Data Set Access
+0405,DSINSTD,datasetUSRDATA,Data Set Installation Data
+0406,DSMEM,,Data Set Member Data
+0410,DSDFP,datasetDFP,Data Set DFP Data
+0421,DSTME,datasetTME,Data Set TME Data
+0431,DSCSD,datasetCSDATA,Data Set CSDATA custom fields
+0500,GRBD,datasetCSDATA,General Resource Basic Data
+0501,GRTVOL,generalTAPEvolume,General Resource Tape Volume Data
+0502,GRCAT,generalCategories,General Resources Categories
+0503,GRMEM,generalCategories,General Resource Members
+0504,GRVOL,generalTAPEvolumes,General Resources Volumes
+0505,GRACC,generalTAPEvolumes,General Resource Access
+0506,GRINSTD,generalUSRDATA,General Resource Installation Data
+0507,GRCACC,generalUSRDATA,General Resources Conditional Access
+0508,GRFLTR,DistributedIdFilter,Filter Data
+0509,GRDMAP,DistributedIdMapping,General Resource Distributed Identity Mapping Data
+0510,GRSES,SESSION,General Resources Session Data
+0511,GRSESE,SESSIONentities,General Resources Session Entities
+0520,GRDLF,DLFDATA,General Resources DLF Data
+0521,GRDLFJ,DLFDATAjobnames,General Resources DLF Job Names
+0530,GRSIGN,DLFDATAjobnames,SSIGNON data
+0540,GRST,STDATA,STARTED Class
+0550,GRSV,SVFMR,Systemview
+0560,GRCERT,CERT,Certificate Data
+1560,CERTN,CERTname,general resource certificate information
+0561,CERTR,CERTreferences,Certificate References
+0562,KEYR,KEYRING,Key Ring Data
+0570,GRTME,TME,general resource TME data
+0571,GRTMEC,TMEchild,general resource TME child
+0572,GRTMER,TMEresource,general resource TME resource
+0573,GRTMEG,TMEgroup,general resource TME group
+0574,GRTMEE,TMErole,general resource TME role
+0580,GRKERB,KERB,general resource KERB segment
+0590,GRPROXY,PROXY,general resource PROXY
+05A0,GREIM,EIM,general resource EIM segment
+05B0,GRALIAS,ALIAS,general resource ALIAS group
+05C0,GRCDT,CDTINFO,general resource CDTINFO data
+05D0,GRICTX,ICTX,general resource ICTX segment
+05E0,GRCFDEF,CFDEF,general resource CFDEF data
+05F0,GRSIG,SIGVER,general resource SIGVER data
+05G0,GRCSF,ICSF,general resource ICSF
+05G1,GRCSFK,ICSFsymexportKeylabel,general resource ICSF key label
+05G2,GRCSFC,ICSFsymexportCertificateIdentifier,general resource ICSF certificate identifier
+05H0,GRMFA,MFA,Multifactor factor definition data
+05I0,GRMFP,MFPOLICY,Multifactor Policy Definition data
+05I1,GRMPF,MFPOLICYfactors,user Multifactor authentication policy factors
+05J1,GRCSD,generalCSDATA,General Resources CSDA custom fields
+05K0,GRIDTP,IDTFPARMS,Identity Token data
+05L0,GRJES,JES,JES data
