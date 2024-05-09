@@ -389,7 +389,7 @@ class RACF(ProfilePublisher,XlsWriter):
         if self.parsed("DSBD") > 0 and self.parsed("DSACC") > 0 and 'IDSTAR_ACCESS' not in self._datasets.columns:
             uaccs = pd.DataFrame()
             uaccs["UACC_NUM"] = self._datasets["DSBD_UACC"].map(accessKeywords.index)
-            uaccs["IDSTAR_ACCESS"] = self._datasetAccess.gfilter(None, '*').droplevel([1,2])['DSACC_ACCESS']
+            uaccs["IDSTAR_ACCESS"] = self._datasetAccess.reindex(['*'],level=1,axis=0).droplevel([1,2])['DSACC_ACCESS']
             uaccs["IDSTAR_ACCESS"] = uaccs["IDSTAR_ACCESS"].fillna(' ')
             uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(accessKeywords.index)
             uaccs["ALL_USER_NUM"] = uaccs[["IDSTAR_NUM","UACC_NUM"]].max(axis=1)
@@ -404,7 +404,7 @@ class RACF(ProfilePublisher,XlsWriter):
             uaccs["UACC"] = self._generals["GRBD_UACC"]
             uaccs["UACC"] = uaccs["UACC"].where(uaccs["UACC"].isin(accessKeywords),other=' ')  # DIGTCERT fields may be distorted
             uaccs["UACC_NUM"] = uaccs["UACC"].map(accessKeywords.index)
-            uaccs["IDSTAR_ACCESS"] = self._generalAccess.gfilter(None, '*').droplevel([1,2]).drop_duplicates(['GRACC_CLASS_NAME','GRACC_NAME','GRACC_ACCESS'])['GRACC_ACCESS']
+            uaccs["IDSTAR_ACCESS"] = self._generalAccess.reindex(['*'],level=2,axis=0).droplevel([2,3]).drop_duplicates(['GRACC_CLASS_NAME','GRACC_NAME','GRACC_ACCESS'])['GRACC_ACCESS']
             uaccs["IDSTAR_ACCESS"] = uaccs["IDSTAR_ACCESS"].fillna(' ')
             uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(accessKeywords.index)
             uaccs["ALL_USER_NUM"] = uaccs[["IDSTAR_NUM","UACC_NUM"]].max(axis=1)
