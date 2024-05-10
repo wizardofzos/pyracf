@@ -276,6 +276,8 @@ frameMethods = [
  'acl',
  'gfilter',
  'rfilter',
+ 'pick',
+ 'skip',
  '_giveMeProfiles',
  'read_pickle',
  'to_pickle',

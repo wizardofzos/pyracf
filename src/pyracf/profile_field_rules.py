@@ -18,21 +18,27 @@ def domains(self,pd):
     }
     _domains.update({'ID':self._RACFobject.users.index.union(self._RACFobject.groups.index)})
     _domains.update({'ACLID':_domains['SPECIAL'].union(_domains['ID'])})
-    _domains.update({'RACFVARS':self._RACFobject.generals.gfilter('RACFVARS').index.get_level_values(1)})
-    _domains.update({'CATEGORY':self._RACFobject.generalMembers.gfilter('SECDATA','CATEGORY')['GRMEM_MEMBER'].values})
-    _domains.update({'SECLEVEL':self._RACFobject.generalMembers.gfilter('SECDATA','SECLEVEL')['GRMEM_MEMBER'].values})
-    _domains.update({'SECLABEL':self._RACFobject.generals.gfilter('SECLABEL').index.get_level_values(1)})
+    _domains.update({'RACFVARS':self._RACFobject.generals.pick('RACFVARS').index.get_level_values(1)})
+    _domains.update({'CATEGORY':self._RACFobject.generalMembers.pick('SECDATA','CATEGORY')['GRMEM_MEMBER'].values})
+    _domains.update({'SECLEVEL':self._RACFobject.generalMembers.pick('SECDATA','SECLEVEL')['GRMEM_MEMBER'].values})
+    _domains.update({'SECLABEL':self._RACFobject.generals.pick('SECLABEL').index.get_level_values(1)})
     _domains.update({'USERQUAL':self._RACFobject.users.index.union(_domains['RACFVARS'])})
     return _domains
 
 
 def rules(self, format='yaml'):
     ''' return list of lists/tuples, each with (list of) table ids, and one or more conditions.
-        each condition allows class, -class, profile, -profile, match and test.
-        class, -class, profile and -profile are (currently) generic patterns, and select or skip profile/segment/entries.
-        match extracts fields from the profile key, the capture name should be used in subsequent fields rules.
-           match changes . to \. and * to \*, so for regex patterns you should use \S and +? instead.
-        test verifies that the value occurs in one of the domains, or a (list of) literal(s). '''
+
+    each condition allows class, -class, profile, -profile, match and test.
+    
+    class, -class, profile and -profile are (currently) generic patterns, and select or skip profile/segment/entries.
+
+    pick and skip can be used to limit the number of rows to process
+    
+    match extracts fields from the profile key, the capture name should be used in subsequent fields rules.
+    match changes . to \. and * to \*, so for regex patterns you should use \S and +? instead.
+
+    test verifies that the value occurs in one of the domains, or a (list of) literal(s). '''
 
     if format=='yaml':
         ''' YAML definition, should generate a list of lists, each table section starts with - - '''
@@ -139,7 +145,7 @@ def rules(self, format='yaml'):
       fit: SECLABEL
     comment: valid SECLABEL
 
-'''
+    '''
 
     else:
         ''' list of tuples/lists, native format. tuples used to help identify the table sections '''

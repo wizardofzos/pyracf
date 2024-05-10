@@ -18,19 +18,19 @@ def test_frame_general(testparms):
 
 def test_frame_generals(testparms):
   r = testparms['object']
-  t1 = r.generals.gfilter('FACI*','BPX.**')
-  assert t1.shape[0]>1, 'generals.gfilter must select several profiles'
+  t1 = r.generals.pick('FACI*','BPX.**')
+  assert t1.shape[0]>1, 'generals.pick must select several profiles'
 
 def test_frame_general_anyclass(testparms):
   r = testparms['object']
-  t1 = r.generals.gfilter('FACILITY','I*.**')
-  t2 = r.generals.gfilter(None,'I*.**')
-  assert t1.shape[0]<t2.shape[0], 'generals.gfilter must select more profiles when the class is not specified'
+  t1 = r.generals.pick('FACILITY','I*.**')
+  t2 = r.generals.pick(None,'I*.**')
+  assert t1.shape[0]<t2.shape[0], 'generals.pick must select more profiles when the class is not specified'
 
 def test_frame_generals_acl(testparms):
   r = testparms['object']
-  t1 = r.generals.gfilter('UNIXPRIV')
-  t2 = r.generals.gfilter('UNIXPRIV').acl()
+  t1 = r.generals.pick('UNIXPRIV')
+  t2 = r.generals.pick('UNIXPRIV').acl()
   assert t1.shape[0]<t2.shape[0], 'generals.acl must generate more lines than generals'
   assert t2.shape[1]>=5, 'generals.acl must have 5 columns, 5 or more'
 

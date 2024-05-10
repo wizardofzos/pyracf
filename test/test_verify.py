@@ -8,7 +8,7 @@ def test_rules_object(testparms):
   
   for f in ['_domains', '_module', '_rules', '_RACFobject']:
       assert f in dir(r.rules), f'rule object must have a {f} attribute'      
-  for f in ['domain_add', 'load', 'syntax_check', 'verify']:
+  for f in ['add_domains', 'load', 'syntax_check', 'verify']:
       assert f in dir(r.rules), f'rule object must have a {f} method'     
       
 def test_rules_domains(testparms):
@@ -20,12 +20,12 @@ def test_rules_domains(testparms):
   for f in ['SPECIAL', 'USER', 'GROUP', 'DELETE', 'ID', 'ACLID', 'RACFVARS', 'CATEGORY', 'SECLEVEL', 'SECLABEL', 'USERQUAL']:
       assert f in t._domains, f'domain list must have {f} entry'
 
-  t.domain_add('SYS1',r.connect('SYS1').index)
+  t.add_domains({'SYS1':r.connect('SYS1').index})
   for f in ['SYS1']:
       assert f in t._domains, f'must be able to add an entry to domains'
       
   with pytest.raises(TypeError):
-      t.domain_add([ {'TEST1':['A','B']} , {'TEST2':[]} ]), 'only 2 simple parameters on the domain_add method'
+      t.add_domains({'TEST1':['A','B']} , {'TEST2':[]}), 'only 2 simple parameters on the add_domain method'
 
   assert len(t._domains)==12, f'must be able to add entries to domains, and not lose original domains'
       
@@ -58,6 +58,6 @@ def test_rules_report(testparms):
   right = ['CLASS', 'PROFILE', 'FIELD_NAME', 'EXPECT', 'ACTUAL', 'COMMENT', 'ID']
   for i in range(7):
       assert left[i]==right[i], f'column {right[i]} in verify() result table'
-  for f in ['gfilter','rfilter','_frameFilter']:
+  for f in ['pick','skip','_frameFilter']:
       assert f in dir(t), f'verify() frame must have {f} method'
 

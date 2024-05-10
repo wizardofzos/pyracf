@@ -1,3 +1,5 @@
+import re
+import pandas as pd
 from .racf_functions import generic2regex
 from .utils import readableList
 
@@ -5,7 +7,8 @@ class FrameFilter():
     ''' selection routines make selections from frames without knowing the index or column names.
     with useIndex=False: relies on the columns in the frame.
     selection can be one or more values, corresponding to data levels of the df.
-    alternatively specify the field names via an alias keyword, r.datasets.acl().gfilter(user="IBM*")
+    alternatively specify the field names via an alias keyword, r.datasets.acl().pick(user="IBM*")
+    regex selections are supported via a Pattern object: r.datasets.pick(DSBD_UACC=re.compile('(CONTROL|ALTER)'))
     kwdValues must be a dict mapping selection keywords to column names.
 
     with useIndex=True: uses the index fields, allowing one or more generic or regex field patterns.
@@ -18,7 +21,7 @@ class FrameFilter():
 
         skipSelect = (None,'**','.*') if regexPattern else (None,'**')
         if exclude:  # reverse selection, so collect all comparison results
-            locs = [True]*len(df)
+            locs = pd.Series(True, index=df.index)
         columnSelect = []  # combine column+value from positional and keyword parameters
 
         if useIndex:
@@ -26,7 +29,7 @@ class FrameFilter():
             for sel in selection:
                 s += 1
                 if sel not in skipSelect:
-                    if regexPattern:
+                    if regexPattern or isinstance(sel,re.Pattern):
                         result = df.index.get_level_values(s).str.match(sel)
                     elif len(sel)>2 and sel[0]=='*' and sel[-1]=='*' and sel[1:-1].find('*')==-1:
                         result = df.index.get_level_values(s).str.contains(sel[1:-1])
@@ -60,7 +63,7 @@ class FrameFilter():
                      raise TypeError(f"unknown selection filter({kwd}={sel}), try {readableList(kwdValues.keys())}, or a column name in uppercase instead, with or without prefix")
 
         for [column,sel] in columnSelect:
-            if regexPattern:
+            if regexPattern or isinstance(sel,re.Pattern):
                 result = df[column].str.match(sel)
             elif type(sel)==str:
                 if sel=='**':

@@ -11,15 +11,16 @@ class AclFrame(pd.DataFrame, FrameFilter):
 
     _aclFilterKwds = {'user':'USER_ID', 'auth':'AUTH_ID', 'id':'AUTH_ID', 'access':'ACCESS'}
 
-    def gfilter(df, *selection, **kwds):
-        ''' Search profiles using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data levels of the df.
-        alternatively specify the field namesvia an alias keyword, r.datasets.acl().gfilter(user="IBM*") '''
+    def pick(df, *selection, **kwds):
+        ''' Search profiles using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data columns of the df.
+        alternatively specify the field names via an alias keyword or column name: r.datasets.acl().pick(user="IBM*")
+        specify regex using re.compile: r.datasets.acl().pick( user=re.compile('(IBMUSER|SYS1)') ) '''
         return df._frameFilter(*selection, **kwds, kwdValues=df._aclFilterKwds, useIndex=False)
 
-    def rfilter(df, *selection, **kwds):
-        ''' Search profiles using regex on the data fields.  selection can be one or more values, corresponding to data levels of the df
-        alternatively specify the field namesvia an alias keyword, r.datasets.acl().rfilter(user="I.*R")  '''
-        return df._frameFilter(*selection, **kwds, kwdValues=df._aclFilterKwds, useIndex=False, regexPattern=True)
+    def skip(df, *selection, **kwds):
+        ''' Exclude profiles using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data columns of the df.
+        alternatively specify the field names via an alias keyword or column name: r.datasets.acl().skip(USER_ID="IBMUSER")  '''
+        return df._frameFilter(*selection, **kwds, kwdValues=df._aclFilterKwds, useIndex=False, exclude=True)
 
 
 class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
@@ -40,6 +41,17 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
         self._metadata = []
         pd.to_pickle(self,path)
         self._metadata = md
+
+    def pick(df, *selection, **kwds):
+        ''' Search profiles using GENERIC pattern on the index fields.  selection can be one or more values, corresponding to index levels of the df.
+        in addition(!), specify field names via an alias keyword or column name: r.datasets.pick("SYS1.**",UACC="ALTER")
+        specify regex using re.compile: r.datasets.pick(re.compile('SYS[12]\..*') ) '''
+        return df._frameFilter(*selection, **kwds, useIndex=True)
+
+    def skip(df, *selection, **kwds):
+        ''' Exclude profiles using GENERIC pattern on the index fields.  selection can be one or more values, corresponding to index levels of the df
+        alternatively, specify field names via an alias keyword or column name: r.datasets.skip(DSBD_UACC="NONE") '''
+        return df._frameFilter(*selection, **kwds, useIndex=True, exclude=True)
 
     def gfilter(df, *selection, **kwds):
         ''' Search profiles using GENERIC pattern on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
@@ -100,16 +112,17 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
 
 
     def acl(df, permits=True, explode=False, resolve=False, admin=False, access=None, allows=None, sort="profile"):
-        ''' 
-        transform {dataset,general}[Conditional]Access table:
-        permits=True: show normal ACL (with the groups identified in field USER_ID)
-        explode=True: replace all groups with the users connected to the groups (in field USER_ID)
-        resolve=True: show user specific permit, or the highest group permit for each user
-        admin=True: add the users that have ability to change the groups on the ACL (in field ADMIN_ID)
-            VIA identifies the group name, AUTHORITY the RACF privilege involved
-        access=access level: show entries that are equal to the level specified, access='CONTROL'
-        allows=access level: show entries that are higher or equal to the level specified, allows='UPDATE'
-        sort=["user","access","id","admin","profile"] sort the resulting output
+        ''' transform {dataset,general}[Conditional]Access table
+        
+        args:
+            permits=True: show normal ACL (with the groups identified in field USER_ID)
+            explode=True: replace all groups with the users connected to the groups (in field USER_ID)
+            resolve=True: show user specific permit, or the highest group permit for each user
+            admin=True: add the users that have ability to change the groups on the ACL (in field ADMIN_ID)
+                VIA identifies the group name, AUTHORITY the RACF privilege involved
+            access=access level: show entries that are equal to the level specified, access='CONTROL'
+            allows=access level: show entries that are higher or equal to the level specified, allows='UPDATE'
+            sort=["user","access","id","admin","profile"] sort the resulting output
         '''
         RACFobject = df._RACFobject
 

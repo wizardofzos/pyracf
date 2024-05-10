@@ -9,24 +9,35 @@ from .utils import listMe, readableList, simpleListed
 
 
 class RuleVerifier:
-    '''
-    verify fields in profiles against expected values, issues are returned in a df.
-    rules can be passed as a list of tuples, or dict via parameter, or as function result from external module.
-    created from RACF object with .rules property.
+    ''' verify fields in profiles against expected values, issues are returned in a df.
+
+    rules can be passed as a list of tuples, and a dict with domains, via parameter, or as function result from external module.
+    created from RACF object with the .rules property.
     '''
 
     def __init__(self, RACFobject):
         self._RACFobject = RACFobject
         self._rules = None
-        self._domains = None
+        self._domains = {}
         self._module = None
 
-    def load(self, rules=None, domains=None, module=None, reset=False, defaultmodule=".profile_field_rules"):
-        ''' load rules + domains from structure or from packaged module '''
+    def load(self, rules=None, domains={}, module=None, reset=False, defaultmodule=".profile_field_rules"):
+        ''' load rules + domains from yaml str, structure or from packaged module
+
+        Args:
+            rules (list, str): list of lists with test specifications, or yaml str field that expands into a list of lists
+            domains (dict, str): one or more domain in a dict(name=[entries]), or in a yaml string
+            module (str): name of module that contains functions rules() and domains()
+            defaultmodule (str): module name to be used if all parameters are omitted
+            reset (bool): clear rules, domains and module in RuleVerifier object, before loading new values
+
+        Returns:
+            RuleVerifier: the updated object
+        '''
 
         if reset:  # clear prior load
             self._rules = None
-            self._domains = None
+            self._domains = {}
             self._module = None
 
         if rules and domains: pass  # complete parameters ?
@@ -53,31 +64,65 @@ class RuleVerifier:
 
         if rules and type(rules)==str:
             rules = yaml.safe_load(rules)
+        if domains and type(domains)==str:
+            domains = yaml.safe_load(domains)
 
         self._rules=rules
         self._domains=domains
 
         return self
 
-    def domain_add(self, name, items):
-        ''' add domain(s) to the end of the domain list '''
-        if type(name)!=str:
-            raise TypeError('domain entry name must be a str field')
-        if type(items)==list: pass
+    def add_domains(self, domains=None):
+        ''' Add domains to the end of the domain list, from a dict or a yaml string value.
+
+        Args:
+            domains (dict, str): one or more domain in a dict(name=[entries]), or in a yaml string
+
+        Returns:
+            RuleVerifier: The updated object
+
+        Example:
+            v = r.rules.load()
+            
+            v.add_domains({'PROD_GROUPS': ['PRODA','PRODB,'PRODCICS'], 'TEST_GROUPS': ['TEST1','TEST2']})
+            
+            v.add_domains({'SYS1': r.connect('SYS1').index})
+        '''
+        if type(domains)==dict:  # just a dict
+            pass
+        elif type(domains)==str:  # just a yaml (?) str
+            domains = yaml.safe_load(domains)
         else:
-            try:
-                shape = items.shape
-            except:
-                raise TypeError('domain entry must have a list or a pandas object')
+            raise TypeError('domains parameter must be a dict or a yaml string')
+
+        for (name,items) in domains.items():
+            if type(name)==str:
+                if type(items)==list:  # name and list?
+                    pass
+                else:  # name and list?
+                    try:
+                        shape = items.shape
+                    except:
+                        raise TypeError(f'domain entry {name} must have a list or a pandas object')
+                    else:
+                        if len(shape)!=1:
+                            raise TypeError(f'domain entry {name} must have a one-dimensional, list-like value')
             else:
-                if len(shape)>1:
-                    raise TypeError('domain entry must have a one-dimensional, list-like value')
-        self._domains.update({name:items})
+                raise TypeError(f'domain entry {name} should have a name and a list')
+
+        self._domains.update(domains)
 
         return self
 
-    def verify(self, rules=None, domains=None, module=None, reset=False, id=True):
-        ''' verify fields in profiles against the expected value, issues are returned in a df '''
+    def verify(self, rules=None, domains={}, module=None, reset=False, id=True):
+        ''' verify fields in profiles against the expected value, issues are returned in a df
+
+        Args:
+            id (bool): add or suppress ID column from the result frame. The values in this column are taken from the id property in rules
+
+        Returns:
+            RuleFrame: Result object
+        '''
 
         if rules or domains or module or reset or not (self._rules and self._domains):
             self.load(rules, domains, module, reset)
@@ -169,12 +214,12 @@ class RuleVerifier:
                                                       .replace('(','(?P<').replace(')','>[^.]*)')
                         matched = subjectDF[tbName+'_NAME'].str.extract(matchPattern)  # extract 1 qualifier
 
-                    # filter and -filter use same parser, if these kwds are used, actionLocs are filled
-                    # suffix filter and -filter with any character(s) to specify alternative selections
+                    # pick and skip use same parser, if these kwds are used, actionLocs are filled
+                    # suffix pick and skip with any character(s) to specify alternative selections
 
                     for (action,*actCrits) in tbCrit.items(): # should only find 1 item in each tbCrit, but have to access key+value
-                        if action[0:6]=='filter': action = 'filter'
-                        elif action[0:7]=='-filter': action = '-filter'
+                        if action[0:4]=='pick': action = 'pick'
+                        elif action[0:4]=='skip': action = 'skip'
                         else: break
                         if action not in actionLocs:
                             actionLocs[action] = initArray(False, like=subjectDF)
@@ -213,8 +258,8 @@ class RuleVerifier:
 
                     if 'test' in tbCrit:
                         tbLocs = initArray(True, like=subjectDF)
-                        if 'filter' in actionLocs: tbLocs &= actionLocs['filter']
-                        if '-filter' in actionLocs: tbLocs &= ~ actionLocs['-filter']
+                        if 'pick' in actionLocs: tbLocs &= actionLocs['pick']
+                        if 'skip' in actionLocs: tbLocs &= ~ actionLocs['skip']
 
                         for fldCrit in listMe(tbCrit['test']):
                             fldLocs = tbLocs.copy()  # updates to fldLocs clobber tbLocs too, unless you copy()
@@ -256,7 +301,12 @@ class RuleVerifier:
 
     def syntax_check(self, confirm=True):
         ''' check rules and domains for consistency and unknown directives
-            specify confirm=False to suppress the message when all is OK '''
+
+        specify confirm=False to suppress the message when all is OK
+
+        Args:
+            confirm (bool): False if the success message should be suppressed, for automated testing
+        '''
 
         if not (self._rules and self._domains):
             raise TypeError('rules and domains must be loaded before running syntax check')
@@ -302,7 +352,7 @@ class RuleVerifier:
 
                     for action in tbCrit.keys():
                         if action not in ['class','-class','profile','-profile','match','test','comment','id']:
-                            if action[0:6]!='filter' and action[0:7]!='-filter':
+                            if action[0:4]!='pick' and action[0:4]!='skip':
                                 broken('action',action,f"unsupported action {action} with table {tbNames}")
 
                     if 'class' in tbCrit:
@@ -317,12 +367,12 @@ class RuleVerifier:
                         matchFields = None
 
                     for (action,*actCrits) in tbCrit.items(): # should only find 1 item, but have to access key+value
-                        if action[0:6]=='filter': action = 'filter'
-                        elif action[0:7]=='-filter': action = '-filter'
+                        if action[0:4]=='pick': action = 'pick'
+                        elif action[0:4]=='skip': action = 'skip'
                         else: break
 
                         if type(actCrits)!=list:
-                            broken('filter',actCrit,'filter should have a list of criteria')
+                            broken('filter',actCrit,'pick/skip should have a list of criteria')
 
                         for actCrit in actCrits:
                             for fldCrit in listMe(actCrit):
@@ -370,6 +420,7 @@ class RuleVerifier:
 
 
 class RuleFrame(pd.DataFrame,FrameFilter):
+    ''' Output of a verify() action '''
     @property
     def _constructor(self):
         ''' a result of a method is also a RuleFrame  '''
@@ -377,13 +428,23 @@ class RuleFrame(pd.DataFrame,FrameFilter):
 
     _verifyFilterKwds = {'resclass':'CLASS', 'profile':'PROFILE', 'field':'FIELD_NAME', 'actual':'ACTUAL', 'found':'ACTUAL', 'expect':'EXPECT', 'fit':'EXPECT', 'value':'EXPECT', 'id':'ID'}
 
-    def gfilter(df, *selection, **kwds):
-        ''' Search profiles using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data levels of the df.
-        alternatively specify the field names via an alias keyword, r.verify().gfilter(field='OWN*') '''
+    def pick(df, *selection, **kwds):
+        ''' Search profiles using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data columns of the df.
+
+        alternatively specify the field names via an alias keyword: 
+        
+        r.verify().pick(field='OWN*')
+        
+        specify selection as regex using re.compile: 
+        
+        r.verify().pick( field=re.compile('(OWNER|DFLTGRP)' ) '''
         return df._frameFilter(*selection, **kwds, kwdValues=df._verifyFilterKwds)
 
-    def rfilter(df, *selection, **kwds):
-        ''' Search profiles using regex on the data fields.  selection can be one or more values, corresponding to data levels of the df
-        alternatively specify the field names via an alias keyword, r.verify().gfilter(field='(OWNER|DFLTGRP)')  '''
-        return df._frameFilter(*selection, **kwds, kwdValues=df._verifyFilterKwds, regexPattern=True)
+    def skip(df, *selection, **kwds):
+        ''' Exclude profiles using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data columns of the df
+
+        alternatively specify the field names via an alias keyword: 
+        
+        r.verify().skip(actual='SYS1')  '''
+        return df._frameFilter(*selection, **kwds, kwdValues=df._verifyFilterKwds, exclude=True)
 
