@@ -34,21 +34,6 @@ class ProfilePublisher():
 
 
     @property
-    def userUSRDATA(self):
-        # retained here due to deprecated property definition
-        return self._userUSRDATA
-
-    installdata = property(deprecated(userUSRDATA,"installdata"))
-
-    @property
-    def userDistributedIdMapping(self):
-        # retained here due to deprecated property definition
-        return self._userDistributedIdMapping
-
-    userDistributedMapping = property(deprecated(userDistributedIdMapping,"userDistributedMapping"))
-
-
-    @property
     def specials(self):
         return self._users.loc[self._users['USBD_SPECIAL'] == 'YES']
 
@@ -123,40 +108,11 @@ class ProfilePublisher():
 
     ### general resource frames
 
-    @property
-    def generals(self, query=None):
-        # retained here due to deprecated property definition
-        return self._generals
-
-    generics = property(deprecated(generals,"generics"))
-
     def general(self, resclass=None, profile=None, option=None):
         return self._generals._giveMeProfiles((resclass,profile), option=option)
 
-    @property
-    def generalMembers(self, query=None):
-        # retained here due to deprecated property definition
-        return self._generalMembers    
-
-    genericMembers = property(deprecated(generalMembers,"genericMembers"))
-
-    @property
-    def generalAccess(self, query=None):
-        # retained here due to deprecated property definition
-        return self._generalAccess
-
-    genericAccess = property(deprecated(generalAccess,"genericAccess"))
-    
     def generalPermit(self, resclass=None, profile=None, id=None, access=None, option=None):
         return self._generalAccess._giveMeProfiles((resclass,profile,id,access), option=option)
-    
-    
-    @property
-    def generalConditionalAccess(self):
-        # retained here due to deprecated property definition
-        return self._generalConditionalAccess
-
-    genericConditionalAccess = property(deprecated(generalConditionalAccess,"genericConditionalAccess"))
     
     def generalConditionalPermit(self, resclass=None, profile=None, id=None, access=None, option=None):
         return self._generalConditionalAccess._giveMeProfiles((resclass,profile,id,access), option=option)

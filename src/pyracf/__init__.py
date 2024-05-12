@@ -1,6 +1,6 @@
 import importlib.resources
 import json
-import pandas as pd 
+import pandas as pd
 
 import math
 
@@ -25,14 +25,35 @@ from .racf_functions import accessKeywords
 from .utils import deprecated, readableList
 from .xls_writers import XlsWriter
 
-class StoopidException(Exception):
+class PyRacfException(Exception):
     def __init__(self, message):
         self.message = message
         super().__init__(self.message)
 
+class _PropertyStub(property):
+    """Define public properties in RACF class for all possible ProfileFrames
+
+    Use _recordtype_info to populate the (external) publishers for ProfileFrames, so they turn up in sphinx-autodoc.
+    We won't know if there is going to be a df to backup the property until the RACF object is instantiated and parse has completed.
+
+    So when the user requests the property value, we must check if the df is there.  If not, issue an exception.
+    """
+
+    def __init__(self,df,publisher):
+        self.df = df
+        self.publisher = publisher
+
+    def __get__(self,RACFobject,RACFobject_class):
+        if not RACFobject:
+            raise TypeError(self.publisher,'attribute is for use on RACF instance, not on Class')
+        elif hasattr(RACFobject,self.df):
+            return getattr(RACFobject,self.df)
+        else:
+            warnings.warn(self.df,'missing in RACF object')
+
 
 class RACF(ProfilePublisher,XlsWriter):
-    
+
     # Our states
     STATE_BAD         = -1
     STATE_INIT        =  0
@@ -49,41 +70,41 @@ class RACF(ProfilePublisher,XlsWriter):
     #                                *         -> same as df without the _
     #                                all but * -> this name as property
     _recordtype_info = {
-    '0100': {'name':'GPBD', 'df':'_groups', 'publisher':'*'},
-    '0101': {'name':'GPSGRP', 'df':'_subgroups', 'publisher':'*'},
-    '0102': {'name':'GPMEM', 'df':'_connects', "index":["GPMEM_NAME","GPMEM_MEMBER_ID"], 'publisher':'*'},
-    '0103': {'name':'GPINSTD', 'df':'_groupUSRDATA', 'publisher':'*'},
-    '0110': {'name':'GPDFP', 'df':'_groupDFP', 'publisher':'*'},
-    '0120': {'name':'GPOMVS', 'df':'_groupOMVS', 'publisher':'*'},
+    '0100': {'name':'GPBD', 'df':'_groups'},
+    '0101': {'name':'GPSGRP', 'df':'_subgroups'},
+    '0102': {'name':'GPMEM', 'df':'_connects', "index":["GPMEM_NAME","GPMEM_MEMBER_ID"]},
+    '0103': {'name':'GPINSTD', 'df':'_groupUSRDATA'},
+    '0110': {'name':'GPDFP', 'df':'_groupDFP'},
+    '0120': {'name':'GPOMVS', 'df':'_groupOMVS'},
     '0130': {'name':'GPOVM', 'df':'_groupOVM'},
-    '0141': {'name':'GPTME', 'df':'_groupTME', 'publisher':'*'},
-    '0151': {'name':'GPCSD', 'df':'_groupCSDATA', 'publisher':'*'},
-    '0200': {'name':'USBD', 'df':'_users', 'publisher':'*'},
-    '0201': {'name':'USCAT', 'df':'_userCategories', 'publisher':'*'},
-    '0202': {'name':'USCLA', 'df':'_userClasses', 'publisher':'*'},
-    '0203': {'name':'USGCON', 'df':'_groupConnect', "index":["USGCON_GRP_ID","USGCON_NAME"], 'publisher':'*'},
-    '0204': {'name':'USINSTD', 'df':'_userUSRDATA'},  # , 'publisher':'*'
-    '0205': {'name':'USCON', 'df':'_connectData', "index":["USCON_GRP_ID","USCON_NAME"], 'publisher':'*'},
+    '0141': {'name':'GPTME', 'df':'_groupTME'},
+    '0151': {'name':'GPCSD', 'df':'_groupCSDATA'},
+    '0200': {'name':'USBD', 'df':'_users'},
+    '0201': {'name':'USCAT', 'df':'_userCategories'},
+    '0202': {'name':'USCLA', 'df':'_userClasses'},
+    '0203': {'name':'USGCON', 'df':'_groupConnect', "index":["USGCON_GRP_ID","USGCON_NAME"]},
+    '0204': {'name':'USINSTD', 'df':'_userUSRDATA'},
+    '0205': {'name':'USCON', 'df':'_connectData', "index":["USCON_GRP_ID","USCON_NAME"]},
     '0206': {'name':'USRSF', 'df':'_userRRSFdata', 'publisher':'userRRSFDATA'},
-    '0207': {'name':'USCERT', 'df':'_userCERTname', 'publisher':'*'},
-    '0208': {'name':'USNMAP', 'df':'_userAssociationMapping', 'publisher':'*'},
-    '0209': {'name':'USDMAP', 'df':'_userDistributedIdMapping'},  # , 'publisher':'*'
-    '020A': {'name':'USMFA', 'df':'_userMFAfactor', 'publisher':'*'},
-    '020B': {'name':'USMPOL', 'df':'_userMFApolicies', 'publisher':'*'},
-    '0210': {'name':'USDFP', 'df':'_userDFP', 'publisher':'*'},
-    '0220': {'name':'USTSO', 'df':'_userTSO', 'publisher':'*'},
-    '0230': {'name':'USCICS', 'df':'_userCICS', 'publisher':'*'},
-    '0231': {'name':'USCOPC', 'df':'_userCICSoperatorClasses', 'publisher':'*'},
-    '0232': {'name':'USCRSL', 'df':'_userCICSrslKeys', 'publisher':'*'},
-    '0233': {'name':'USCTSL', 'df':'_userCICStslKeys', 'publisher':'*'},
-    '0240': {'name':'USLAN', 'df':'_userLANGUAGE', 'publisher':'*'},
-    '0250': {'name':'USOPR', 'df':'_userOPERPARM', 'publisher':'*'},
-    '0251': {'name':'USOPRP', 'df':'_userOPERPARMscope', 'publisher':'*'},
-    '0260': {'name':'USWRK', 'df':'_userWORKATTR', 'publisher':'*'},
-    '0270': {'name':'USOMVS', 'df':'_userOMVS', 'publisher':'*'},
-    '0280': {'name':'USNETV', 'df':'_userNETVIEW', 'publisher':'*'},
-    '0281': {'name':'USNOPC', 'df':'_userNETVIEWopclass', 'publisher':'*'},
-    '0282': {'name':'USNDOM', 'df':'_userNETVIEWdomains', 'publisher':'*'},
+    '0207': {'name':'USCERT', 'df':'_userCERTname'},
+    '0208': {'name':'USNMAP', 'df':'_userAssociationMapping'},
+    '0209': {'name':'USDMAP', 'df':'_userDistributedIdMapping'},
+    '020A': {'name':'USMFA', 'df':'_userMFAfactor'},
+    '020B': {'name':'USMPOL', 'df':'_userMFApolicies'},
+    '0210': {'name':'USDFP', 'df':'_userDFP'},
+    '0220': {'name':'USTSO', 'df':'_userTSO'},
+    '0230': {'name':'USCICS', 'df':'_userCICS'},
+    '0231': {'name':'USCOPC', 'df':'_userCICSoperatorClasses'},
+    '0232': {'name':'USCRSL', 'df':'_userCICSrslKeys'},
+    '0233': {'name':'USCTSL', 'df':'_userCICStslKeys'},
+    '0240': {'name':'USLAN', 'df':'_userLANGUAGE'},
+    '0250': {'name':'USOPR', 'df':'_userOPERPARM'},
+    '0251': {'name':'USOPRP', 'df':'_userOPERPARMscope'},
+    '0260': {'name':'USWRK', 'df':'_userWORKATTR'},
+    '0270': {'name':'USOMVS', 'df':'_userOMVS'},
+    '0280': {'name':'USNETV', 'df':'_userNETVIEW'},
+    '0281': {'name':'USNOPC', 'df':'_userNETVIEWopclass'},
+    '0282': {'name':'USNDOM', 'df':'_userNETVIEWdomains'},
     '0290': {'name':'USDCE', 'df':'_userDCE'},
     '02A0': {'name':'USOVM', 'df':'_userOVM'},
     '02B0': {'name':'USLNOT', 'df':'_userLNOTES'},
@@ -91,25 +112,25 @@ class RACF(ProfilePublisher,XlsWriter):
     '02D0': {'name':'USKERB', 'df':'_userKERB'},
     '02E0': {'name':'USPROXY', 'df':'_userPROXY'},
     '02F0': {'name':'USEIM', 'df':'_userEIM'},
-    '02G1': {'name':'USCSD', 'df':'_userCSDATA', 'publisher':'*'},
-    '1210': {'name':'USMFAC', 'df':'_userMFAfactorTags', 'publisher':'*'},
-    '0400': {'name':'DSBD', 'df':'_datasets', 'publisher':'*'},
-    '0401': {'name':'DSCAT', 'df':'_datasetCategories', 'publisher':'*'},
-    '0402': {'name':'DSCACC', 'df':'_datasetConditionalAccess', "index":["DSCACC_NAME","DSCACC_AUTH_ID","DSCACC_ACCESS"], 'publisher':'*'},
+    '02G1': {'name':'USCSD', 'df':'_userCSDATA'},
+    '1210': {'name':'USMFAC', 'df':'_userMFAfactorTags'},
+    '0400': {'name':'DSBD', 'df':'_datasets'},
+    '0401': {'name':'DSCAT', 'df':'_datasetCategories'},
+    '0402': {'name':'DSCACC', 'df':'_datasetConditionalAccess', "index":["DSCACC_NAME","DSCACC_AUTH_ID","DSCACC_ACCESS"]},
     '0403': {'name':'DSVOL', 'df':'_datasetVolumes'},
-    '0404': {'name':'DSACC', 'df':'_datasetAccess', "index":["DSACC_NAME","DSACC_AUTH_ID","DSACC_ACCESS"], 'publisher':'*'},
-    '0405': {'name':'DSINSTD', 'df':'_datasetUSRDATA', 'publisher':'*'},
+    '0404': {'name':'DSACC', 'df':'_datasetAccess', "index":["DSACC_NAME","DSACC_AUTH_ID","DSACC_ACCESS"]},
+    '0405': {'name':'DSINSTD', 'df':'_datasetUSRDATA'},
     '0406': {'name':'DSMEM', 'df':'_datasetMember'},
-    '0410': {'name':'DSDFP', 'df':'_datasetDFP', 'publisher':'*'},
-    '0421': {'name':'DSTME', 'df':'_datasetTME', 'publisher':'*'},
-    '0431': {'name':'DSCSD', 'df':'_datasetCSDATA', 'publisher':'*'},
+    '0410': {'name':'DSDFP', 'df':'_datasetDFP'},
+    '0421': {'name':'DSTME', 'df':'_datasetTME'},
+    '0431': {'name':'DSCSD', 'df':'_datasetCSDATA'},
     '0500': {'name':'GRBD', 'df':'_generals'},
-    '0501': {'name':'GRTVOL', 'df':'_generalTAPEvolume', 'publisher':'*'},
-    '0502': {'name':'GRCAT', 'df':'_generalCategories', 'publisher':'*'},
+    '0501': {'name':'GRTVOL', 'df':'_generalTAPEvolume'},
+    '0502': {'name':'GRCAT', 'df':'_generalCategories'},
     '0503': {'name':'GRMEM', 'df':'_generalMembers'},
-    '0504': {'name':'GRVOL', 'df':'_generalTAPEvolumes', 'publisher':'*'},
+    '0504': {'name':'GRVOL', 'df':'_generalTAPEvolumes'},
     '0505': {'name':'GRACC', 'df':'_generalAccess', "index":["GRACC_CLASS_NAME","GRACC_NAME","GRACC_AUTH_ID","GRACC_ACCESS"]},
-    '0506': {'name':'GRINSTD', 'df':'_generalUSRDATA', 'publisher':'*'},
+    '0506': {'name':'GRINSTD', 'df':'_generalUSRDATA'},
     '0507': {'name':'GRCACC', 'df':'_generalConditionalAccess', "index":["GRCACC_CLASS_NAME","GRCACC_NAME","GRCACC_AUTH_ID","GRCACC_ACCESS"]},
     '0508': {'name':'GRFLTR', 'df':'_generalDistributedIdFilter', 'publisher':'DistributedIdFilter'},
     '0509': {'name':'GRDMAP', 'df':'_generalDistributedIdMapping', 'publisher':'DistributedIdMapping'},
@@ -117,7 +138,7 @@ class RACF(ProfilePublisher,XlsWriter):
     '0511': {'name':'GRSESE', 'df':'_generalSESSIONentities', 'publisher':'SESSIONentities'},
     '0520': {'name':'GRDLF', 'df':'_generalDLFDATA', 'publisher':'DLFDATA'},
     '0521': {'name':'GRDLFJ', 'df':'_generalDLFDATAjobnames', 'publisher':'DLFDATAjobnames'},
-    '0530': {'name':'GRSIGN', 'df':'_generalSSIGNON'}, # needs APPLDATA
+    '0530': {'name':'GRSIGN', 'df':'_generalSSIGNON', 'publisher':False}, # needs APPLDATA
     '0540': {'name':'GRST', 'df':'_generalSTDATA', 'publisher':'STDATA'},
     '0550': {'name':'GRSV', 'df':'_generalSVFMR', 'publisher':'SVFMR'}, # SYSMVIEW profiles
     '0560': {'name':'GRCERT', 'df':'_generalCERT', 'publisher':'CERT'},
@@ -143,7 +164,7 @@ class RACF(ProfilePublisher,XlsWriter):
     '05H0': {'name':'GRMFA', 'df':'_generalMFA', 'publisher':'MFA'},
     '05I0': {'name':'GRMFP', 'df':'_generalMFPOLICY', 'publisher':'MFPOLICY'},
     '05I1': {'name':'GRMPF', 'df':'_generalMFPOLICYfactors', 'publisher':'MFPOLICYfactors'},
-    '05J1': {'name':'GRCSD', 'df':'_generalCSDATA', 'publisher':'*'},
+    '05J1': {'name':'GRCSD', 'df':'_generalCSDATA'},
     '05K0': {'name':'GRIDTP', 'df':'_generalIDTFPARMS', 'publisher':'IDTFPARMS'},
     '05L0': {'name':'GRJES', 'df':'_generalJES', 'publisher':'JES'}
     }
@@ -153,7 +174,7 @@ class RACF(ProfilePublisher,XlsWriter):
     for (rtype,rinfo) in _recordtype_info.items():
         _recordname_type.update({rinfo['name']: rtype})
         _recordname_df.update({rinfo['name']: rinfo['df']})
-    
+
     # load irrdbu00 field definitions, save offsets in _recordtype_info
     # strictly speaking only needed for parse() function, but also not limited to one instance.
     with importlib.resources.open_text("pyracf", "offsets.json") as file:
@@ -162,14 +183,26 @@ class RACF(ProfilePublisher,XlsWriter):
         rtype = _offsets[offset]['record-type']
         if rtype in _recordtype_info.keys():
           _recordtype_info[rtype].update({"offsets": _offsets[offset]["offsets"]})
-    try:
-        del file, rtype, rinfo, offset, _offsets  # don't need these as class attributes
-    except NameError:
-        pass
+
+    # define publishers so they turn up in sphinx-autodoc
+    for (rtype,rinfo) in _recordtype_info.items():
+        publisher = rinfo['publisher'] if 'publisher' in rinfo else rinfo['df'].lstrip('_')
+        if publisher:  # if publisher was not declared False
+            purpose = rinfo['offsets'][0]['field-desc']\
+                      .replace('Record type of the','')\
+                      .replace('Record Type of the','')\
+                      .replace(' record','')\
+                      .replace(' Record','')
+            vars()[publisher] = _PropertyStub(rinfo['df'],publisher)
+            vars()[publisher].__doc__ = purpose
 
     _grouptreeLines     = None  # df with all supgroups up to SYS1
     _ownertreeLines     = None  # df with owners up to SYS1 or user ID
-    
+
+    try:
+        del file, rtype, rinfo, offset, _offsets, publisher, purpose  # don't need these as class attributes
+    except NameError:
+        pass
 
     def __init__(self, irrdbu00=None, pickles=None, prefix=''):
 
@@ -177,19 +210,13 @@ class RACF(ProfilePublisher,XlsWriter):
 
         if not irrdbu00 and not pickles:
             self._state = self.STATE_BAD
-        else:
-            if not pickles:
-                self._irrdbu00 = irrdbu00
-                self._state    = self.STATE_INIT
-                self._unloadlines = sum(1 for _ in open(self._irrdbu00, errors="ignore"))
-
-        if pickles:
+        elif pickles:
             # Read from pickles dir
             picklefiles = glob.glob(f'{pickles}/{prefix}*.pickle')
             self._starttime = datetime.now()
             self._records = {}
             self._unloadlines = 0
-            
+
             for pickle in picklefiles:
                 fname = os.path.basename(pickle)
                 recordname = fname.replace(prefix,'').split('.')[0]
@@ -205,9 +232,10 @@ class RACF(ProfilePublisher,XlsWriter):
                     self._unloadlines += recordsRetrieved
 
             # create remaining public DFs as empty
+            emptyFrame = ProfileFrame()
             for (rtype,rinfo) in RACF._recordtype_info.items():
                 if not hasattr(self, rinfo['df']):
-                    setattr(self, rinfo['df'], ProfileFrame())
+                    setattr(self, rinfo['df'], emptyFrame)
                     self._records[rtype] = {
                       "seen": 0,
                       "parsed": 0
@@ -217,8 +245,12 @@ class RACF(ProfilePublisher,XlsWriter):
             self._correlate()
             self._state = self.STATE_READY
             self._stoptime = datetime.now()
-
         else:
+            # prepare for user's choice to do parse() or fancycli()
+            self._irrdbu00 = irrdbu00
+            self._state    = self.STATE_INIT
+            self._unloadlines = sum(1 for _ in open(self._irrdbu00, errors="ignore"))
+
             # Running threads
             self.THREAD_COUNT = 0
 
@@ -260,13 +292,13 @@ class RACF(ProfilePublisher,XlsWriter):
             speed  = math.floor(seen/((self._stoptime - self._starttime).total_seconds()))
             parsetime = (self._stoptime - self._starttime).total_seconds()
         else:
-            status = "Limbo"     
+            status = "Limbo"
         return {'status': status, 'input-lines': self._unloadlines, 'lines-read': seen, 'lines-parsed': parsed, 'lines-per-second': speed, 'parse-time': parsetime}
 
-    def parse_fancycli(self, recordtypes=_recordtype_info.keys(), save_pickles=False, prefix=''):
+    def parse_fancycli(self, recordtypes=None, save_pickles=False, prefix=''):
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - parsing {self._irrdbu00}')
         self.parse(recordtypes=recordtypes)
-        print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - selected recordtypes: {",".join(recordtypes)}')
+        print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - selected recordtypes: {",".join(recordtypes) if recordtypes else "all"}')
         while self._state != self.STATE_CORRELATING:
             progress =  math.floor(((sum(r['seen'] for r in self._records.values() if r)) / self._unloadlines) * 63)
             pct = (progress/63) * 100 # not as strange as it seems:)
@@ -280,19 +312,19 @@ class RACF(ProfilePublisher,XlsWriter):
              time.sleep(0.5)
         # make completed line always show 100% :)
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - progress: {63*"▉"} ({100:.2f}%)'.center(80))
-        for r in recordtypes:
+        for r in (recordtypes if recordtypes else self._recordtype_info.keys()):
             print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - recordtype {r} -> {self.parsed(self._recordtype_info[r]["name"])} records parsed')
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - total parse time: {(self._stoptime - self._starttime).total_seconds()} seconds')
         if save_pickles:
             self.save_pickles(path=save_pickles,prefix=prefix)
             print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - Pickle files saved to {save_pickles}')
 
-    def parse(self, recordtypes=_recordtype_info.keys()):
+    def parse(self, recordtypes=None):
         pt = threading.Thread(target=self.parse_t,args=(recordtypes,))
         pt.start()
         return True
 
-    def parse_t(self, thingswewant=_recordtype_info.keys()):
+    def parse_t(self, thingswewant=None):
         # TODO: make this multiple threads (per record-type?)
         if self.THREAD_COUNT == 0:
             self._starttime = datetime.now()
@@ -305,7 +337,7 @@ class RACF(ProfilePublisher,XlsWriter):
                     self._records[r]['seen'] += 1
                 else:
                     self._records[r] = {'seen': 1, 'parsed': 0}
-                if r in thingswewant:
+                if not thingswewant or r in thingswewant:
                     offsets = RACF._recordtype_info[r]["offsets"]
                     if offsets:
                         irrmodel = {}
@@ -314,13 +346,13 @@ class RACF(ProfilePublisher,XlsWriter):
                             end   = int(model['end'])
                             name  = model['field-name']
                             value = line[start-1:end].strip()
-                            irrmodel[name] = str(value) 
+                            irrmodel[name] = str(value)
                         self._parsed[r].append(irrmodel)
                         self._records[r]['parsed'] += 1
         # all models parsed :)
 
         for (rtype,rinfo) in RACF._recordtype_info.items():
-            if rtype in thingswewant:
+            if not thingswewant or rtype in thingswewant:
                 setattr(self, rinfo['df'], ProfileFrame.from_dict(self._parsed[rtype]))
 
         # Reduce memory use, delete self._parsed after dataframes are made
@@ -331,7 +363,7 @@ class RACF(ProfilePublisher,XlsWriter):
         if self.THREAD_COUNT == 0:
             self._state = self.STATE_CORRELATING
             self._correlate()
-            self._state = self.STATE_READY         
+            self._state = self.STATE_READY
             self._stoptime = datetime.now()
         return True
 
@@ -352,10 +384,10 @@ class RACF(ProfilePublisher,XlsWriter):
 
     def _correlate(self, thingswewant=_recordtype_info.keys()):
         """ construct tables that combine the raw dataframes for improved processing """
-        
+
         # use the table definitions in _recordtype_info finalize the dfs:
         # set consistent index columns for existing dfs: profile key, connect group+user, of profile class+key (for G.R.)
-        # define properties to access the dfs, in addition to the properties defined as functions below
+
         for (rtype,rinfo) in RACF._recordtype_info.items():
             if rtype in thingswewant and rtype in self._records and self._records[rtype]['parsed']>0:
                 df = getattr(self,rinfo['df'])  # dataframe with these records
@@ -374,12 +406,6 @@ class RACF(ProfilePublisher,XlsWriter):
                 if df.index.names!=names:  # reuse existing index for pickles
                     df.set_index(keys,drop=False,inplace=True)
                     df.rename_axis(names,inplace=True)  # prevent ambiguous index / column names
-            if 'publisher' in rinfo:
-                publisher = rinfo['publisher'] if rinfo['publisher']!='*' else rinfo['df'].lstrip('_')
-                if hasattr(self, rinfo['df']):
-                    setattr(self, publisher, getattr(self, rinfo['df']))
-                else:
-                    setattr(self, publisher, lambda x: warnings.warn(f"{publisher} has not been collected."))
 
         # copy group auth (USE,CREATE,CONNECT,JOIN) to complete the connectData list, using index alignment
         if self.parsed("GPBD") > 0 and self.parsed("GPMEM") > 0 and self.parsed("USCON") > 0:
@@ -398,7 +424,7 @@ class RACF(ProfilePublisher,XlsWriter):
             self._datasets.insert(column+1,"IDSTAR_ACCESS",uaccs["IDSTAR_ACCESS"])
             self._datasets.insert(column+2,"ALL_USER_ACCESS",uaccs["ALL_USER_ACCESS"])
             del uaccs
-        
+
         if self.parsed("GRBD") > 0 and self.parsed("GRACC") > 0 and 'IDSTAR_ACCESS' not in self._generals.columns:
             uaccs = pd.DataFrame()
             uaccs["UACC"] = self._generals["GRBD_UACC"]
@@ -413,7 +439,7 @@ class RACF(ProfilePublisher,XlsWriter):
             self._generals.insert(column+1,"IDSTAR_ACCESS",uaccs["IDSTAR_ACCESS"])
             self._generals.insert(column+2,"ALL_USER_ACCESS",uaccs["ALL_USER_ACCESS"])
             del uaccs
-        
+
         # self._grouptreeLines: frame of group + name of all superior groups until SYS1
         gtl = self._groups[['GPBD_NAME','GPBD_SUPGRP_ID']]
         gtlLen = 0
@@ -427,7 +453,7 @@ class RACF(ProfilePublisher,XlsWriter):
         self._grouptreeLines = gtl.rename(columns={'GPBD_NAME':'GROUP','GPBD_SUPGRP_ID':'PARENTS'})\
                                   .set_index("GROUP",drop=False)\
                                   .rename_axis('GROUP_NAME')
-        
+
         # self._ownertreeLines: frame of group + name of all owners (group or user) until SYS1 or user ID found
         otl=self._groups[['GPBD_NAME','GPBD_SUPGRP_ID','GPBD_OWNER_ID']]
         otlLen = 0
@@ -443,24 +469,24 @@ class RACF(ProfilePublisher,XlsWriter):
                                   .set_index("GROUP",drop=False)\
                                   .rename_axis('GROUP_NAME')
 
-        
+
     def save_pickle(self, df='', dfname='', path='', prefix=''):
         # Sanity check
         if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        
+            raise PyRacfException('Not done parsing yet!')
+
         df.to_pickle(f'{path}/{prefix}{dfname}.pickle')
 
 
     def save_pickles(self, path='/tmp', prefix=''):
         # Sanity check
         if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+            raise PyRacfException('Not done parsing yet!')
         # Is Path there ?
         if not os.path.exists(path):
             madedir = os.system(f'mkdir -p {path}')
             if madedir != 0:
-                raise StoopidException(f'{path} does not exist, and cannot create')
+                raise PyRacfException(f'{path} does not exist, and cannot create')
         # Let's save the pickles
         for (rtype,rinfo) in RACF._recordtype_info.items():
             if rtype in self._records and self._records[rtype]['parsed']>0:
@@ -478,21 +504,21 @@ class RACF(ProfilePublisher,XlsWriter):
 
     def getdatasetrisk(self, profile=''):
         '''This will produce a dict as follows:
-      
+
         '''
         try:
             if self.parsed("GPBD") == 0 or self.parsed("USCON") == 0 or self.parsed("USBD") == 0 or self.parsed("DSACC") == 0 or self.parsed("DSBD") == 0:
-                raise StoopidException("Need to parse DSACC and DSBD first...")
+                raise PyRacfException("Need to parse DSACC and DSBD first...")
         except:
-            raise StoopidException("Need to parse DSACC, USCON, USBD, GPBD and DSBD first...")
-        
+            raise PyRacfException("Need to parse DSACC, USCON, USBD, GPBD and DSBD first...")
+
         try:
             d = self.datasets.loc[[profile]]
         except KeyError:
-            d = ProfileFrame()
+            d = self.datasets.head(0)
         if d.empty:
-            raise StoopidException(f'Profile {profile} not found...')
-        
+            raise PyRacfException(f'Profile {profile} not found...')
+
         owner = d['DSBD_OWNER_ID'].values[0]
         accesslist = {}
         accessmanagers = {}
