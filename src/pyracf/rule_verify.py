@@ -22,7 +22,7 @@ class RuleVerifier:
         self._module = None
 
     def load(self, rules=None, domains={}, module=None, reset=False, defaultmodule=".profile_field_rules"):
-        ''' load rules + domains from yaml str, structure or from packaged module
+        '''load rules + domains from yaml str, structure or from packaged module
 
         Args:
             rules (list, str): list of lists with test specifications, or yaml str field that expands into a list of lists
@@ -33,6 +33,24 @@ class RuleVerifier:
 
         Returns:
             RuleVerifier: the updated object
+
+        Example:
+
+        ::
+
+            r.rules.load(rules = [
+                (['DSBD'],
+                 {'id': '101',
+                  'comment': 'Integrity of test libraries',
+                  'profile': 'TEST*.**',
+                  'test': [{'field':'UACC', 'value':['NONE','READ']},
+                          {'field':'WARNING', 'value':'NO'},
+                          {'field':'NOTIFY_ID', 'fit':'DELETE'}],
+                 }
+                )
+                                 ]
+                        ).verify()
+
         '''
 
         if reset:  # clear prior load
@@ -81,12 +99,15 @@ class RuleVerifier:
         Returns:
             RuleVerifier: The updated object
 
-        Example:
-            v = r.rules.load()
-            
-            v.add_domains({'PROD_GROUPS': ['PRODA','PRODB,'PRODCICS'], 'TEST_GROUPS': ['TEST1','TEST2']})
-            
-            v.add_domains({'SYS1': r.connect('SYS1').index})
+        Example::
+
+          v = r.rules.load()
+
+          v.add_domains({'PROD_GROUPS': ['PRODA','PRODB,'PRODCICS'],
+                         'TEST_GROUPS': ['TEST1','TEST2']})
+
+          v.add_domains({'SYS1': r.connect('SYS1').index})
+
         '''
         if type(domains)==dict:  # just a dict
             pass
@@ -122,6 +143,11 @@ class RuleVerifier:
 
         Returns:
             RuleFrame: Result object
+
+        Example::
+
+          r.rules.load().verify()
+
         '''
 
         if rules or domains or module or reset or not (self._rules and self._domains):
@@ -194,7 +220,7 @@ class RuleVerifier:
                 for tbCrit in tbCriteria:
                     subjectDF = tbDF  # subject for this test
                     matchPattern = None  # indicator that matched (dynamic) fields are used in this test
-                    actionLocs = {}   # filled by select and -select
+                    actionLocs = {}   # filled by find and skip
 
                     if 'class' in tbCrit:
                         if tbEntity!='GR':
@@ -214,11 +240,11 @@ class RuleVerifier:
                                                       .replace('(','(?P<').replace(')','>[^.]*)')
                         matched = subjectDF[tbName+'_NAME'].str.extract(matchPattern)  # extract 1 qualifier
 
-                    # pick and skip use same parser, if these kwds are used, actionLocs are filled
-                    # suffix pick and skip with any character(s) to specify alternative selections
+                    # find and skip use same parser, if these kwds are used, actionLocs are filled
+                    # suffix find and skip with any character(s) to specify alternative selections
 
                     for (action,*actCrits) in tbCrit.items(): # should only find 1 item in each tbCrit, but have to access key+value
-                        if action[0:4]=='pick': action = 'pick'
+                        if action[0:4]=='find': action = 'find'
                         elif action[0:4]=='skip': action = 'skip'
                         else: break
                         if action not in actionLocs:
@@ -258,7 +284,7 @@ class RuleVerifier:
 
                     if 'test' in tbCrit:
                         tbLocs = initArray(True, like=subjectDF)
-                        if 'pick' in actionLocs: tbLocs &= actionLocs['pick']
+                        if 'find' in actionLocs: tbLocs &= actionLocs['find']
                         if 'skip' in actionLocs: tbLocs &= ~ actionLocs['skip']
 
                         for fldCrit in listMe(tbCrit['test']):
@@ -278,7 +304,7 @@ class RuleVerifier:
                                 if type(fldCrit['value'])==str:
                                     fldLocs &= ~ fldColumn.eq(fldCrit['value'])
                                 else:
-                                    fldLocs &= ~ fldColumn.gt('') & fldColumn.isin(fldCrit['value'])
+                                    fldLocs &= fldColumn.gt('') & ~ fldColumn.isin(fldCrit['value'])
 
                             if any(fldLocs):
                                 broken = subjectDF.loc[fldLocs].copy()\
@@ -305,7 +331,15 @@ class RuleVerifier:
         specify confirm=False to suppress the message when all is OK
 
         Args:
-            confirm (bool): False if the success message should be suppressed, for automated testing
+            confirm (bool): False if the success message should be suppressed, so in automated testing the result frame has .empty
+
+        Example::
+
+          r.rules.load().syntax_check()
+
+          if r.rules.load().syntax_check(confirm=False).empty:
+              print('No syntax errors in default policy')
+
         '''
 
         if not (self._rules and self._domains):
@@ -352,7 +386,7 @@ class RuleVerifier:
 
                     for action in tbCrit.keys():
                         if action not in ['class','-class','profile','-profile','match','test','comment','id']:
-                            if action[0:4]!='pick' and action[0:4]!='skip':
+                            if action[0:4]!='find' and action[0:4]!='skip':
                                 broken('action',action,f"unsupported action {action} with table {tbNames}")
 
                     if 'class' in tbCrit:
@@ -367,12 +401,12 @@ class RuleVerifier:
                         matchFields = None
 
                     for (action,*actCrits) in tbCrit.items(): # should only find 1 item, but have to access key+value
-                        if action[0:4]=='pick': action = 'pick'
+                        if action[0:4]=='find': action = 'find'
                         elif action[0:4]=='skip': action = 'skip'
                         else: break
 
                         if type(actCrits)!=list:
-                            broken('filter',actCrit,'pick/skip should have a list of criteria')
+                            broken('filter',actCrit,'find/skip should have a list of criteria')
 
                         for actCrit in actCrits:
                             for fldCrit in listMe(actCrit):
@@ -393,9 +427,7 @@ class RuleVerifier:
                                 if 'fit' in fldCrit and fldCrit['fit'] not in self._domains:
                                     broken('fit',fldCrit['fit'],f"domain name {fldCrit['fit']} in filter not defined")
 
-                    if 'test' not in tbCrit:
-                        broken('test',tbCrit,'test directive missing, no output will be generated')
-                    else:
+                    if 'test' in tbCrit:
                         for fldCrit in listMe(tbCrit['test']):
                             if type(fldCrit)!=dict:
                                 broken('test',fldCrit,'each of criteria should be a dict')
@@ -413,6 +445,8 @@ class RuleVerifier:
                                     broken('field',fldCrit['field'],f"field name {fldCrit['field']} not found in {tbName} or match definition")
                             if 'fit' in fldCrit and fldCrit['fit'] not in self._domains:
                                 broken('fit',fldCrit['fit'],f"domain name {fldCrit['fit']} in test not defined")
+                    else:
+                        broken('table',tbName,f'test directive missing in {tbName}, no output will be generated')
 
         if not brokenList and confirm:
             brokenList.append(dict(field='rules', value='OK', comment='No problem found in rules'))
@@ -421,6 +455,7 @@ class RuleVerifier:
 
 class RuleFrame(pd.DataFrame,FrameFilter):
     ''' Output of a verify() action '''
+
     @property
     def _constructor(self):
         ''' a result of a method is also a RuleFrame  '''
@@ -428,23 +463,25 @@ class RuleFrame(pd.DataFrame,FrameFilter):
 
     _verifyFilterKwds = {'resclass':'CLASS', 'profile':'PROFILE', 'field':'FIELD_NAME', 'actual':'ACTUAL', 'found':'ACTUAL', 'expect':'EXPECT', 'fit':'EXPECT', 'value':'EXPECT', 'id':'ID'}
 
-    def pick(df, *selection, **kwds):
-        ''' Search profiles using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data columns of the df.
+    def find(df, *selection, **kwds):
+        '''Search rule results using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data columns of the df.
 
-        alternatively specify the field names via an alias keyword: 
-        
-        r.verify().pick(field='OWN*')
-        
-        specify selection as regex using re.compile: 
-        
-        r.verify().pick( field=re.compile('(OWNER|DFLTGRP)' ) '''
+        alternatively specify the field names via an alias keyword:
+
+        ``r.rules.load().verify().find(field='OWN*')``
+
+        specify selection as regex using re.compile:
+
+        ``r.rules.load().verify().find( field=re.compile('(OWNER|DFLTGRP)' )``
+        '''
         return df._frameFilter(*selection, **kwds, kwdValues=df._verifyFilterKwds)
 
     def skip(df, *selection, **kwds):
-        ''' Exclude profiles using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data columns of the df
+        '''Exclude rule results using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data columns of the df
 
-        alternatively specify the field names via an alias keyword: 
-        
-        r.verify().skip(actual='SYS1')  '''
+        alternatively specify the field names via an alias keyword:
+
+        ``r.rules.load().verify().skip(actual='SYS1')``
+        '''
         return df._frameFilter(*selection, **kwds, kwdValues=df._verifyFilterKwds, exclude=True)
 

@@ -17,7 +17,8 @@ pyRACF user documentation
    DataFrames
    Methods
    PrintPythonAttributes
-
+   source/modules
+   source/pyracf
 
 Indices and tables
 ==================

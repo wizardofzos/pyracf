@@ -58,6 +58,6 @@ def test_rules_report(testparms):
   right = ['CLASS', 'PROFILE', 'FIELD_NAME', 'EXPECT', 'ACTUAL', 'COMMENT', 'ID']
   for i in range(7):
       assert left[i]==right[i], f'column {right[i]} in verify() result table'
-  for f in ['pick','skip','_frameFilter']:
+  for f in ['find','skip','_frameFilter']:
       assert f in dir(t), f'verify() frame must have {f} method'
 

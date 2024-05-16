@@ -11,7 +11,8 @@
 project = 'pyRACF'
 copyright = '2022-2024 Henri Kuiper; 2024 Rob van Hoboken'
 author = 'Rob van Hoboken'
-release = '0.8.8'
+release = '0.9.0'
+version = release
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -35,7 +36,7 @@ html_css_files = [
 ]
 
 # -- autodoc configuration options ----------------------------------------------
-
+autodoc_member_order = 'bysource'
 import sys, os
 
 # If extensions (or modules to document with autodoc) are in another directory,

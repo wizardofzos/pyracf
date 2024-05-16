@@ -4,6 +4,7 @@ from .racf_functions import accessKeywords, generic2regex
 from .xls_writers import XlsWriter
 
 class AclFrame(pd.DataFrame, FrameFilter):
+    '''output of the .acl() method'''
     @property
     def _constructor(self):
         ''' a result of a method is also a ProfileFrame  '''
@@ -11,62 +12,103 @@ class AclFrame(pd.DataFrame, FrameFilter):
 
     _aclFilterKwds = {'user':'USER_ID', 'auth':'AUTH_ID', 'id':'AUTH_ID', 'access':'ACCESS'}
 
-    def pick(df, *selection, **kwds):
-        ''' Search profiles using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data columns of the df.
-        alternatively specify the field names via an alias keyword or column name: r.datasets.acl().pick(user="IBM*")
-        specify regex using re.compile: r.datasets.acl().pick( user=re.compile('(IBMUSER|SYS1)') ) '''
+    def find(df, *selection, **kwds):
+        '''Search acl entries using GENERIC pattern on the data fields.
+
+        selection can be one or more values, corresponding to data columns of the df.
+        alternatively specify the field names via an alias keyword or column name::
+
+            r.datasets.acl().find(user="IBM*")
+
+        specify regex using ``re.compile``::
+
+            r.datasets.acl().find( user=re.compile('(IBMUSER|SYS1)') )
+        '''
         return df._frameFilter(*selection, **kwds, kwdValues=df._aclFilterKwds, useIndex=False)
 
     def skip(df, *selection, **kwds):
-        ''' Exclude profiles using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data columns of the df.
-        alternatively specify the field names via an alias keyword or column name: r.datasets.acl().skip(USER_ID="IBMUSER")  '''
+        '''Exclude acl entries using GENERIC pattern on the data fields.
+
+        selection can be one or more values, corresponding to data columns of the df.
+        alternatively specify the field names via an alias keyword or column name::
+
+            r.datasets.acl().skip(USER_ID="IBMUSER")
+        '''
         return df._frameFilter(*selection, **kwds, kwdValues=df._aclFilterKwds, useIndex=False, exclude=True)
 
 
 class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
-    ''' properties that are copied to result frames '''
+    '''pandas frames with RACF profiles, the main properties that the RACF object provides'''
+    #properties that are copied to result frames
     _metadata = ['_RACFobject','_fieldPrefix']
-    
+
     @property
     def _constructor(self):
         ''' a result of a method is also a ProfileFrame  '''
         return ProfileFrame
-    
+
     def read_pickle(path):
         return ProfileFrame(pd.read_pickle(path))
-    
+
     def to_pickle(self, path):
-        ''' ensure RACFobject is not saved in pickle '''
+        '''ensure RACFobject is not saved in pickle'''
         md = self._metadata
         self._metadata = []
         pd.to_pickle(self,path)
         self._metadata = md
 
-    def pick(df, *selection, **kwds):
-        ''' Search profiles using GENERIC pattern on the index fields.  selection can be one or more values, corresponding to index levels of the df.
-        in addition(!), specify field names via an alias keyword or column name: r.datasets.pick("SYS1.**",UACC="ALTER")
-        specify regex using re.compile: r.datasets.pick(re.compile('SYS[12]\..*') ) '''
+    def find(df, *selection, **kwds):
+        r'''Search profiles using GENERIC pattern on the index fields.
+
+        selection can be one or more values, corresponding to index levels of the df.
+        in addition(!), specify field names via an alias keyword or column name::
+
+            r.datasets.find("SYS1.**",UACC="ALTER")
+
+        specify regex using ``re.compile``::
+
+            r.datasets.find(re.compile(r'SYS[12]\..*') )
+        '''
         return df._frameFilter(*selection, **kwds, useIndex=True)
 
     def skip(df, *selection, **kwds):
-        ''' Exclude profiles using GENERIC pattern on the index fields.  selection can be one or more values, corresponding to index levels of the df
-        alternatively, specify field names via an alias keyword or column name: r.datasets.skip(DSBD_UACC="NONE") '''
+        '''Exclude profiles using GENERIC pattern on the index fields.
+
+        selection can be one or more values, corresponding to index levels of the df
+        alternatively, specify field names via an alias keyword or column name::
+
+            r.datasets.skip(DSBD_UACC="NONE")
+        '''
         return df._frameFilter(*selection, **kwds, useIndex=True, exclude=True)
 
     def gfilter(df, *selection, **kwds):
-        ''' Search profiles using GENERIC pattern on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
+        '''Search profiles using GENERIC pattern on the index fields.
+
+        selection can be one or more values, corresponding to index levels of the df
+
+        use ``find()`` for more options
+        '''
         return df._frameFilter(*selection, **kwds, useIndex=True)
 
     def rfilter(df, *selection, **kwds):
-        ''' Search profiles using refex on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
+        ''' Search profiles using refex on the index fields.
+
+        selection can be one or more values, corresponding to index levels of the df
+
+        use ``find(re.compile('pattern'))`` for more options
+        '''
         return df._frameFilter(*selection, **kwds, useIndex=True, regexPattern=True)
 
     def _giveMeProfiles(df, selection=None, option=None):
-        ''' 
-        Search profiles using the index fields.  selection can be str or tuple.  Tuples check for group + user id in connects, or class + profile key in generals.
-        option controls how selection is interpreted, and how data must be returned:
-          None is for (expensive) backward compatibility, returns a df with 1 profile.
-          LIST returns a series for 1 profile, much faster and easier to process.
+        '''Select profiles using the index fields.
+
+        args:
+            selection: str or tuple.  Tuples check for group + user id in connects, or class + profile key in generals.
+            option: controls how selection is interpreted, and how data must be returned:
+
+              * None is for (expensive) backward compatibility, returns a df with 1 profile.
+
+              * LIST returns a series for 1 profile, much faster and easier to process.
         '''
         if not selection:
             raise TypeError('profile criteria not specified...')
@@ -86,16 +128,20 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
             except KeyError:
                 if not option:  # return empty DataFrame with all the original columns
                     return df.head(0)
-                else:  # return Series 
+                else:  # return Series
                     return []
         else:
             raise TypeError(f'unexpected last parameter {option}')
 
 
     def stripPrefix(df, deep=False, prefix=None, setprefix=None):
-        ''' strip table prefix from column names, shallow is only in the returned value, deep changes the table.
-            prefix can be specified f df._fieldPrefix is unavailable.
-            if the ProfileFrame is processed with .merge, _fieldPrefix is lost and can be restored with setprefix parm.  '''
+        '''remove table prefix from column names, for shorter expressions
+
+        args:
+            deep (bool): shallow only changes column names in the returned value, deep=True changes the ProfileFrame.
+            prefix (str): specified the prefix to remove if df._fieldPrefix is unavailable.
+            setprefix (str): restores _fieldPrefix in the ProfileFrame if it was removed by .merge.
+        '''
         if df.shape==(0,0):
             return df
         prefix = prefix if prefix else setprefix if setprefix else df._fieldPrefix
@@ -112,17 +158,17 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
 
 
     def acl(df, permits=True, explode=False, resolve=False, admin=False, access=None, allows=None, sort="profile"):
-        ''' transform {dataset,general}[Conditional]Access table
-        
+        '''transform the {dataset,general}[Conditional]Access ProfileFrame into an access control list Frame
+
         args:
-            permits=True: show normal ACL (with the groups identified in field USER_ID)
-            explode=True: replace all groups with the users connected to the groups (in field USER_ID)
-            resolve=True: show user specific permit, or the highest group permit for each user
-            admin=True: add the users that have ability to change the groups on the ACL (in field ADMIN_ID)
+            permits (bool): True: show normal ACL (with the groups identified in field USER_ID)
+            explode (bool): True: replace all groups with the users connected to the groups (in field USER_ID)
+            resolve (bool): True: show user specific permit, or the highest group permit for each user
+            admin (bool): True: add the users that have ability to change the groups on the ACL (in field ADMIN_ID),
                 VIA identifies the group name, AUTHORITY the RACF privilege involved
-            access=access level: show entries that are equal to the level specified, access='CONTROL'
-            allows=access level: show entries that are higher or equal to the level specified, allows='UPDATE'
-            sort=["user","access","id","admin","profile"] sort the resulting output
+            access (str): show entries that are equal to the access level specified, e.g., access='CONTROL'
+            allows (str): show entries that are higher or equal to the access level specified, e.g., allows='UPDATE'
+            sort (str): sort the resulting output by column: user, access, id, admin, profile
         '''
         RACFobject = df._RACFobject
 
@@ -150,7 +196,7 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
                     tbPermits.append(tb.merge(tbProfiles["UACC"], left_index=True, right_index=True).stripPrefix(setprefix=tb._fieldPrefix))
             tbPermits = pd.concat(tbPermits,sort=False)\
                           .drop(["RECORD_TYPE","ACCESS_CNT","UACC"],axis=1)\
-                          .fillna(' ') 
+                          .fillna(' ')
         elif tbName in ["DSACC","DSCACC","GRACC","GRCACC"]:
             # access frame selected, add profiles from frame tbEntity+BD
             tbPermits = df.stripPrefix()
@@ -159,20 +205,20 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
             tbProfiles = tbProfiles[tbProfileKeys+["OWNER_ID","UACC"]]
         else:
             raise TypeError(f'Table {tbName} not supported for acl( ), except DSBD, DSACC, DSCACC, GRBD, GRACC or GRCACC.')
-          
+
         # tbProfiles and tbPermits have column names without the tbName prefix
-        
+
         returnFields = ["USER_ID","AUTH_ID","ACCESS"]
         conditionalFields = ["CATYPE","CANAME","NET_ID","CACRITERIA"]
 
-        sortBy = {"user":["USER_ID"]+tbProfileKeys, 
+        sortBy = {"user":["USER_ID"]+tbProfileKeys,
                   "access":["RANKED_ACCESS","USER_ID"],
-                  "id":["AUTH_ID"]+tbProfileKeys, 
-                  "admin":"ADMIN_ID", 
+                  "id":["AUTH_ID"]+tbProfileKeys,
+                  "admin":"ADMIN_ID",
                   "profile":tbProfileKeys+["USER_ID"]}
         if sort not in sortBy:
             raise TypeError(f'Sort value {sort} not supported for acl( ), use one of {",".join(sortBy.keys())}.')
-        
+
         if explode or resolve or admin:  # get view of connectData with only one index level (the group name)
             groupMembers = RACFobject._connectData.droplevel(1)
 
@@ -194,19 +240,19 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
                 uacc["USER_ID"] = "-uacc-"
                 uacc = uacc.rename({"OWNER_ID":"AUTH_ID","UACC":"ACCESS"},axis=1)
                 acl = pd.concat([acl,uacc], ignore_index=True, sort=False).fillna(' ') # lose index b/c concat doesn't support us
-            
+
         if resolve or sort=="access":
             # map access level to number, add 10 for user permits so they override group permits in sort_values( )
             acl["RANKED_ACCESS"] = acl["ACCESS"].map(accessKeywords.index)
             acl["RANKED_ACCESS"] = acl["RANKED_ACCESS"].where(acl["USER_ID"]!=acl["AUTH_ID"], acl["RANKED_ACCESS"]+10)
         if resolve:
-            # keep highest value of RANKED_ACCESS, this is at least twice as fast as using .iloc[].idxmax() 
+            # keep highest value of RANKED_ACCESS, this is at least twice as fast as using .iloc[].idxmax()
             condAcc = ["CATYPE","CANAME"] if "CATYPE" in acl.columns else []
             acl = acl.sort_values(tbProfileKeys+["USER_ID"]+condAcc+["RANKED_ACCESS"])\
                      .drop_duplicates(tbProfileKeys+["USER_ID"]+condAcc, keep='last')
         if sort=="access":
             acl.RANKED_ACCESS = 10 - (acl.RANKED_ACCESS % 10)  # highest access first
-        
+
         if admin:
             # owner of the profile, or group special, or group authority
             # users who own the profiles
@@ -239,14 +285,14 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
                                         .rename({"GPBD_NAME":"VIA","GPBD_OWNER_ID":"ADMIN_ID"},axis=1)\
                                         .drop(["GPBD_SUPGRP_ID"],axis=1)
             admin_gowners["AUTHORITY"] = "OWNER"
-            
+
             # find all owner groups + groups up to SYS1 or user ID that breaks ownership
             admin_grpspec1 = admin_owners.query("GPBD_OWNER_ID == GPBD_SUPGRP_ID")\
                                          .drop(["GPBD_OWNER_ID","GPBD_SUPGRP_ID"],axis=1)
             admin_grpspec2 = pd.merge(admin_grpspec1, RACFobject._ownertreeLines, how="inner", left_on="AUTH_ID", right_index=True)\
                                .drop(["GPBD_NAME","GROUP"],axis=1)
             admin_grpspec1.rename({"GPBD_NAME":"OWNER_IDS"},axis=1,inplace=True)
-            
+
             # identify group special on ACL group and on any owning group
             admin_grpspec = pd.merge(pd.concat([admin_grpspec1,admin_grpspec2,profile_groupowner1,profile_groupowner2], sort=False),\
                                      groupMembers[["USCON_NAME","USCON_GRP_ID","USCON_GRP_SPECIAL"]]\
@@ -262,11 +308,11 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
                                      how="inner", left_on="AUTH_ID", right_index=True)\
                               .rename({"USCON_NAME":"ADMIN_ID","USCON_GRP_ID":"VIA","GPMEM_AUTH":"AUTHORITY"},axis=1)
             admin_grpauth["USER_ID"] = "-group-"
-            
+
             acl = pd.concat([acl,profile_userowners,admin_gowners,admin_grpspec,admin_grpauth],
                             ignore_index=True, sort=False).fillna(' ')
             returnFields += ["ADMIN_ID","AUTHORITY","VIA"]
-            
+
         if access:
             acl = acl.loc[acl["ACCESS"].map(accessKeywords.index)==accessKeywords.index(access.upper())]
         if allows:

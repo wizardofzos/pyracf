@@ -3,16 +3,12 @@ Installation
 
 Becuase pyRACF is hosted at
 `pypi.org <https://pypi.org/project/pyracf/%5D>`__ you can install it
-easily via
-
-::
+easily via::
 
    pip install pyracf
 
 If you’d rather install from source you need to clone this repository
-then run the setup.py as follows
-
-::
+then run the setup.py as follows::
 
    git clone https://github.com/wizardofzos/pyracf.git
    cd pyracf
@@ -27,29 +23,30 @@ If you did not install git on your system, or you need full control over the loc
 
 #. Open the ZIP file, it contains one directory ``pyracf-main``.  Extract this directory, for example, to your Documents folder.  When you explore this folder, the executable files can be found in ``Documents/pyracf-main/src/pyracf``.  This ``pyracf`` directory is referred to as the ``pyracf module``.
 
-#. Add the new directory to your PYTHONPATH, before starting python
-
-   ::
+#. Add the new directory to your PYTHONPATH, before starting python::
 
       export PYTHONPATH=/home/your-id/Documents/pyracf-main/src/:$PYTHONPATH
 
-   If you don't have a command prompt because, for example, your start Jupyter Notebook from the desktop, you can add the path containing the pyracf module to the python path with python commands
-
-   ::
+   If you don't have a command prompt because, for example, your start Jupyter Notebook from the desktop, you can add the path containing the pyracf module to the python path with python commands::
 
       import sys
       new_path = '/home/your-id/Documents/pyracf-main/src/'
-      sys.path.append(new_path)
+      if new_path not in sys.path:
+          sys.path.insert(0,new_path)
 
-#. If this worked, you should be able to load the main class with
-
-   ::
+#. If this worked, you should be able to load the main class with::
 
       from pyracf import RACF
 
-   To inspect the list of libraries python uses, type
+   Now, this may fail with an ``ModuleNotFoundError`` error, when the pre-requisites have not been installed.  At the end of the traceback you might see an error message similar to::
    
-   ::
+       ModuleNotFoundError: No module named 'xlsxwriter'
+
+   For each of the modules listed, in this case ``xlsxwriter``, issue a pip3 command in the command window::
+   
+       pip3 install xlsxwriter
+
+   To inspect the list of libraries python uses, type::
    
       import sys
       sys.path
@@ -72,3 +69,5 @@ Notebooks can be saved, look for the floppy disk icon.  You can archive a notebo
   :alt: Jupyter notebook
 
 Read more `here <https://www.geeksforgeeks.org/install-jupyter-notebook-in-windows/>`__ or `here <https://docs.jupyter.org/en/latest/install/notebook-classic.html>`__.
+
+If you wanted a more complete IDE, you can also install JupyterLab using ``pip3 install jupyterlab``.

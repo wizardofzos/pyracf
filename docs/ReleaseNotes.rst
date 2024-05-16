@@ -4,8 +4,36 @@ Release notes
 Summary of changes
 ------------------
 
-0.8.7 (fixes for pickles, pytest, wiki)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+0.9.0 (rules, sphinx-autodoc, find, skip)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- rule-based verification of profile fields
+  - yaml based specification of rules and domains, list and dict also possible
+  - test if values in access list are valid user ID or group names
+  - test if values are (in a list of) expected values
+  - e.g., all SYS1 profiles must have UACC=NONE, OWNER=SYS1, NONOTIFY
+  - e.g. STARTED profiles should specify existing STUSER and STGROUP, or =MEMBER
+- find() to select rows from Frame, skip() to exclude rows from result
+  - may be used on (chained from) profile, acl and rule Frames
+  - supports position column values, and keywords with column names
+  - e.g. r.datasets.find('SYS1.**',UACC=['CONTROL','ALTER'])
+  - replacing gfilter() and rfilter()
+- match() method to select profile matching a dataset name, or resource class and name
+  - may be used on the .datasets, .datasetAccess and .datasetConditionalAccess, and the 3 generals Frames
+  - e.g. r.generals.find('FACILITY').match('BPX.SUPERUSER').acl()
+  - also supported as keyword parameter in find() and skip()
+- stripPrefix() method removes prefix from column names, for easier programming
+- r.table(name) returns ProfileFrame for given name,  e.g. r.table('DSACC')
+- all record types from unload are now converted into ProfileFrames
+- xlswriter() converted to pandas pivot table
+- orphans converted to rules script
+- StoopidException converted to TypeError 
+- deprecated properties (.generic, .genericAccess, .userDistributedMappings) removed
+- information from README.md and Wiki moved into docs directory
+  - formatted with sphinx, viewable in github
+
+0.8.7 (grouptree, speed-up)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - grouptree and ownertree are now properties, no longer callables
 - accept '\*' as a literal value in gfilter( )

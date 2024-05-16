@@ -1,11 +1,19 @@
 import warnings
 
 class GroupStructureTree(dict):
-    ''' Dict with group names starting from SYS1 (group tree) or from (multiple) user IDs (owner tree).
+    '''dict with group names starting from SYS1 (group tree) or from (multiple) user IDs (owner tree).
+
     Printing these objects, the tree will be formatted as Unix tree (default, or after .setformat('unix') or with mainframe characters (after .setformat('simple').
-    The dict may be accessed with .tree '''
+    '''
 
     def __init__(self,df,linkup_field="GPBD_SUPGRP_ID"):
+        '''load the object from the ._groups frame
+
+        args:
+            df: ._groups frame
+            linkup_field: the column name that contains the "up" pointer from a group to the parent.
+                possible values "GPBD_SUPGRP_ID" for the group tree, "GPBD_OWNER_ID" for the owner tree
+        '''
         # get all owners... (group or user) or all superior groups
         tree = {}
         where_is = {}
@@ -34,11 +42,18 @@ class GroupStructureTree(dict):
         self._format = 'unix'
 
     def __str__(self):
-        ''' what happens when print(object) is issued '''
+        '''what happens when print(object) is issued '''
         return self.simple_format(self) if self._format=='simple' else self.unix_format(self)
-        
+
     def format(self,format='unix'):
-        ''' return printable tree '''
+        '''return printable tree
+
+        args:
+            format: control character set to use in the tree representation.
+                'unix' for smart looking box characters, 'simple' for vertical bar and -
+        returns:
+            printable string
+        '''
         if format in ['unix','simple']:
             return self.simple_format(self) if format=='simple' else self.unix_format(self)
         else:
@@ -52,7 +67,7 @@ class GroupStructureTree(dict):
             warnings.warn(f'Unsupported format value {format}, select unix or simple.')
 
     def unix_format(self,branch=None,prefix=''):
-        ''' print groups, prefixed with vertical bars to show depth '''
+        '''print groups, prefixed with box characters to show depth'''
         BOX_START = u'\u250C'
         BOX_ENTRY = u'\u251C'
         BOX_CONT = u'\u2502'
@@ -80,7 +95,7 @@ class GroupStructureTree(dict):
         return info
 
     def simple_format(self,branch=None,depth=0):
-        ''' print groups, prefixed with vertical bars to show depth '''
+        '''print groups, prefixed with vertical bars to show depth'''
         if not branch:
             branch = self.tree
         info = ''
@@ -88,7 +103,7 @@ class GroupStructureTree(dict):
             info += ' |'*depth + ' ' +  str(branch) + '\n'
         elif type(branch)==list:
             depth += 1
-            for node in branch:            
+            for node in branch:
                 info += self.simple_format(node,depth)
         else:
             for (node,values) in branch.items():
@@ -98,6 +113,7 @@ class GroupStructureTree(dict):
 
     @property
     def tree(self):
+        '''deprecated, the dict is now the default return value of the object'''
         warnings.warn('.tree attribute is deprecated, this is now the default return value of the tree objected')
         return self
 

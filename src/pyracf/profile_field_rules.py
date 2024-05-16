@@ -1,14 +1,19 @@
-''' rules for the pyracf.verify() service.
-This file is imported from load_rules()
+'''rules for the pyracf.verify() service.
+This module is imported from load() on a rules object.
+load() expects a dict for domains, list for rules, or a yaml str representing these objects.
 
-domains provides the sets of values that can be expected in profile fields and qualifiers.
-rules specifies where these domain values should be expected.
+functions:
+    domains: returns the sets of values that can be expected in profile fields and qualifiers.
+    rules: specifies where these domain values should be expected.
 '''
 
 def domains(self,pd):
-    ''' dict returns a list, array or Series that will be used in .loc[field.isin( )] to verify valid values in profile fields.
-        keys of the dict are only referenced in the corresponding rules, feel free to change /extend.
-        self and pd are passed down to access data frames from caller. '''
+    '''generate a dict (or yaml str) with named lists of values
+
+     each domain entry contains a list, array or Series that will be used in .loc[field.isin( )] to verify valid values in profile fields.
+     keys of the dict are only referenced in the corresponding rules, feel free to change /extend.
+     self and pd are passed down to access data frames from caller.
+     '''
 
     _domains = {
         'SPECIAL':pd.Index(['*','&RACUID','&RACGRP'],name='_NAME'),
@@ -18,32 +23,33 @@ def domains(self,pd):
     }
     _domains.update({'ID':self._RACFobject.users.index.union(self._RACFobject.groups.index)})
     _domains.update({'ACLID':_domains['SPECIAL'].union(_domains['ID'])})
-    _domains.update({'RACFVARS':self._RACFobject.generals.pick('RACFVARS').index.get_level_values(1)})
-    _domains.update({'CATEGORY':self._RACFobject.generalMembers.pick('SECDATA','CATEGORY')['GRMEM_MEMBER'].values})
-    _domains.update({'SECLEVEL':self._RACFobject.generalMembers.pick('SECDATA','SECLEVEL')['GRMEM_MEMBER'].values})
-    _domains.update({'SECLABEL':self._RACFobject.generals.pick('SECLABEL').index.get_level_values(1)})
+    _domains.update({'RACFVARS':self._RACFobject.generals.find('RACFVARS').index.get_level_values(1)})
+    _domains.update({'CATEGORY':self._RACFobject.generalMembers.find('SECDATA','CATEGORY')['GRMEM_MEMBER'].values})
+    _domains.update({'SECLEVEL':self._RACFobject.generalMembers.find('SECDATA','SECLEVEL')['GRMEM_MEMBER'].values})
+    _domains.update({'SECLABEL':self._RACFobject.generals.find('SECLABEL').index.get_level_values(1)})
     _domains.update({'USERQUAL':self._RACFobject.users.index.union(_domains['RACFVARS'])})
     return _domains
 
 
 def rules(self, format='yaml'):
-    ''' return list of lists/tuples, each with (list of) table ids, and one or more conditions.
+    '''generate a list of lists/tuples, each with (list of) table ids, and one or more conditions.
 
-    each condition allows class, -class, profile, -profile, match and test.
-    
+    each condition allows class, -class, profile, -profile, find, skip, match and test.
+
     class, -class, profile and -profile are (currently) generic patterns, and select or skip profile/segment/entries.
 
-    pick and skip can be used to limit the number of rows to process
-    
-    match extracts fields from the profile key, the capture name should be used in subsequent fields rules.
-    match changes . to \. and * to \*, so for regex patterns you should use \S and +? instead.
+    find and skip can be used to limit the number of rows to process
 
-    test verifies that the value occurs in one of the domains, or a (list of) literal(s). '''
+    match extracts fields from the profile key, the capture name should be used in subsequent fields rules.
+    match changes . to \\. and * to \\*, so for regex patterns you should use \\S and +? instead.
+
+    test verifies that the value occurs in one of the domains, or a (list of) literal(s).
+    '''
 
     if format=='yaml':
         ''' YAML definition, should generate a list of lists, each table section starts with - - '''
 
-        return '''
+        return r'''
 
 - - [DSACC, DSCACC, DSMEM, GRACC, GRCACC]
   - test:
@@ -182,7 +188,7 @@ def rules(self, format='yaml'):
              },
              # 2nd qualifier in JESSPOOL should be a user ID
              {'class':'JESSPOOL',
-              'match':'\S+?.(id).\S+',
+              'match':r'\S+?.(id).\S+',
               'test':
                   {'field':'id', 'fit':'USERQUAL', 'value': ['*','+MASTER+']}
              },

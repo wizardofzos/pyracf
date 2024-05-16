@@ -25,31 +25,11 @@ from .racf_functions import accessKeywords
 from .utils import deprecated, readableList
 from .xls_writers import XlsWriter
 
+
 class PyRacfException(Exception):
     def __init__(self, message):
         self.message = message
         super().__init__(self.message)
-
-class _PropertyStub(property):
-    """Define public properties in RACF class for all possible ProfileFrames
-
-    Use _recordtype_info to populate the (external) publishers for ProfileFrames, so they turn up in sphinx-autodoc.
-    We won't know if there is going to be a df to backup the property until the RACF object is instantiated and parse has completed.
-
-    So when the user requests the property value, we must check if the df is there.  If not, issue an exception.
-    """
-
-    def __init__(self,df,publisher):
-        self.df = df
-        self.publisher = publisher
-
-    def __get__(self,RACFobject,RACFobject_class):
-        if not RACFobject:
-            raise TypeError(self.publisher,'attribute is for use on RACF instance, not on Class')
-        elif hasattr(RACFobject,self.df):
-            return getattr(RACFobject,self.df)
-        else:
-            warnings.warn(self.df,'missing in RACF object')
 
 
 class RACF(ProfilePublisher,XlsWriter):
@@ -184,7 +164,7 @@ class RACF(ProfilePublisher,XlsWriter):
         if rtype in _recordtype_info.keys():
           _recordtype_info[rtype].update({"offsets": _offsets[offset]["offsets"]})
 
-    # define publishers so they turn up in sphinx-autodoc
+    # define publishers as class properties so they turn up in sphinx-autodoc
     for (rtype,rinfo) in _recordtype_info.items():
         publisher = rinfo['publisher'] if 'publisher' in rinfo else rinfo['df'].lstrip('_')
         if publisher:  # if publisher was not declared False
@@ -193,8 +173,11 @@ class RACF(ProfilePublisher,XlsWriter):
                       .replace('Record Type of the','')\
                       .replace(' record','')\
                       .replace(' Record','')
-            vars()[publisher] = _PropertyStub(rinfo['df'],publisher)
-            vars()[publisher].__doc__ = purpose
+
+            def _publish(self,frame=rinfo['df']) -> ProfileFrame:
+                return getattr(self,frame)
+
+            vars()[publisher] = property(_publish,doc=purpose)
 
     _grouptreeLines     = None  # df with all supgroups up to SYS1
     _ownertreeLines     = None  # df with owners up to SYS1 or user ID
@@ -372,8 +355,8 @@ class RACF(ProfilePublisher,XlsWriter):
         rtype = RACF._recordname_type[rname]
         return self._records[rtype]['parsed'] if rtype in self._records else 0
 
-    def table(self, rname=None):
-        """ give me table with this name (type) """
+    def table(self, rname=None) -> ProfileFrame:
+        """ return table with this name (type) """
         if rname:
             try:
                 return getattr(self, RACF._recordname_df[rname])
@@ -497,7 +480,7 @@ class RACF(ProfilePublisher,XlsWriter):
 
 
     @property
-    def rules(self):
+    def rules(self) -> RuleVerifier:
         ''' create a RuleVerifier instance '''
         return RuleVerifier(self)
 
