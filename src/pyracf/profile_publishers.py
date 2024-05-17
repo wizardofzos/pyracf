@@ -281,7 +281,7 @@ class ProfileAnalysisFrame():
                  {'test': {'field':'AUTH_ID', 'fit':'ACLID'}})
                                ] )
                    .verify()
-                   .drop(['FIELD_NAME','EXPECT','COMMENT','ID'],axis=1)
+                   .drop(['FIELD_NAME','EXPECT','RULE','ID'],axis=1)
                    .rename({'ACTUAL':'AUTH_ID'},axis=1)
                ,
                 v.load(rules = [
@@ -289,7 +289,7 @@ class ProfileAnalysisFrame():
                  {'test': {'field':'AUTH_ID', 'fit':'ACLID'}})
                                ] )
                    .verify()
-                   .drop(['FIELD_NAME','EXPECT','COMMENT','ID'],axis=1)
+                   .drop(['FIELD_NAME','EXPECT','RULE','ID'],axis=1)
                    .rename({'ACTUAL':'AUTH_ID'},axis=1)
                )
 
@@ -302,7 +302,7 @@ class ProfileAnalysisFrame():
                  {'test': {'field':'AUTH_ID', 'fit':'ACLID'}})
                                           ] )\
                    .verify()\
-                   .drop(['FIELD_NAME','EXPECT','COMMENT','ID'],axis=1)\
+                   .drop(['FIELD_NAME','EXPECT','RULE','ID'],axis=1)\
                    .rename({'ACTUAL':'AUTH_ID'},axis=1)\
                    .set_index('AUTH_ID')
 

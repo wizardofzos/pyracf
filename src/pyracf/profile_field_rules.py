@@ -44,6 +44,8 @@ def rules(self, format='yaml'):
     match changes . to \\. and * to \\*, so for regex patterns you should use \\S and +? instead.
 
     test verifies that the value occurs in one of the domains, or a (list of) literal(s).
+
+    id and rule document the test at the test level or at the field level within a test.
     '''
 
     if format=='yaml':
@@ -55,22 +57,22 @@ def rules(self, format='yaml'):
   - test:
       field: AUTH_ID
       fit: ACLID
-    comment: orphan permits
+    rule: orphan permits
 
 - - DSDFP
   - test:
     - field: RESOWNER_ID
       fit: ID
-    comment: DFP resower must be user or group
+    rule: DFP resower must be user or group
 
 - - [DSBD, GRBD]
   - test:
     - field: NOTIFY_ID
       fit: USER
-      comment: notify on dataset and resource profiles must be user
+      rule: notify on dataset and resource profiles must be user
     - field: OWNER_ID
       fit: ID
-      comment: owner must be user or group
+      rule: owner must be user or group
 
 # general resource profile key qualifiers
 - - GRBD
@@ -79,14 +81,14 @@ def rules(self, format='yaml'):
     test:
       field: id
       fit: USER
-    comment: DIGTRING should be associated with a user ID
+    rule: DIGTRING should be associated with a user ID
   - class: JESSPOOL
     match: '\S+?.(id).\S+'
     test:
       field: id
       fit: USERQUAL
       value: ['*','+MASTER+']
-    comment: 2nd qualifier in JESSPOOL should be a user ID
+    rule: 2nd qualifier in JESSPOOL should be a user ID
   - class: SURROGAT
     match: (id).SUBMIT
     test:
@@ -97,20 +99,20 @@ def rules(self, format='yaml'):
     test:
       field: user
       fit: USERQUAL
-    comment: surrogate profiles must refer to user ID or RACFVARS
+    rule: surrogate profiles must refer to user ID or RACFVARS
 
 - - [GRACC, GRCACC]
   - class: [CDT, CFIELD, NODES, RACFVARS, SECDATA, STARTED, UNIXMAP]
     test:
     - field: AUTH_ID
       fit: DELETE
-    comment: class does not support PERMIT
+    rule: class does not support PERMIT
 
 - - [GRFLTR, GRDMAP]
   - test:
       field: USER
       fit: USER
-    comment: orphan users in filters and maps
+    rule: orphan users in filters and maps
 
 - - GRST
   - test:
@@ -120,7 +122,7 @@ def rules(self, format='yaml'):
     - field: GROUP_ID
       fit: GROUP
       value: =MEMBER
-    comment: orphans in STARTED profiles
+    rule: orphans in STARTED profiles
 
 - - USBD
   - test:
@@ -128,14 +130,14 @@ def rules(self, format='yaml'):
       fit: GROUP
     - field: OWNER_ID
       fit: ID
-    comment: users should have valid default group and owner
+    rule: users should have valid default group and owner
 
 - - [DSCAT, GRCAT, GRMEM, USCAT]
   - -class: [SECDATA, SECLABEL]
     test:
     - field: CATEGORY
       fit: CATEGORY
-    comment: valid CATEGORY (except in SECDATA and SECLABEL profiles where the internal values are used)
+    rule: valid CATEGORY (except in SECDATA and SECLABEL profiles where the internal values are used)
 
 - - [DSBD, GRBD, GRMEM, USBD]
   - -class: [SECDATA, SECLABEL]
@@ -143,13 +145,13 @@ def rules(self, format='yaml'):
     - field: SECLEVEL
       fit: SECLEVEL
       value: '000'
-    comment: valid SECLEVEL (except in SECDATA and SECLABEL profiles where the internal values are used)
+    rule: valid SECLEVEL (except in SECDATA and SECLABEL profiles where the internal values are used)
 
 - - [DSBD, GRBD, USBD, USTSO]
   - test:
     - field: SECLABEL
       fit: SECLABEL
-    comment: valid SECLABEL
+    rule: valid SECLABEL
 
     '''
 

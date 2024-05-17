@@ -55,7 +55,7 @@ def test_rules_report(testparms):
   t = r.rules.verify()
   
   left = t.columns
-  right = ['CLASS', 'PROFILE', 'FIELD_NAME', 'EXPECT', 'ACTUAL', 'COMMENT', 'ID']
+  right = ['CLASS', 'PROFILE', 'FIELD_NAME', 'EXPECT', 'ACTUAL', 'RULE', 'ID']
   for i in range(7):
       assert left[i]==right[i], f'column {right[i]} in verify() result table'
   for f in ['find','skip','_frameFilter']:

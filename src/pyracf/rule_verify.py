@@ -41,7 +41,7 @@ class RuleVerifier:
             r.rules.load(rules = [
                 (['DSBD'],
                  {'id': '101',
-                  'comment': 'Integrity of test libraries',
+                  'rule': 'Integrity of test libraries',
                   'profile': 'TEST*.**',
                   'test': [{'field':'UACC', 'value':['NONE','READ']},
                           {'field':'WARNING', 'value':'NO'},
@@ -135,11 +135,12 @@ class RuleVerifier:
 
         return self
 
-    def verify(self, rules=None, domains={}, module=None, reset=False, id=True):
+    def verify(self, rules=None, domains={}, module=None, reset=False, id=True, syntax_check=True):
         ''' verify fields in profiles against the expected value, issues are returned in a df
 
         Args:
-            id (bool): add or suppress ID column from the result frame. The values in this column are taken from the id property in rules
+            id (bool): False: suppress ID column from the result frame. The values in this column are taken from the id property in rules
+            syntax_check (bool): False: suppress implicit syntax check
 
         Returns:
             RuleFrame: Result object
@@ -196,7 +197,13 @@ class RuleVerifier:
                 warnings.warn(f"fit argument {item} not in domain list, try {readableList(self._domains.keys())} instead")
                 return []
 
-        columns = ['CLASS','PROFILE','FIELD_NAME','EXPECT','ACTUAL','COMMENT','ID']
+        if syntax_check:
+            syntax = self.syntax_check(confirm=False)
+            if not syntax.empty:
+                warnings.warn('verify() cannot process rules with syntax failures')
+                return syntax
+
+        columns = ['CLASS','PROFILE','FIELD_NAME','EXPECT','ACTUAL','RULE','ID']
         if not id:
             columns = columns[:-1]
         brokenSum = RuleFrame(columns=columns)
@@ -307,15 +314,14 @@ class RuleVerifier:
                                     fldLocs &= fldColumn.gt('') & ~ fldColumn.isin(fldCrit['value'])
 
                             if any(fldLocs):
-                                broken = subjectDF.loc[fldLocs].copy()\
-                                               .rename({tbName+'_CLASS_NAME':'CLASS', tbName+'_NAME':'PROFILE', fldName:'ACTUAL'},axis=1)
+                                broken = subjectDF.loc[fldLocs].copy()
+                                broken['ACTUAL'] = matched[fldName] if matchPattern else broken[fldName]
+                                broken = broken.rename({tbName+'_CLASS_NAME':'CLASS', tbName+'_NAME':'PROFILE'},axis=1)
                                 if tbEntity!='GR':
                                     broken['CLASS'] = tbClassName
-                                if matchPattern:
-                                    broken['ACTUAL'] = matched[fldName]
                                 broken['FIELD_NAME'] = fldName
                                 broken['EXPECT'] = fldCrit['fit'] if 'fit' in fldCrit else simpleListed(fldCrit['value']) if 'value' in fldCrit else '?'
-                                broken['COMMENT'] = fldCrit['comment'] if 'comment' in fldCrit else tbCrit['comment'] if 'comment' in tbCrit else ''
+                                broken['RULE'] = fldCrit['rule'] if 'rule' in fldCrit else tbCrit['rule'] if 'rule' in tbCrit else ''
                                 if id:
                                     broken['ID'] = fldCrit['id'] if 'id' in fldCrit else tbCrit['id'] if 'id' in tbCrit else ''
                                 brokenSum = pd.concat([brokenSum,broken[brokenSum.columns]],
@@ -385,7 +391,7 @@ class RuleVerifier:
                 for tbCrit in tbCriteria:
 
                     for action in tbCrit.keys():
-                        if action not in ['class','-class','profile','-profile','match','test','comment','id']:
+                        if action not in ['class','-class','profile','-profile','match','test','rule','id']:
                             if action[0:4]!='find' and action[0:4]!='skip':
                                 broken('action',action,f"unsupported action {action} with table {tbNames}")
 
@@ -413,7 +419,7 @@ class RuleVerifier:
                                 if type(fldCrit)!=dict:
                                     broken('filter',fldCrit,'each of criteria should be a dict')
                                 for section in fldCrit.keys():
-                                    if section not in ['field','fit','value','comment']:
+                                    if section not in ['field','fit','value','rule']:
                                         broken('filter',fldCrit,f"unsupported section {section} in {action}")
                                 if 'field' not in fldCrit:
                                     broken('filter',fldCrit,f"field must be specified in filter {fldCrit}")
@@ -426,13 +432,15 @@ class RuleVerifier:
                                         broken('field',fldCrit['field'],f"field name {fldCrit['field']} not found in {tbName} or match definition")
                                 if 'fit' in fldCrit and fldCrit['fit'] not in self._domains:
                                     broken('fit',fldCrit['fit'],f"domain name {fldCrit['fit']} in filter not defined")
+                                if 'value' in fldCrit and type(fldCrit['value'])==bool:
+                                    broken('value',fldCrit['field'],f"yaml text string {fldCrit['value']} for {fldCrit['field']} is not a str")
 
                     if 'test' in tbCrit:
                         for fldCrit in listMe(tbCrit['test']):
                             if type(fldCrit)!=dict:
                                 broken('test',fldCrit,'each of criteria should be a dict')
                             for section in fldCrit.keys():
-                                if section not in ['field','fit','value','comment','id']:
+                                if section not in ['field','fit','value','rule','id']:
                                     broken('test',fldCrit,f"unsupported section {section} in {action}")
                             if 'field' not in fldCrit:
                                 broken('test',fldCrit,f"field must be specified in test {fldCrit}")
@@ -445,6 +453,8 @@ class RuleVerifier:
                                     broken('field',fldCrit['field'],f"field name {fldCrit['field']} not found in {tbName} or match definition")
                             if 'fit' in fldCrit and fldCrit['fit'] not in self._domains:
                                 broken('fit',fldCrit['fit'],f"domain name {fldCrit['fit']} in test not defined")
+                            if 'value' in fldCrit and type(fldCrit['value'])==bool:
+                                broken('value',fldCrit['field'],f"yaml text string {fldCrit['value']} for {fldCrit['field']} is not a str")
                     else:
                         broken('table',tbName,f'test directive missing in {tbName}, no output will be generated')
 
