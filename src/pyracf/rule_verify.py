@@ -11,7 +11,7 @@ from .utils import listMe, readableList, simpleListed
 class RuleVerifier:
     ''' verify fields in profiles against expected values, issues are returned in a df.
 
-    rules can be passed as a list of tuples, and a dict with domains, via parameter, or as function result from external module.
+    rules can be passed as a dict of [tuples or lists], and a dict with domains, via parameter, or as function result from external module.
     created from RACF object with the .rules property.
     '''
 
@@ -25,7 +25,7 @@ class RuleVerifier:
         '''load rules + domains from yaml str, structure or from packaged module
 
         Args:
-            rules (list, str): list of lists with test specifications, or yaml str field that expands into a list of lists
+            rules (dict, str): dict of tuples or lists with test specifications, or yaml str field that expands into a dict of lists
             domains (dict, str): one or more domain in a dict(name=[entries]), or in a yaml string
             module (str): name of module that contains functions rules() and domains()
             defaultmodule (str): module name to be used if all parameters are omitted
@@ -38,7 +38,7 @@ class RuleVerifier:
 
         ::
 
-            r.rules.load(rules = [
+            r.rules.load(rules = {'test libraries':
                 (['DSBD'],
                  {'id': '101',
                   'rule': 'Integrity of test libraries',
@@ -48,7 +48,7 @@ class RuleVerifier:
                           {'field':'NOTIFY_ID', 'fit':'DELETE'}],
                  }
                 )
-                                 ]
+                                 }
                         ).verify()
 
         '''
@@ -208,7 +208,7 @@ class RuleVerifier:
             columns = columns[:-1]
         brokenSum = RuleFrame(columns=columns)
 
-        for (tbNames,*tbCriteria) in self._rules:
+        for tbRuleName, (tbNames,*tbCriteria) in self._rules.items():
             for tbName in listMe(tbNames):
                 try:
                     tbDF = self._RACFobject.table(tbName)
@@ -321,7 +321,7 @@ class RuleVerifier:
                                     broken['CLASS'] = tbClassName
                                 broken['FIELD_NAME'] = fldName
                                 broken['EXPECT'] = fldCrit['fit'] if 'fit' in fldCrit else simpleListed(fldCrit['value']) if 'value' in fldCrit else '?'
-                                broken['RULE'] = fldCrit['rule'] if 'rule' in fldCrit else tbCrit['rule'] if 'rule' in tbCrit else ''
+                                broken['RULE'] = fldCrit['rule'] if 'rule' in fldCrit else tbCrit['rule'] if 'rule' in tbCrit else tbRuleName
                                 if id:
                                     broken['ID'] = fldCrit['id'] if 'id' in fldCrit else tbCrit['id'] if 'id' in tbCrit else ''
                                 brokenSum = pd.concat([brokenSum,broken[brokenSum.columns]],
@@ -370,7 +370,7 @@ class RuleVerifier:
                         broken('domain',Name,f"domain entry {Name} must have a one-dimensional, list-like value")
 
 
-        for (tbNames,*tbCriteria) in self._rules:
+        for tbRuleName, (tbNames,*tbCriteria) in self._rules.items():
             for tbName in listMe(tbNames):
                 tbDF = self._RACFobject.table(tbName)
                 if isinstance(tbDF,pd.DataFrame):
@@ -379,7 +379,7 @@ class RuleVerifier:
                     else:
                          tbDefined = True  # check the field names in the frame
                 else:
-                    broken('table',tbName,f"no table {tbName} in RACF object")
+                    broken('rule',tbRuleName,f"no table {tbName} in RACF object")
                     tbDefined = False
 
                 tbEntity = tbName[0:2]
@@ -456,7 +456,7 @@ class RuleVerifier:
                             if 'value' in fldCrit and type(fldCrit['value'])==bool:
                                 broken('value',fldCrit['field'],f"yaml text string {fldCrit['value']} for {fldCrit['field']} is not a str")
                     else:
-                        broken('table',tbName,f'test directive missing in {tbName}, no output will be generated')
+                        broken('rule',tbRuleName,f'test directive missing in {tbRuleName}, no output will be generated')
 
         if not brokenList and confirm:
             brokenList.append(dict(field='rules', value='OK', comment='No problem found in rules'))

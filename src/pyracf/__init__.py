@@ -320,7 +320,7 @@ class RACF(ProfilePublisher,XlsWriter):
                     self._records[r]['seen'] += 1
                 else:
                     self._records[r] = {'seen': 1, 'parsed': 0}
-                if not thingswewant or r in thingswewant:
+                if r in RACF._recordtype_info and (not thingswewant or r in thingswewant):
                     offsets = RACF._recordtype_info[r]["offsets"]
                     if offsets:
                         irrmodel = {}

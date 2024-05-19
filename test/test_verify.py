@@ -36,13 +36,13 @@ def test_rules_syntax(testparms):
       assert t.syntax_check(), 'syntax_check() does not load a policy, but should require a prior load()'
   assert t.load().syntax_check(confirm=False).empty, 'syntax_check() must return OK message for default policy'
 
-  assert t.load(rules = [ (['GRACC','GRCACC'], {'test': {'field':'AUTH_ID', 'fit':'ACLID'}}) ] ).syntax_check(confirm=False).empty,  'syntax_check() must return OK message for custom policy'
+  assert t.load(rules = {'test1': (['GRACC','GRCACC'], {'test': {'field':'AUTH_ID', 'fit':'ACLID'}}) } ).syntax_check(confirm=False).empty,  'syntax_check() must return OK message for custom policy'
 
-  assert not t.load(rules = [ (['GRACC'], {'test': {'field':'XXX_ID', 'fit':'ACLID'}}) ] ).syntax_check(confirm=False).empty,  'syntax_check() must return error messages'
-  assert not t.load(rules = [ (['GRACC'], {'test': {'field':'AUTH_ID', 'noooooo':'ACLID'}}) ] ).syntax_check(confirm=False).empty,  'syntax_check() must return error messages'
+  assert not t.load(rules = {'test2': (['GRACC'], {'test': {'field':'XXX_ID', 'fit':'ACLID'}}) } ).syntax_check(confirm=False).empty,  'syntax_check() must return error messages'
+  assert not t.load(rules = {'test3': (['GRACC'], {'test': {'field':'AUTH_ID', 'noooooo':'ACLID'}}) } ).syntax_check(confirm=False).empty,  'syntax_check() must return error messages'
 
   with pytest.warns(UserWarning) as record: # should be RACF object does not have a table :
-      t.load(rules = [ (['GRBLAA'], {'test': {'field':'AUTH_ID', 'fit':'ACLID'}}) ] ).syntax_check(confirm=False)
+      t.load(rules = {'test4': (['GRBLAA'], {'test': {'field':'AUTH_ID', 'fit':'ACLID'}}) } ).syntax_check(confirm=False)
       assert record[0].message.args[0].find('does not have a table')>-1, f'syntax_check shoulld identify incorrect table name'
 
 def test_rules_orphans(testparms):

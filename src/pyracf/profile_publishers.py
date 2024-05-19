@@ -276,18 +276,18 @@ class ProfileAnalysisFrame():
         '''IDs on access lists with no matching USER or GROUP entities, in a tuple with 2 RuleFrames
         '''
         v = self.rules  # verify object
-        return (v.load(rules = [
+        return (v.load(rules = {'dataset orphan permits':
                 (['DSACC','DSCACC'],
                  {'test': {'field':'AUTH_ID', 'fit':'ACLID'}})
-                               ] )
+                               } )
                    .verify()
                    .drop(['FIELD_NAME','EXPECT','RULE','ID'],axis=1)
                    .rename({'ACTUAL':'AUTH_ID'},axis=1)
                ,
-                v.load(rules = [
+                v.load(rules = {'general resource orphan permits':
                 (['GRACC','GRCACC'],
                  {'test': {'field':'AUTH_ID', 'fit':'ACLID'}})
-                               ] )
+                               } )
                    .verify()
                    .drop(['FIELD_NAME','EXPECT','RULE','ID'],axis=1)
                    .rename({'ACTUAL':'AUTH_ID'},axis=1)
@@ -297,10 +297,10 @@ class ProfileAnalysisFrame():
     def orphans_joined(self) -> RuleFrame:
         '''IDs on access lists with no matching USER or GROUP entities, in one combined RuleFrame
         '''
-        return self.rules.load(rules = [
+        return self.rules.load(rules = {'orphan permits':
                 (['DSACC','DSCACC','GRACC','GRCACC'],
                  {'test': {'field':'AUTH_ID', 'fit':'ACLID'}})
-                                          ] )\
+                                          } )\
                    .verify()\
                    .drop(['FIELD_NAME','EXPECT','RULE','ID'],axis=1)\
                    .rename({'ACTUAL':'AUTH_ID'},axis=1)\
