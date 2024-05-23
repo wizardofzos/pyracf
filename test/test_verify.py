@@ -17,7 +17,7 @@ def test_rules_domains(testparms):
   assert r.rules.load()._domains, 'domains must be loadable'
 
   t = r.rules.load()
-  for f in ['SPECIAL', 'USER', 'GROUP', 'DELETE', 'ID', 'ACLID', 'RACFVARS', 'CATEGORY', 'SECLEVEL', 'SECLABEL', 'USERQUAL']:
+  for f in ['SPECIALID', 'USER', 'GROUP', 'DELETE', 'ID', 'ACLID', 'RACFVARS', 'CATEGORY', 'SECLEVEL', 'SECLABEL', 'USERQUAL']:
       assert f in t._domains, f'domain list must have {f} entry'
 
   t.add_domains({'SYS1':r.connect('SYS1').index})

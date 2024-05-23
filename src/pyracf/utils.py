@@ -1,7 +1,7 @@
-import warnings 
+import warnings
 
 def deprecated(func,oldname):
-    ''' Wrapper routine to add (deprecated) alias name to new routine (func), supports methods and properties. 
+    ''' Wrapper routine to add (deprecated) alias name to new routine (func), supports methods and properties.
         Inspired by functools.partial() '''
     def deprecated_func(*arg,**keywords):
         if hasattr(func,"__name__"):  # normal function object
@@ -26,4 +26,34 @@ def simpleListed(item):
     ''' print a string or a list of strings with just commas between values '''
     return item if type(item)==str else ','.join(item)
 
+def nameInColumns(df,name,columns=[],prefix=None,returnAll=False):
+    '''find prefixed column name in a Frame, return whole name, or all names if requested
+
+    args:
+        df: Frame to find column names, or None
+        name (str): name to search for, with prefix or without
+        columns (list): opt. ignore df parameter, caller has already extracted column names
+        prefix (str, list): opt. verify that column name has the given prefix(es)
+        returnAll (bool): always return all matches in a list
+
+    returns:
+        fully prefixed column name, or list of column names
+    '''
+    if len(columns)==0:
+        columns = df.columns
+    if name in columns:
+        found = [name]
+    else:
+        found = [cname for cname in columns if cname.split('_',1)[1]==name]
+        if prefix:
+            if type(prefix)==str:
+                found = [cname for cname in found if cname.split('_',1)[0] == prefix]
+            else:
+                found = [cname for cname in found if cname.split('_',1)[0] in prefix]
+    if returnAll:
+        return found
+    elif len(found)==1:
+        return found[0]
+    else:
+        raise ValueError(f"field {name} matches {len(found)} column names")
 

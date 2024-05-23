@@ -16,13 +16,13 @@ def domains(self,pd):
      '''
 
     _domains = {
-        'SPECIAL':pd.Index(['*','&RACUID','&RACGRP'],name='_NAME'),
+        'SPECIALID':pd.Index(['*','&RACUID','&RACGRP'],name='_NAME'),
         'USER':self._RACFobject.users.index,
         'GROUP':self._RACFobject.groups.index,
         'DELETE':['']
     }
     _domains.update({'ID':self._RACFobject.users.index.union(self._RACFobject.groups.index)})
-    _domains.update({'ACLID':_domains['SPECIAL'].union(_domains['ID'])})
+    _domains.update({'ACLID':_domains['SPECIALID'].union(_domains['ID'])})
     _domains.update({'RACFVARS':self._RACFobject.generals.find('RACFVARS').index.get_level_values(1)})
     _domains.update({'CATEGORY':self._RACFobject.generalMembers.find('SECDATA','CATEGORY')['GRMEM_MEMBER'].values})
     _domains.update({'SECLEVEL':self._RACFobject.generalMembers.find('SECDATA','SECLEVEL')['GRMEM_MEMBER'].values})
