@@ -1,6 +1,6 @@
 import pandas as pd
 from .frame_filter import FrameFilter
-from .racf_functions import accessKeywords, generic2regex
+from .racf_functions import accessAllows, accessKeywords, generic2regex
 from .xls_writers import XlsWriter
 
 class AclFrame(pd.DataFrame, FrameFilter):
@@ -44,8 +44,29 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
 
     @property
     def _constructor(self):
-        ''' a result of a method is also a ProfileFrame  '''
+        '''result of a method is also a ProfileFrame'''
         return ProfileFrame
+
+    def __finalize__(self, other, method=None, **kwargs):
+        """propagate metadata from other to self, fixed for pd.concat
+
+        Parameters:
+            other : the object from which to get the attributes that we are going to propagate
+            method : optional, a passed method name ; possibly to take different types of propagation actions based on this
+        """
+        if method=='concat':
+            # copy metadata from first available concatenation source
+            for name in self._metadata:
+                for x in other.objs:
+                    if hasattr(x, name):
+                        object.__setattr__(self, name, getattr(x, name))
+                        break
+        else:
+            if isinstance(other,ProfileFrame):
+                for name in self._metadata:
+                    if hasattr(other, name):
+                        object.__setattr__(self, name, getattr(other, name))
+        return self
 
     def read_pickle(path):
         return ProfileFrame(pd.read_pickle(path))
@@ -190,6 +211,8 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
         if tbName in ["DSBD","GRBD"]:
             # profiles selected, add corresp. access + cond.access frames
             tbProfiles = df[[df._fieldPrefix+k for k in tbProfileKeys+["OWNER_ID","UACC"]]].stripPrefix()
+            if any(tbProfiles.index.duplicated()):  # result of concatenating tables?
+                tbProfiles = tbProfiles.drop_duplicates()
             tbPermits = []
             for tb in [_accessLists, _condAccessLists]:
                 if not tb.empty:
@@ -201,6 +224,8 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
             # access frame selected, add profiles from frame tbEntity+BD
             tbPermits = df.stripPrefix()
             tbPermits.drop(["RECORD_TYPE","ACCESS_CNT"],axis=1,inplace=True)
+            if any(tbPermits.duplicated()):  # result of concatenating tables?  Need to check conditional columns too, not in index.
+                tbPermits = tbPermits.drop_duplicates()
             tbProfiles = _baseProfiles.loc[tbPermits.droplevel([-2,-1]).index.drop_duplicates()].stripPrefix(setprefix=_baseProfiles._fieldPrefix)
             tbProfiles = tbProfiles[tbProfileKeys+["OWNER_ID","UACC"]]
         else:
@@ -314,9 +339,12 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
             returnFields += ["ADMIN_ID","AUTHORITY","VIA"]
 
         if access:
-            acl = acl.loc[acl["ACCESS"].map(accessKeywords.index)==accessKeywords.index(access.upper())]
+            # acl = acl.loc[acl["ACCESS"].map(accessKeywords.index)==accessKeywords.index(access.upper())]
+            acl = acl.loc[acl["ACCESS"]==accessKeywords[accessKeywords.index(access.upper())]]
         if allows:
-            acl = acl.loc[acl["ACCESS"].map(accessKeywords.index)>=accessKeywords.index(allows.upper())]
+            # acl = acl.loc[acl["ACCESS"].map(accessKeywords.index)>=accessKeywords.index(allows.upper())]
+            # acl = acl.loc[acl["ACCESS"].isin(accessKeywords[accessKeywords.index(allows.upper()):])]
+            acl = acl.loc[acl["ACCESS"].isin(accessAllows(allows.upper()))]
 
         condAcc = conditionalFields if "CATYPE" in acl.columns and any(acl["CATYPE"].gt(' ')) else []
         return acl.sort_values(by=sortBy[sort])[tbProfileKeys+returnFields+condAcc].reset_index(drop=True)

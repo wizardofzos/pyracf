@@ -1,7 +1,7 @@
 import re
 import pandas as pd
 from .racf_functions import generic2regex
-from .utils import readableList
+from .utils import listMe, readableList
 
 class FrameFilter():
     '''filter routines that select or exclude records from a the 3 DataFrames classes
@@ -113,6 +113,7 @@ class FrameFilter():
 
         Args:
             *selection: for dataset Frames: a dataset name.  for general Frames: a resource name, or a class and a resource name.
+                Each of these can be a str, or a list of str.
 
         Returns:
             ProfileFrame with 0 or 1 entries
@@ -121,48 +122,91 @@ class FrameFilter():
 
           r.datasets.match('SYS1.PROCLIB')
 
+          r.datasets.match(['SYS1.PARMLIB','SYS1.PROCLIB'])
+
           r.generals.match('FACILITY', 'BPX.SUPERUSER')
 
           r.generals.find('FACILITY',match='BPX.SUPERUSER')
 
+        If you have a list of resource names, you can feed this into ``match()`` to obtain a ProfileFrame with a matching profile for each name.
+        Next you concatenate these into one ProfileFrame and remove any duplicate profiles::
+
+          resourceList = ['SYS1.PARMLIB','SYS1.PROCLIB']
+
+          profileList = r.datasets.match(resourceList)
+
+        or::
+
+          profileList = pd.concat(
+            [r.datasets.match(rname) for rname in resourceList]
+                                  ).drop_duplicates()
+
+        or::
+
+          rlist = pd.DataFrame(resourceList, columns=['dsn'])
+
+          profileList = pd.concat(
+                  list(rlist.dsn.apply(r.datasets.match))
+                                 ).drop_duplicates()
+
+        and apply any of the methods on this profileList, such as::
+
+          profileList.acl(resolve=True, allows='UPDATE')
+
+        Note: the resource name is not included in ProfileFrames, so you should specify similar resources in the selection.
         """
+        frames = []
         if hasattr(df,'_fieldPrefix'):
             frameType = df._fieldPrefix[0:2]
             if frameType == 'DS':
                 if len(selection)!=1:
                     raise TypeError('match keyword requires one parameter containing the data set name')
-                sel = selection[0]
-                qualp = sel[0:sel.find('.')+1]
-                if qualp:
-                    result = df.filter(like=qualp, axis=0)
-                    if result.empty:
-                        return df.head(0)
-                    result = result[[re.match(x,sel)!=None for x in result[''.join([df._fieldPrefix,'NAME'])].apply(generic2regex)]]
-                    # uses DSxx_NAME because filter() borks the index in multivalue index Frames
-                    # for DSBD we expect 1 profile (or 0), for DSACC and DSCACC we must return all permits for the profile
-                    return result.head(1) if len(result.index.names)==1 else result.loc[[result.index[0][0]]]
                 else:
-                    raise ValueError(f'fully qualified data set name expected, with dots between qualifiers, not {sel}')
+                    for sel in listMe(selection[0]):
+                        qualp = sel[0:sel.find('.')+1]
+                        if qualp:
+                            result = df.filter(like=qualp, axis=0)
+                            if not result.empty:
+                                result = result[[re.match(x,sel)!=None for x in result[''.join([df._fieldPrefix,'NAME'])].apply(generic2regex)]]
+                                # uses DSxx_NAME because filter() borks the index in multivalue index Frames
+                                # for DSBD we expect 1 profile (or 0), for DSACC and DSCACC we must return all permits for the profile
+                                frames.append(result.head(1) if len(result.index.names)==1 else result.loc[[result.index[0][0]]])
+                        else:
+                            raise ValueError(f'fully qualified data set name expected, with dots between qualifiers, not {sel}')
             elif frameType == 'GR':
                 if len(selection)==1:
-                    result = df
+                    start = df
                     sel = selection[0]
                 elif len(selection)==2:
-                    result = df.find(selection[0])
+                    if type(selection[0])==str:
+                        start = df.find(selection[0])
+                    else:
+                        start = df.loc[selection[0]]
                     sel = selection[1]
                 else:
                     raise TypeError('match keyword requires an optional resclass and a parameter containing the resource name')
-                if result.empty:
+                if not start.empty:
+                    for sel in listMe(sel):
+                        result = start[[re.match(x,sel)!=None for x in start[''.join([df._fieldPrefix,'NAME'])].apply(generic2regex)]]
+                        # find first profile (the first match) for each class, store True/False in array
+                        locs = []
+                        prevClass = ''
+                        for (i0,i1,*rest) in result.index:
+                            if i0 != prevClass:
+                                prevClass = i0
+                                prevResource = i1
+                            locs.append(i0==prevClass and i1==prevResource)
+                        frames.append(result.loc[locs])
+            else:
+                frames = None
+
+            if frames!=None:
+                if len(frames)==0:
                     return df.head(0)
-                result = result[[re.match(x,sel)!=None for x in result[''.join([df._fieldPrefix,'NAME'])].apply(generic2regex)]]
-                # find first profile (the first match) for each class, store True/False in array
-                locs = []
-                prevClass = ''
-                for (i0,i1,*rest) in result.index:
-                    if i0 != prevClass:
-                        prevClass = i0
-                        prevResource = i1
-                    locs.append(i0==prevClass and i1==prevResource)
-                return result.loc[locs]
+                elif len(frames)==1:
+                    return frames[0]
+                else:
+                    return pd.concat(frames).drop_duplicates()
+
         raise TypeError('match keyword only applies to DS (dataset) and GR (general resource) ProfileFrames')
 
