@@ -501,7 +501,7 @@ class RACF:
         if self.parsed("DSBD") > 0 and self.parsed("DSACC") > 0 and 'IDSTAR_ACCESS' not in self._datasets.columns:
             uaccs = pd.DataFrame()
             uaccs["UACC_NUM"] = self._datasets["DSBD_UACC"].map(RACF.accessKeywords.index)
-            uaccs["IDSTAR_ACCESS"] = self._datasetAccess.gfilter(None, '*').droplevel([1,2])['DSACC_ACCESS']
+            uaccs["IDSTAR_ACCESS"] = self._datasetAccess.reindex(['*'],level=1,axis=0).droplevel([1,2])['DSACC_ACCESS']
             uaccs["IDSTAR_ACCESS"] = uaccs["IDSTAR_ACCESS"].fillna(' ')
             uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(RACF.accessKeywords.index)
             uaccs["ALL_USER_NUM"] = uaccs[["IDSTAR_NUM","UACC_NUM"]].max(axis=1)
@@ -516,7 +516,7 @@ class RACF:
             uaccs["UACC"] = self._generals["GRBD_UACC"]
             uaccs["UACC"] = uaccs["UACC"].where(uaccs["UACC"].isin(RACF.accessKeywords),other=' ')  # DIGTCERT fields may be distorted
             uaccs["UACC_NUM"] = uaccs["UACC"].map(RACF.accessKeywords.index)
-            uaccs["IDSTAR_ACCESS"] = self._generalAccess.gfilter(None, '*').droplevel([1,2]).drop_duplicates(['GRACC_CLASS_NAME','GRACC_NAME','GRACC_ACCESS'])['GRACC_ACCESS']
+            uaccs["IDSTAR_ACCESS"] = self._generalAccess.reindex(['*'],level=2,axis=0).droplevel([2,3]).drop_duplicates(['GRACC_CLASS_NAME','GRACC_NAME','GRACC_ACCESS'])['GRACC_ACCESS']
             uaccs["IDSTAR_ACCESS"] = uaccs["IDSTAR_ACCESS"].fillna(' ')
             uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(RACF.accessKeywords.index)
             uaccs["ALL_USER_NUM"] = uaccs[["IDSTAR_NUM","UACC_NUM"]].max(axis=1)
@@ -857,8 +857,7 @@ class RACF:
         # tbProfiles and tbPermits have column names without the tbName prefix
         
         returnFields = ["USER_ID","AUTH_ID","ACCESS"]
-        if tbName in ["DSCACC","GRCACC"]:
-            returnFields = returnFields+["CATYPE","CANAME","NET_ID","CACRITERIA"]
+        conditionalFields = ["CATYPE","CANAME","NET_ID","CACRITERIA"]
 
         sortBy = {"user":["USER_ID"]+tbProfileKeys, 
                   "access":["RANKED_ACCESS","USER_ID"],
@@ -878,7 +877,10 @@ class RACF:
             acl = tbPermits
             acl.insert(3,"USER_ID",acl["AUTH_ID"].where(~ acl["AUTH_ID"].isin(self._groups.index.values),"-group-"))
         else:
-            acl = pd.DataFrame(columns=tbProfileKeys+returnFields)
+            acl = AclFrame(tbPermits.head(0))
+            if not admin:  # no option that produces data?
+                return acl  # give up early, prevent KeyErrors due to empty tables
+
         if permits or explode or resolve:  # add -uacc- pseudo access
             uacc = tbProfiles.query("UACC!='NONE'").copy()
             if not uacc.empty:
@@ -963,7 +965,9 @@ class RACF:
             acl = acl.loc[acl["ACCESS"].map(RACF.accessKeywords.index)==RACF.accessKeywords.index(access.upper())]
         if allows:
             acl = acl.loc[acl["ACCESS"].map(RACF.accessKeywords.index)>=RACF.accessKeywords.index(allows.upper())]
-        return acl.sort_values(by=sortBy[sort])[tbProfileKeys+returnFields].reset_index(drop=True)
+
+        condAcc = conditionalFields if "CATYPE" in acl.columns and any(acl["CATYPE"].gt(' ')) else []
+        return acl.sort_values(by=sortBy[sort])[tbProfileKeys+returnFields+condAcc].reset_index(drop=True)
 
     
     @property
