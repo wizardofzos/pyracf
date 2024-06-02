@@ -144,8 +144,9 @@ class RACF:
     STATE_BAD         = -1
     STATE_INIT        =  0
     STATE_PARSING     =  1
-    STATE_READY       =  2
-    STATE_CORRELATING =  3
+    STATE_CORRELATING =  2
+    STATE_READY       =  3
+
 
     # keep track of names used for a record type, record type + name must match those in offsets.json
     # A dict with 'key' -> RecordType
@@ -393,15 +394,15 @@ class RACF:
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - parsing {self._irrdbu00}')
         self.parse(recordtypes=recordtypes)
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - selected recordtypes: {",".join(recordtypes)}')
-        while self._state <= self.STATE_CORRELATING:
+        while self._state < self.STATE_CORRELATING:
             progress =  math.floor(((sum(r['seen'] for r in self._records.values() if r)) / self._unloadlines) * 63)
             pct = (progress/63) * 100 # not as strange as it seems:)
             done = progress * '▉'
             todo = (63-progress) * ' '
-            print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - progress: {done}{todo} ({pct:.2f}%)'.center(80), end="\r")
             time.sleep(0.5)
+            print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - progress: {done}{todo} ({pct:.2f}%)'.center(80), end="\r")
         print('')
-        while self._state <= self.STATE_READY:
+        while self._state < self.STATE_READY:
              print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - correlating data {40*" "}', end="\r")
              time.sleep(0.5)
         # make completed line always show 100% :)
