@@ -17,6 +17,7 @@ pyRACF user documentation
    DataFrames
    Methods
    PrintPythonAttributes
+   RuleVerifier
    source/modules
    source/pyracf
 

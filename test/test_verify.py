@@ -52,7 +52,7 @@ def test_rules_orphans(testparms):
 
 def test_rules_report(testparms):
   r = testparms['object']
-  t = r.rules.verify()
+  t = r.rules.load().verify()
   
   left = t.columns
   right = ['CLASS', 'PROFILE', 'FIELD_NAME', 'EXPECT', 'ACTUAL', 'RULE', 'ID']

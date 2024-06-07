@@ -8,6 +8,39 @@ from .racf_functions import generic2regex
 from .utils import listMe, readableList, simpleListed, nameInColumns
 
 
+class RuleFrame(pd.DataFrame,FrameFilter):
+    ''' Output of a verify() action '''
+
+    @property
+    def _constructor(self):
+        ''' a result of a method is also a RuleFrame  '''
+        return RuleFrame
+
+    _verifyFilterKwds = {'resclass':'CLASS', 'profile':'PROFILE', 'field':'FIELD_NAME', 'actual':'ACTUAL', 'found':'ACTUAL', 'expect':'EXPECT', 'fit':'EXPECT', 'value':'EXPECT', 'id':'ID'}
+
+    def find(df, *selection, **kwds):
+        '''Search rule results using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data columns of the df.
+
+        alternatively specify the field names via an alias keyword (resclass, profile, field, actual, found, expect, fit, value or id):
+
+        ``r.rules.load().verify().find(field='OWN*')``
+
+        specify selection as regex using re.compile:
+
+        ``r.rules.load().verify().find( field=re.compile('(OWNER|DFLTGRP)' )``
+        '''
+        return df._frameFilter(*selection, **kwds, kwdValues=df._verifyFilterKwds)
+
+    def skip(df, *selection, **kwds):
+        '''Exclude rule results using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data columns of the df
+
+        alternatively specify the field names via an alias keyword (resclass, profile, field, actual, found, expect, fit, value or id):
+
+        ``r.rules.load().verify().skip(actual='SYS1')``
+        '''
+        return df._frameFilter(*selection, **kwds, kwdValues=df._verifyFilterKwds, exclude=True)
+
+
 class RuleVerifier:
     ''' verify fields in profiles against expected values, issues are returned in a df.
 
@@ -94,7 +127,7 @@ class RuleVerifier:
         ''' Add domains to the end of the domain list, from a dict or a yaml string value.
 
         Args:
-            domains (dict, str): one or more domain in a dict(name=[entries]), or in a yaml string
+            domains (dict, str): one or more domains in a dict(name=[entries]), or in a yaml string
 
         Returns:
             RuleVerifier: The updated object
@@ -103,7 +136,7 @@ class RuleVerifier:
 
           v = r.rules.load()
 
-          v.add_domains({'PROD_GROUPS': ['PRODA','PRODB,'PRODCICS'],
+          v.add_domains({'PROD_GROUPS': ['PRODA','PRODB','PRODCICS'],
                          'TEST_GROUPS': ['TEST1','TEST2']})
 
           v.add_domains({'SYS1': r.connect('SYS1').index})
@@ -135,7 +168,30 @@ class RuleVerifier:
 
         return self
 
-    def verify(self, rules=None, domains={}, module=None, reset=False, id=True, syntax_check=True):
+    def get_domains(self, domains=None):
+        ''' Get domain definitions as a dict, or one entry as a list.
+
+        Args:
+            domains str: name of domain entry to return as list, or None to return all
+
+        Returns:
+            dict or list
+
+        Example::
+
+          v.get_domains() # all domains as a dict
+
+          v.get_domains('PROD_GROUPS') # one domain as a list
+
+        '''
+        if not domains:
+            return self._domains
+        elif type(domains)==str:  # just 1 domain?
+            return self._domains[domains] if domains in self._domains else []
+        else:
+            raise TypeError('domains parameter must be the name of a domain, or missing')
+
+    def verify(self, rules=None, domains={}, module=None, reset=False, id=True, syntax_check=True) -> RuleFrame:
         ''' verify fields in profiles against the expected value, issues are returned in a df
 
         Args:
@@ -143,7 +199,7 @@ class RuleVerifier:
             syntax_check (bool): False: suppress implicit syntax check
 
         Returns:
-            RuleFrame: Result object
+            Result object (RuleFrame)
 
         Example::
 
@@ -241,44 +297,50 @@ class RuleVerifier:
                     if '-profile' in tbCrit:
                         subjectDF = subjectDF.loc[ ~ subjectDF.index.get_level_values(ixLevel).str.match(generic2regex(tbCrit['-profile']))]
 
+                    if 'match' in tbCrit:
+                        if type(tbCrit['match'])==list or tbCrit['match'].find('(')==-1:  # match profile key on dsname or resource name (list)
+                            subjectDF = subjectDF.match(tbCrit['match'])
+                    if '-match' in tbCrit:  # all except the matched profile(s)
+                        subjectDF = subjectDF.loc[subjectDF.index.difference(subjectDF.match(tbCrit['-match']).index)]
+
                     # find and skip use same parser, if these kwds are used, actionLocs are filled
                     # suffix find and skip with any character(s) to specify alternative selections
                     # first we do selection only on fields in subjectDF, and reduce the size of this Frame
 
                     actionLocs = {}   # filled by find and skip
                     doneFindSkip = True  # False when Find and Skip have to be redone, in case join or match directives are used
-                    for (action,*actCrits) in tbCrit.items(): # need to access key+value
+                    for (action,actCrit) in tbCrit.items(): # we have to access key (directive) + value (parms)
                         if action[0:4]=='find': action = 'find'
                         elif action[0:4]=='skip': action = 'skip'
                         else: continue
                         if action not in actionLocs:
                             actionLocs[action] = initArray(False, like=subjectDF)
 
-                        # 1 or more fields can be compared in each select/-select
+                        # 1 or more fields can be compared in each find/skip
                         # each field compare consists of 2 or 3 tests (fldLocs) that are AND-ed
                         # result of those AND-ed test are OR-ed into actLocs
-                        # *actCrits accepts filter directives with 1 tuple or a list of tuples
-                        # listMe(actCrit) helps unroll the list of tuples
 
-                        for actCrit in actCrits:
-                            actLocs = initArray(True, like=subjectDF)
-                            for fldCrit in listMe(actCrit):
-                                fldLocs = initArray(False, like=subjectDF)
-                                fldNames = nameInColumns(subjectDF,fldCrit['field'],returnAll=True)
-                                if len(fldNames)==1:
-                                    fldName = fldNames[0]
-                                    fldColumn = subjectDF[fldName]  # look only in the main table
-                                    if 'fit' in fldCrit:
-                                        fldLocs |= fldColumn.gt('') & fldColumn.isin(safeDomain(fldCrit['fit']))
-                                    if 'value' in fldCrit:
-                                        if type(fldCrit['value'])==str:
-                                            fldLocs |= fldColumn.eq(fldCrit['value'])
-                                        else:
-                                            fldLocs |= fldColumn.gt('') & fldColumn.isin(fldCrit['value'])
-                                    actLocs &= fldLocs
-                                else:
-                                    doneFindSkip = False  # at least one field was not in subjectDF, so redo after join + match complete
-                            actionLocs[action] |= actLocs
+                        actLocs = initArray(True, like=subjectDF)
+                        for fldCrit in listMe(actCrit):
+                            fldLocs = initArray(False, like=subjectDF)
+                            fldNames = nameInColumns(subjectDF,fldCrit['field'],returnAll=True)
+                            if len(fldNames)==1:
+                                fldName = fldNames[0]
+                                fldColumn = subjectDF[fldName]  # look only in the main table
+                                if 'fit' in fldCrit:
+                                    fldLocs |= fldColumn.gt('') & fldColumn.isin(safeDomain(fldCrit['fit']))
+                                if 'value' in fldCrit:
+                                    if type(fldCrit['value'])==str:
+                                        fldLocs |= fldColumn.eq(fldCrit['value'])
+                                    else:
+                                        fldLocs |= fldColumn.gt('') & fldColumn.isin(fldCrit['value'])
+                                actLocs &= fldLocs
+                            else:
+                                doneFindSkip = False  # at least one field was not in subjectDF, so redo after join + match complete
+                                if action=='skip':  # a skip that cannot resolve a field would skip too much, so don't skip in first attempt
+                                    actLocs = initArray(False, like=subjectDF)
+                                    break
+                        actionLocs[action] |= actLocs
                     if 'find' in actionLocs: subjectDF = subjectDF.loc[actionLocs['find']]
                     if 'skip' in actionLocs: subjectDF = subjectDF.loc[~ actionLocs['skip']]
 
@@ -313,16 +375,17 @@ class RuleVerifier:
                         subjectDF = subjectDF.join(joinDF, on=joinCol, how=joinMethod).fillna('')
 
                     if 'match' in tbCrit:
-                        matchPattern = tbCrit['match'].replace('.',r'\.').replace('*',r'\*')\
-                                                      .replace('(','(?P<').replace(')','>[^.]*)')
-                        matched = subjectDF[tbName+'_NAME'].str.extract(matchPattern)  # extract 1 qualifier
+                        if type(tbCrit['match'])==str and tbCrit['match'].find('(')!=-1:  # match and extract
+                            matchPattern = tbCrit['match'].replace('.',r'\.').replace('*',r'\*')\
+                                                          .replace('(','(?P<').replace(')','>[^.]*)')
+                            matched = subjectDF[tbName+'_NAME'].str.extract(matchPattern)  # extract 1 qualifier
 
                     # find and skip use same parser, if these kwds are used, actionLocs are filled
                     # suffix find and skip with any character(s) to specify alternative selections
                     # now we repeat the selection, including the joined and matched fields
 
                     actionLocs = {}   # filled by find and skip
-                    for (action,*actCrits) in tbCrit.items(): # should only find 1 item in each tbCrit, but have to access key+value
+                    for (action,actCrit) in tbCrit.items(): # we have to access key (directive) + value (parms)
                         if doneFindSkip: continue  # no need to redo
                         elif action[0:4]=='find': action = 'find'
                         elif action[0:4]=='skip': action = 'skip'
@@ -334,28 +397,25 @@ class RuleVerifier:
                         # each field compare consists of 2 or 3 tests (fldLocs) that are AND-ed
                         # result of those AND-ed test are OR-ed into actLocs
                         # entries in subjectDF and in matched must be compared, so combine test results in Locs arrays.
-                        # *actCrits accepts filter directives with 1 tuple or a list of tuples
-                        # listMe(actCrit) helps unroll the list of tuples
 
-                        for actCrit in actCrits:
-                            actLocs = initArray(True, like=subjectDF)
-                            for fldCrit in listMe(actCrit):
-                                fldLocs = initArray(False, like=subjectDF)
-                                if matchPattern and fldCrit['field'] in matched.columns:
-                                    fldName = fldCrit['field']
-                                    fldColumn = matched[fldName]  # look in the match result
-                                else:  # not a matching field name in match result, look in data columns
-                                    fldName = nameInColumns(subjectDF,fldCrit['field'])
-                                    fldColumn = subjectDF[fldName]  # look in the main table
-                                if 'fit' in fldCrit:
-                                    fldLocs |= fldColumn.gt('') & fldColumn.isin(safeDomain(fldCrit['fit']))
-                                if 'value' in fldCrit:
-                                    if type(fldCrit['value'])==str:
-                                        fldLocs |= fldColumn.eq(fldCrit['value'])
-                                    else:
-                                        fldLocs |= fldColumn.gt('') & fldColumn.isin(fldCrit['value'])
-                                actLocs &= fldLocs
-                            actionLocs[action] |= actLocs
+                        actLocs = initArray(True, like=subjectDF)
+                        for fldCrit in listMe(actCrit):
+                            fldLocs = initArray(False, like=subjectDF)
+                            if matchPattern and fldCrit['field'] in matched.columns:
+                                fldName = fldCrit['field']
+                                fldColumn = matched[fldName]  # look in the match result
+                            else:  # not a matching field name in match result, look in data columns
+                                fldName = nameInColumns(subjectDF,fldCrit['field'])
+                                fldColumn = subjectDF[fldName]  # look in the main table
+                            if 'fit' in fldCrit:
+                                fldLocs |= fldColumn.gt('') & fldColumn.isin(safeDomain(fldCrit['fit']))
+                            if 'value' in fldCrit:
+                                if type(fldCrit['value'])==str:
+                                    fldLocs |= fldColumn.eq(fldCrit['value'])
+                                else:
+                                    fldLocs |= fldColumn.gt('') & fldColumn.isin(fldCrit['value'])
+                            actLocs &= fldLocs
+                        actionLocs[action] |= actLocs
 
                     # actual reporting, relies on subjectDF, matched and tbLocs to be aligned.
                     # when test: command is processed, we combine the class, profile and filter commands in tbLocs
@@ -393,7 +453,7 @@ class RuleVerifier:
 
                             if any(fldLocs):
                                 broken = subjectDF.loc[fldLocs].copy()
-                                broken['ACTUAL'] = matched[fldName] if matchPattern else broken[fldName]
+                                broken['ACTUAL'] = matched[fldName] if matchPattern and fldName in matched.columns else broken[fldName]
                                 broken = broken.rename({tbName+'_CLASS_NAME':'CLASS', tbName+'_NAME':'PROFILE'},axis=1)
                                 if tbEntity!='GR':
                                     broken['CLASS'] = tbClassName
@@ -409,13 +469,16 @@ class RuleVerifier:
 
         return RuleFrame(brokenSum)
 
-    def syntax_check(self, confirm=True):
+    def syntax_check(self, confirm=True) -> RuleFrame:
         ''' check rules and domains for consistency and unknown directives
 
         specify confirm=False to suppress the message when all is OK
 
         Args:
             confirm (bool): False if the success message should be suppressed, so in automated testing the result frame has .empty
+
+        Returns:
+            syntax messages (RuleFrame)
 
         Example::
 
@@ -467,11 +530,12 @@ class RuleVerifier:
                 # each tbCrit is a dict with 0 or 1 class, profile, match, select and test specifications
 
                 for tbCrit in tbCriteria:
+                    matchFields = None
                     if tbDefined:
                         tbColumns = tbDF.columns
 
                     for action in tbCrit.keys():
-                        if action not in ['class','-class','profile','-profile','join','match','test','rule','id']:
+                        if action not in ['class','-class','profile','-profile','join','match','-match','test','rule','id']:
                             if action[0:4]!='find' and action[0:4]!='skip':
                                 broken('action',action,f"unsupported action {action} with table {tbNames}")
 
@@ -480,11 +544,29 @@ class RuleVerifier:
                             broken('class',tbCrit['class'],f"cannot use {tbCrit['class']} in {tbClassName} table")
 
                     if 'match' in tbCrit:
-                        matchFields = re.findall(r'\((\S+?)\)',tbCrit['match'])
-                        if len(matchFields)==0:
-                            broken('match',tbCrit['match'],f"at least 1 field should be defined between parentheses")
-                    else:
-                        matchFields = None
+                        if type(tbCrit['match'])==str and tbCrit['match'].find('(')!=-1:
+                            matchFields = re.findall(r'\((\S+?)\)',tbCrit['match'])
+                            if len(matchFields)==0:
+                                broken('match',tbCrit['match'],f"at least 1 field should be defined between parentheses")
+                        else:
+                            if type(tbCrit['match'])==str or type(tbCrit['match'])==list:
+                                for m in listMe(tbCrit['match']):
+                                    if m.find('*')!=-1 or m.find('%')!=-1:
+                                        broken('match',tbCrit['match'],f"no generic patterns supported in match")
+                                    if m.find('(')!=-1 or m.find(')')!=-1:
+                                        broken('match',tbCrit['match'],f"extraction pattern cannot be used in list")
+                            else:
+                                broken('match',tbCrit['match'],f"unrecognized type type(tbCrit['match'])")
+
+                    if '-match' in tbCrit:
+                        if type(tbCrit['-match'])==str or type(tbCrit['-match'])==list:
+                            for m in listMe(tbCrit['-match']):
+                                if m.find('*')!=-1 or m.find('%')!=-1:
+                                    broken('-match',tbCrit['-match'],f"no generic patterns supported in match")
+                                if m.find('(')!=-1 or m.find(')')!=-1:
+                                    broken('-match',tbCrit['-match'],f"extraction pattern cannot be used in list")
+                        else:
+                            broken('-match',tbCrit['-match'],f"unrecognized type type(tbCrit['-match'])")
 
                     if 'join' in tbCrit:
                         if type(tbCrit['join'])==str: # join: userTSO or join: USOMVS
@@ -517,34 +599,32 @@ class RuleVerifier:
                         else:
                             broken('join',tbCrit['join'],f"join directive {tbCrit['join']} contains non-existing table name")
 
-                    for (action,*actCrits) in tbCrit.items(): # should only find 1 item, but have to access key+value
+                    for (action,actCrit) in tbCrit.items():
                         if action[0:4]=='find': action = 'find'
                         elif action[0:4]=='skip': action = 'skip'
                         else: break
 
-                        if type(actCrits)!=list:
-                            broken('filter',actCrit,'find/skip should have a list of criteria')
+                        for fldCrit in listMe(actCrit):
+                            if type(fldCrit)!=dict:
+                                broken('filter',fldCrit,'each of criteria should be a dict')
+                            for section in fldCrit.keys():
+                                if section not in ['field','fit','value','rule']:
+                                    broken('filter',fldCrit,f"unsupported section {section} in {action}")
+                            if 'field' not in fldCrit:
+                                broken('filter',fldCrit,f"field must be specified in filter {fldCrit}")
+                            elif fldCrit['field'].find('(')!=-1:
+                                broken('field',fldCrit['field'],f"remove parentheses from matched field in filter {fldCrit}")
+                            if not('fit' in fldCrit or 'value' in fldCrit):
+                                broken('filter',fldCrit,f"fit or value should be specified in filter {fldCrit}")
 
-                        for actCrit in actCrits:
-                            for fldCrit in listMe(actCrit):
-                                if type(fldCrit)!=dict:
-                                    broken('filter',fldCrit,'each of criteria should be a dict')
-                                for section in fldCrit.keys():
-                                    if section not in ['field','fit','value','rule']:
-                                        broken('filter',fldCrit,f"unsupported section {section} in {action}")
-                                if 'field' not in fldCrit:
-                                    broken('filter',fldCrit,f"field must be specified in filter {fldCrit}")
-                                if not('fit' in fldCrit or 'value' in fldCrit):
-                                    broken('filter',fldCrit,f"fit or value should be specified in filter {fldCrit}")
-
-                                if tbDefined and len(nameInColumns(None,fldCrit['field'],columns=tbColumns,returnAll=True))==0:
-                                    if matchFields and fldCrit['field'] in matchFields: pass
-                                    else:
-                                        broken('field',fldCrit['field'],f"field name {fldCrit['field']} not found in {tbName} or match definition")
-                                if 'fit' in fldCrit and fldCrit['fit'] not in self._domains:
-                                    broken('fit',fldCrit['fit'],f"domain name {fldCrit['fit']} in filter not defined")
-                                if 'value' in fldCrit and type(fldCrit['value'])==bool:
-                                    broken('value',fldCrit['field'],f"yaml text string {fldCrit['value']} for {fldCrit['field']} is not a str")
+                            if tbDefined and len(nameInColumns(None,fldCrit['field'],columns=tbColumns,returnAll=True))==0:
+                                if matchFields and fldCrit['field'] in matchFields: pass
+                                else:
+                                    broken('field',fldCrit['field'],f"field name {fldCrit['field']} not found in {tbName} or match definition")
+                            if 'fit' in fldCrit and fldCrit['fit'] not in self._domains:
+                                broken('fit',fldCrit['fit'],f"domain name {fldCrit['fit']} in filter not defined")
+                            if 'value' in fldCrit and type(fldCrit['value'])==bool:
+                                broken('value',fldCrit['field'],f"yaml text string {fldCrit['value']} for {fldCrit['field']} is not a str")
 
                     if 'test' in tbCrit:
                         for fldCrit in listMe(tbCrit['test']):
@@ -555,6 +635,8 @@ class RuleVerifier:
                                     broken('test',fldCrit,f"unsupported section {section} in {action}")
                             if 'field' not in fldCrit:
                                 broken('test',fldCrit,f"field must be specified in test {fldCrit}")
+                            elif fldCrit['field'].find('(')!=-1:
+                                broken('field',fldCrit['field'],f"remove parentheses from matched field in filter {fldCrit}")
                             if not('fit' in fldCrit or 'value' in fldCrit):
                                 broken('test',fldCrit,f"fit or value must be specified in test {fldCrit}")
 
@@ -574,37 +656,3 @@ class RuleVerifier:
         if not brokenList and confirm:
             brokenList.append(dict(field='rules', value='OK', comment='No problem found in rules'))
         return RuleFrame(brokenList)
-
-
-class RuleFrame(pd.DataFrame,FrameFilter):
-    ''' Output of a verify() action '''
-
-    @property
-    def _constructor(self):
-        ''' a result of a method is also a RuleFrame  '''
-        return RuleFrame
-
-    _verifyFilterKwds = {'resclass':'CLASS', 'profile':'PROFILE', 'field':'FIELD_NAME', 'actual':'ACTUAL', 'found':'ACTUAL', 'expect':'EXPECT', 'fit':'EXPECT', 'value':'EXPECT', 'id':'ID'}
-
-    def find(df, *selection, **kwds):
-        '''Search rule results using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data columns of the df.
-
-        alternatively specify the field names via an alias keyword:
-
-        ``r.rules.load().verify().find(field='OWN*')``
-
-        specify selection as regex using re.compile:
-
-        ``r.rules.load().verify().find( field=re.compile('(OWNER|DFLTGRP)' )``
-        '''
-        return df._frameFilter(*selection, **kwds, kwdValues=df._verifyFilterKwds)
-
-    def skip(df, *selection, **kwds):
-        '''Exclude rule results using GENERIC pattern on the data fields.  selection can be one or more values, corresponding to data columns of the df
-
-        alternatively specify the field names via an alias keyword:
-
-        ``r.rules.load().verify().skip(actual='SYS1')``
-        '''
-        return df._frameFilter(*selection, **kwds, kwdValues=df._verifyFilterKwds, exclude=True)
-

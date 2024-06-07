@@ -231,7 +231,6 @@ methods = [
  'group',
  'grouptree',
  'orphans',
- 'orphans_joined',
  'ownertree',
  'parse',
  'parse_fancycli',

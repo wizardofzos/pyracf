@@ -274,37 +274,30 @@ class ProfileAnalysisFrame():
     @property
     def orphans(self) -> tuple:
         '''IDs on access lists with no matching USER or GROUP entities, in a tuple with 2 RuleFrames
-        '''
-        v = self.rules  # verify object
-        return (v.load(rules = {'dataset orphan permits':
-                (['DSACC','DSCACC'],
-                 {'test': {'field':'AUTH_ID', 'fit':'ACLID'}})
-                               } )
-                   .verify()
-                   .drop(['FIELD_NAME','EXPECT','RULE','ID'],axis=1)
-                   .rename({'ACTUAL':'AUTH_ID'},axis=1)
-               ,
-                v.load(rules = {'general resource orphan permits':
-                (['GRACC','GRCACC'],
-                 {'test': {'field':'AUTH_ID', 'fit':'ACLID'}})
-                               } )
-                   .verify()
-                   .drop(['FIELD_NAME','EXPECT','RULE','ID'],axis=1)
-                   .rename({'ACTUAL':'AUTH_ID'},axis=1)
-               )
 
-    @property
-    def orphans_joined(self) -> RuleFrame:
-        '''IDs on access lists with no matching USER or GROUP entities, in one combined RuleFrame
+        Legacy code for backward comptibility.
+        This function demonstrates how to access columns in the raw data frames, though definitely not efficiently.
+        FIXED: Temporary frames are used to prevent updating the original _datasetAccess and _generalAccess frames.
+        The functionality is also, and generalized, available in RuleVerifier.
         '''
-        return self.rules.load(rules = {'orphan permits':
-                (['DSACC','DSCACC','GRACC','GRCACC'],
-                 {'test': {'field':'AUTH_ID', 'fit':'ACLID'}})
-                                          } )\
-                   .verify()\
-                   .drop(['FIELD_NAME','EXPECT','RULE','ID'],axis=1)\
-                   .rename({'ACTUAL':'AUTH_ID'},axis=1)\
-                   .set_index('AUTH_ID')
+
+        if self.parsed("DSACC") + self.parsed("GRACC") == 0:
+            raise PyRacfException('No dataset/general access records parsed!')
+
+        datasetOrphans = None
+        generalOrphans = None
+
+        if self.parsed("DSACC") > 0:
+            datasetAccess = self._datasetAccess.assign(inGroups=self._datasetAccess.DSACC_AUTH_ID.isin(self._groups.GPBD_NAME))
+            datasetAccess = datasetAccess.assign(inUsers=datasetAccess.DSACC_AUTH_ID.isin(self._users.USBD_NAME))
+            datasetOrphans = datasetAccess.loc[(datasetAccess['inGroups'] == False) & (datasetAccess['inUsers'] == False) & (datasetAccess['DSACC_AUTH_ID'] != "*") & (datasetAccess['DSACC_AUTH_ID'] != "&RACUID")]
+
+        if self.parsed("GRACC") > 0:
+                generalAccess = self._generalAccess.assign(inGroups=self._generalAccess.GRACC_AUTH_ID.isin(self._groups.GPBD_NAME))
+                generalAccess = generalAccess.assign(inUsers=generalAccess.GRACC_AUTH_ID.isin(self._users.USBD_NAME))
+                generalOrphans =  generalAccess.loc[(generalAccess['inGroups'] == False) & (generalAccess['inUsers'] == False) & (generalAccess['GRACC_AUTH_ID'] != "*") & (generalAccess['GRACC_AUTH_ID'] != "&RACUID")]
+
+        return datasetOrphans, generalOrphans
 
 
 class EnhancedProfileFrame():
