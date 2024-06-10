@@ -5,16 +5,17 @@ from .utils import deprecated
 import warnings
 
 class ProfileSelectionFrame():
-    """Data selection methods to retrieve one profile, or profiles from one ProfileFrame, using exact match.
+    """Data selection methods to retrieve one profile, or profiles, from a ProfileFrame, using exact match.
+
+    These methods typically have a name referring to the singular.
 
     The parameter(s) to these methods are used as a literal search argument, and return entries that fully match the argument(s).
     Selection criteria have to match the profile exactly, generic patterns are taken as literals.
 
-    These methods typically have a name referring to the singular.
+    The number of selection parameters depends on the ProfileFrame, matching the number of index fields in the ProfileFrame.
+    When you specify a parameter as None or '**', the level is ignored in the selection.
 
-    The number of selection parameters depends on the ProfileFrame, matching the number of index fields in the ProfileFrame.  When you specify a parameter as None or '**', the level is ignored in the selection.
-
-    When the optional parameter ``option='LIST'`` is added, and one profile is returned, the data is returned as a pandas Series instead of a ProfileFrame.
+    The optional parameter ``option='LIST'`` causes a pandas Series to be returned if there is one matching profile, instead of a ProfileFrame.  This is meant for high-performance, looping applications.
     """
 
     ### group frames
@@ -51,8 +52,8 @@ class ProfileSelectionFrame():
         whereas ``r.connect(None, 'IBMUSER')`` shows all the groups IBMUSER is
         member of. Instead of ``None``, you may specify ``'**'``.
 
-        ``connect('SYS1')`` returns 1 index level with user IDs, ``connect(None,'IBMUSER')`` returns 1 index level with group names
-        You can also write ``connect(userid='IBMUSER')`` for the latter.
+        ``connect('SYS1')`` returns 1 index level with user IDs.
+        ``connect(None,'IBMUSER')`` or ``connect(userid='IBMUSER')`` returns 1 index level with group names.
 
         You can find all entries in ``.users`` that have a group connection to SYSPROG as follows:
 
@@ -95,6 +96,14 @@ class ProfileSelectionFrame():
         To show all dataset profiles starting with SYS1 use:
 
         ``r.datasets.find('SYS1.**')``
+
+        To show the dataset profile covering SYS1.PARMLIB use:
+
+        ``r.datasets.match('SYS1.PARMLIB')``
+
+        To find the access control list (acl) of profiles, use the ``.acl()`` method on any of these selections, e.g.:
+
+        ``r.dataset('SYS1.*.**').acl()``
         """
         return self._datasets._giveMeProfiles(profile, option=option)
 
@@ -140,9 +149,14 @@ class ProfileSelectionFrame():
 
         ``r.general('UNIXPRIV')``
 
-        To show general resource profiles relevant to z/OS UNIX use:
+        To show the general resource profile controlling dynamic superuser, use:
+
+        ``r.general('FACILITY').match('BPX.SUPERUSER')``
+
+        To show more general resource profiles relevant to z/OS UNIX use:
 
         ``r.generals.find('FACILITY', 'BPX.**')``
+
         """
         return self._generals._giveMeProfiles((resclass,profile), option=option)
 

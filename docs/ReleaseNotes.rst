@@ -8,26 +8,33 @@ Summary of changes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - rule-based verification of profile fields
-  - yaml based specification of rules and domains, list and dict also possible
+
+  - yaml based specification of rules and domains, normal python dicts are also possible
   - test if values in access list are valid user ID or group names
   - test if values are (in a list of) expected values
   - e.g., all SYS1 profiles must have UACC=NONE, OWNER=SYS1, NONOTIFY
   - e.g. STARTED profiles should specify existing STUSER and STGROUP, or =MEMBER
+
 - find() to select rows from Frame, skip() to exclude rows from result
+
   - may be used on (chained from) profile, acl and rule Frames
   - supports position column values, and keywords with column names
   - e.g. r.datasets.find('SYS1.**',UACC=['CONTROL','ALTER'])
   - replacing gfilter() and rfilter()
+
 - match() method to select profile matching a dataset name, or resource class and name
+
   - may be used on the .datasets, .datasetAccess and .datasetConditionalAccess, and the 3 generals Frames
   - e.g. r.generals.find('FACILITY').match('BPX.SUPERUSER').acl()
+  - accepts individual names, or a list of names
   - also supported as keyword parameter in find() and skip()
+
 - stripPrefix() method removes prefix from column names, for easier programming
 - r.table(name) returns ProfileFrame for given name,  e.g. r.table('DSACC')
 - all record types from unload are now converted into ProfileFrames
 - xlswriter() converted to pandas pivot table
-- orphans converted to rules script
-- StoopidException converted to TypeError 
+- alternative for orphans using rules script
+- StoopidException converted to TypeError
 - deprecated properties (.generic, .genericAccess, .userDistributedMappings) removed
 - information from README.md and Wiki moved into docs directory
   - formatted with sphinx, viewable in github
@@ -39,7 +46,7 @@ Summary of changes
 - accept '\*' as a literal value in gfilter( )
 - r.connect('SYS1') and r.connect(None,'IBMUSER') return one level index
 - less contentious column name ALL_USER_ACCESS replaces EFFECTIVE_UACC
-- speed up single profile methods 
+- speed up single profile methods
 - Single value selections return dataframe with columns again
 - giveMeProfiles, generic2regex are now 'internal' (\_) functions
 
@@ -56,11 +63,15 @@ Summary of changes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - msys.grouptree and msys.ownertree are now properties instead of callables
-  print as unix tree or simple format, e.g. print(msys.ownertree)
-  default format looks like unix tree, change with msys.ownertree.setformat('simple')
-  dict structure accessible through .tree attribute
+
+  - print as unix tree or simple format, e.g. print(msys.ownertree)
+  - default format looks like unix tree, change with msys.ownertree.setformat('simple')
+  - dict structure accessible through .tree attribute
+
 - .connect('group') and .connect(None,'user') return a (single level) Index with user IDs, resp., groups, connected to the given entity
+
   this helps with queries that test group membership
+
 - add IDSTAR\_ACCESS and ALL\_USER\_ACCESS to .datasets and .generals with, resp., permitted access on ID(\*) and the higher value of UACC and IDSTAR_ACCESS.
 - fixed: correlate also builds internal tables from saved pickles
 
@@ -76,7 +87,9 @@ Summary of changes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - selection method gfilter (supports RACF generic patterns) and rfilter (for regex patterns)
+
   supports as many parameters as there are index columns in the frame
+
 - reporting method acl, produces frame with access list, may be used on the entity frames or on the access frames
 - internal frames _connectByGroup and _connectByUser, as alternate index on connectData
 - internal frames _grouptreeLines and _ownertreeLines that return all groups up until SYS1 (or upto a user ID)
@@ -94,18 +107,20 @@ Summary of changes
 - fixed: pickles with a prefix were selected when loading pickles with no prefix
 - fixed: status property crashed when used before parse() method used, math.floor call is now conditional
 - fixed: record type '0260' in offset.json was malformed
-- updated offsets.json from https://www.ibm.com/docs/en/SSLTBW_3.1.0/com.ibm.zos.v3r1.icha300/format.htm etc
+- updated offsets.json from `IBM documentation <https://www.ibm.com/docs/en/SSLTBW_3.1.0/com.ibm.zos.v3r1.icha300/format.htm>`__
 - getOffsets.py to update the json model
 - fixed: RACF documentation contains incorrect record type 05k0
 - all known record types parsed and loaded into DataFrames
 - index columns assigned to all DataFrames, assigned by new correlate() method
 - new method correlate() to increase speed of subsequent data access, used after parse() or loading of pickles
 - new selection methods similar to user() and group(), that work on index fields.
-    when a parameter is given as None or '\*\*', elements matching the other parameters are returned:
-    datasetPermit and datasetConditionalPermit, with parameters profile(), id() and access() 
-    generalPermit and generalConditionalPermit, with parameters resclass(), profile(), id() and access()
-    connect with parameters group() and user()
-- added GPMEM_AUTH to connectData frame, consolidating all connect info into one line 
+
+  - when a parameter is given as None or '\*\*', elements matching the other parameters are returned:
+  - datasetPermit and datasetConditionalPermit, with parameters profile(), id() and access()
+  - generalPermit and generalConditionalPermit, with parameters resclass(), profile(), id() and access()
+  - connect with parameters group() and user()
+
+- added GPMEM_AUTH to connectData frame, consolidating all connect info into one line
 
 0.6.4 (Add 0209)
 ^^^^^^^^^^^^^^^^
@@ -121,7 +136,7 @@ Summary of changes
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - With newer versions of XlsxWriter there's no more .save(). Changed to .close()
-- Pinned pandas and XlsxWriter versions in setup.py 
+- Pinned pandas and XlsxWriter versions in setup.py
 
 0.6.1 (Bug free?)
 ^^^^^^^^^^^^^^^^^
@@ -132,13 +147,13 @@ Summary of changes
 - Conditional Dataset Access now correctly pickled :)
 - Fixed parsing of GRCACC records (had misparsed AUTH_ID)
 - Conditional Generic (General) Records now with correct column name (GRCACC_CLASS_NAME)
-  
+
 0.5.4 (Even more recordtypes!!)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - new property: genericConditionalAccess. Will show GRCACC records.
 - Fixed some nasty 'default recordtypes' bugs
-  
+
 0.5.0 (Pickle FTW!)
 ^^^^^^^^^^^^^^^^^^^
 
@@ -160,7 +175,7 @@ Summary of changes
 0.4.3 (Community Update, thanks @Martydog)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- Add User Group Connections record 203 
+- Add User Group Connections record 203
 - Add User Installation Data record 204
 
 0.4.2

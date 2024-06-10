@@ -19,14 +19,7 @@ To get started with PyRACF, install it using `pip install pyracf` or explore the
 
 [Installation steps](docs/Installation.rst)
 
-[Loading RACF database](docs/LoadData.rst)
-
-[Overview of RACF DataFrames](docs/DataFrames.rst)
-
-[Selection and reporting methods](docs/Methods.rst)
-
-[Printing methods](docs/PrintPythonAttributes.rst)
-
+[Wiki](wiki)
 
 ## Sample code
   
@@ -86,18 +79,18 @@ Print z/OS UNIX profiles
     mysys.general('FACILITY', 'BPX.**')  # show only the FACILITY BPX.** profile
     mysys.general('FACILITY')  # show all FACILITY profiles
 
-    mysys.generals.gfilter('FAC*', 'BPX.**')  # show all BPX profiles
-    mysys.generals.gfilter('UNIXPRIV') # print all in UNIXPRIV
+    mysys.generals.find('FAC*', 'BPX.**')  # show all BPX profiles
+    mysys.generals.find('UNIXPRIV') # print all in UNIXPRIV
 
 Show group information
 
     mysys.connect('SYS1')            # users connected to SYS1 groups
     mysys.connect('**','IBMUSER')    # groups IBMUSER is connected to
 
-    mysys.connectData.gfilter('SYS*','IBM*') # connects using patterns
-    mysys.connectData.rfilter('SYS[AB].*','PROD.*') # regex with alternatives
-    mysys.connectData.query("USCON_GRP_SPECIAL=='YES' & USCON_REVOKE=='YES'")  # group special revoked
-    mysys.connectData.query("GPMEM_AUTH==['CONNECT','JOIN']")  # users with connect authorities
+    mysys.connectData.find('SYS*','IBM*') # connects using patterns
+    mysys.connectData.find(re.compile('SYS[AB].*','PROD.*'))   # regex with alternatives
+    mysys.connectData.find(GRP_SPECIAL='YES', REVOKE=='YES')   # group special revoked
+    mysys.connectData.find(GPMEM_AUTH=['CONNECT','JOIN'])      # users with connect authorities
 
     mysys.users.query("index in @mysys.connect('SYS1').index")  # user details of users connected to SYS1
 
@@ -107,13 +100,15 @@ Show access list information
     mysys.datasetPermit(id='IBMUSER', access='ALTER')    # where is IBMUSER permitted
     mysys.datasetPermit(id='*')                          # where is ID(*) permitted
 
-    mysys.datasets.gfilter('SYS1.**').acl(access='ALTER')    # IDs ALTER access on any SYS1 dataset profile
-    mysys.datasets.gfilter('SYS%.**').acl(allows='UPDATE')   # IDs with access that allows UPDATE
-    mysys.datasets.gfilter('SYS%.**').acl(allows='UPDATE', resolve=True)    # groups and user permits combined 
-    mysys.datasets.gfilter('PROD.**').acl(permits=False, admin=True)        # who can change groups or profiles to change access on PROD data sets
-    mysys.generals.gfilter('XFAC*', 'CKR.**').acl()                         # permits on zSecure Admin/Audit profile
+    mysys.datasets.find('SYS1.**').acl(access='ALTER')    # IDs ALTER access on any SYS1 dataset profile
+    mysys.datasets.find('SYS%.**').acl(allows='UPDATE')   # IDs with access that allows UPDATE
+    mysys.datasets.find('SYS%.**').acl(allows='UPDATE', resolve=True)    # groups and user permits combined 
+    mysys.datasets.find('PROD.**').acl(permits=False, admin=True)        # who can change groups or profiles to change access on PROD data sets
+    mysys.generals.find('XFAC*', 'CKR.**').acl()                         # permits on zSecure Admin/Audit profile
 
-    mysys.datasets.query("ALL_USER_ACCESS=='UPDATE'")    # UACC or ID(*) set to UPDATE
+    mysys.datasets.find(ALL_USER_ACCESS='UPDATE')         # UACC or ID(*) set to UPDATE
+
+    mysys.datasets.match('SYS1.PARMLIB').acl()            # permits on profile for a specific data set
 
 Show group tree information
 

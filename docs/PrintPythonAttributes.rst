@@ -218,6 +218,13 @@ can be selected. Valid format names are simple and unix.
     | ZWEADMIN
     | ZWE100
 
+tree syntax
+~~~~~~~~~~~
+
+.. autoclass:: pyracf.group_structure.GroupStructureTree
+   :members: format, setformat
+
+
 Status Properties
 -----------------
 

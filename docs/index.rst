@@ -15,6 +15,7 @@ pyRACF user documentation
    Installation
    LoadData
    DataFrames
+   SpecificEntryFrames
    Methods
    PrintPythonAttributes
    RuleVerifier

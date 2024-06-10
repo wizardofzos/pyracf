@@ -1,7 +1,7 @@
 Installation
 ============
 
-Becuase pyRACF is hosted at
+Because pyRACF is hosted at
 `pypi.org <https://pypi.org/project/pyracf/%5D>`__ you can install it
 easily via::
 

@@ -19,10 +19,10 @@ version = release
 
 #extensions = []
 #extensions = ['sphinx.ext.napoleon']
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.coverage', 'sphinx.ext.napoleon']
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.coverage', 'sphinx.ext.napoleon', 'sphinx_markdown_builder']
 
 templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['build/*', '_build', 'Thumbs.db', '.DS_Store']
 
 
 

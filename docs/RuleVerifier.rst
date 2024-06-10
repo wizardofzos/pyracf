@@ -86,7 +86,7 @@ For example, select all issues with JESPOOL and SURROGAT profiles, and save thes
 Rules example
 -------------
 
-Rules are processed as a python dictionary, using the dictionary keys as directive and parameter names, and the dictionary values as parameters.
+Rules are processed as a python dictionary, using the dictionary keys as directive and parameter names, and the dictionary values as criteria and parameters.
 To improve readability, you can use yaml to write and store rules, but keep in mind that yaml aggressively interprets parameter values as bool, int or float values, unless you add quotes around the value.
 See `The yaml document from hell <https://ruudvanasseldonk.com/2023/01/11/the-yaml-document-from-hell>`__.
 
@@ -94,7 +94,7 @@ If the ``load`` method finds a ``dict`` type parameter, it uses the dict as a ru
 We will use yaml to illustrate the structure of rules.
 
 Suppose we want to test the permits on data set and general resource profiles, to verify that the IDs (still) exist.
-We would process the DSACC and GRACC tables, test the value of DSACC_AUTH_ID and GRACC_AUTH_ID to see if these are (valid) Access Control List IDs (ACLID).
+We would process the dataset access (DSACC) and general resource access (GRACC) tables, test the value of DSACC_AUTH_ID and GRACC_AUTH_ID to see if these are (valid) Access Control List IDs (ACLID).
 Instead of writing the whole field name, we leave off the prefix because the remainder is the same in those two tables.  The following would accomplish the *orphan permit* test::
 
   testPermits = '''
@@ -121,6 +121,7 @@ We can also apply two rules in one verify::
     - test:
       field: AUTH_ID
       fit: ACLID
+
   no update access to data sets through UACC:
     - DSBD
     - test:
@@ -131,7 +132,8 @@ We can also apply two rules in one verify::
 
 Each rule starts with the (key) rule description, followed by the table name. The rules apply to different tables. The second rule verifies that the UACC of dataset profiles does not exceed READ.
 
-So far, the test commands were not preceded by selections, so they apply to all entries in the specified table. We will expand the first rule with a similar restriction to access for ``ID(*)``::
+So far, the test commands were not preceded by selections, so they apply to all entries in the specified table. We expand the first rule with a similar restriction to access for ``ID(*)``.
+This is accomplished by adding a new entry to the end of the list, this time with a find and a test directive::
 
   testAccess = '''
   access to data sets through permits:
@@ -145,6 +147,7 @@ So far, the test commands were not preceded by selections, so they apply to all 
       test:
         field: ACCESS
         value: [NONE,READ]
+
   no update access to data sets through UACC:
     - DSBD
     - test:
@@ -156,7 +159,7 @@ So far, the test commands were not preceded by selections, so they apply to all 
 The first rule now contains two test criteria.  The first applies to all DSACC entries, the second only to entries where AUTH_ID contains an asterisk.
 For these ``ID(*)`` entries, the same test is applied as to the UACC value.
 
-Finally, lets add a test for the WARNING flag in the profile (Basic Data)::
+Lets add a test for the WARNING flag in the profile (Basic Data)::
 
   testAccess = '''
   access to data sets through permits:
@@ -181,10 +184,10 @@ Finally, lets add a test for the WARNING flag in the profile (Basic Data)::
   '''
   v.load(rules=testAccess).verify()
 
-The test directive now contains a list of field-value requirements, so two fields are checked for each entry.
+The test directive now contains a list of field-value criteria, so two fields are checked for each entry.
 This also demonstrate that rule descriptions can be specified at the rule **or** at the test level.
 
-Finally, an optional directive ``id`` can be specified at the same level as the test directive, or at the level of the field specification::
+Finally, an optional directive ``id`` can be specified at the same level as the test directive, or in the field criteria::
 
   testAccess = '''
   access to data sets through permits:
@@ -220,7 +223,7 @@ And you can filter the verify results using the ``find`` method, like so::
 Rules syntax
 ------------
 
-Rules are a dictionary (dict), the description of the rule is the key of a dict entry.  Entries with a duplicate description will be silently ignored.
+Rules are a dictionary (dict), the description of the rule is the key of a dict entry.  Normally, yaml ignores entries with a duplicate description, however, RulesVerifier issues a warning and creates a unique key.
 
 The entry value is a list, the first element of the list identifies the table or tables this rule works on.  Subsequent list elements are test criteria.
 
@@ -285,7 +288,7 @@ If an OR condition is needed, you can specify additional ``find`` and ``skip`` d
       field: ROAUDIT
       value: 'YES'
 
-Parameters in the ``find`` and ``skip`` directives:
+Parameters in the ``find`` and ``skip`` criteria:
 
 field:
   Field name, with or without prefix.  You can specify field names from the current table, joined table, or dynamic fields from the ``match`` directive.

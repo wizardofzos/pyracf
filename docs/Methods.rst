@@ -20,10 +20,10 @@ on the entity type or RACF attribute stored in the table, one or more
 fields are assigned as index fields. These same index fields, in the
 same order, can be used with the following selection methods.
 
-.gfilter(*mask*, *mask*, ... )
+.find(*mask*, *mask*, ... )
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``.gfilter`` method emulates RACF generic filtering as implemented
+The ``.find`` method emulates RACF generic filtering as implemented
 by the ``SEARCH FILTER( )`` TSO command. The generic characters ``*``
 and ``%`` in these masks apply to the values in the RACF fields,
 ignoring the meaning of those characters in the profile field.
@@ -32,11 +32,13 @@ However, ``'*'`` looks for a single ``*`` in the field, such as with
 ``ID(*)``. A value of ``'**'`` or ``None`` in a parameter means that any
 value is acceptable.
 
+For backward compatibility, you can use ``.gfilter( )`` instead of ``.find( )`` to search for masks.
+
 To select all data set profiles that start with SYS, you write
 
 ::
 
-   >>> r.datasets.gfilter('SYS*.**')
+   >>> r.datasets.find('SYS*.**')
    SYSCSF.*.**
    SYSHSM.**
    SYS1.BRODCAST
@@ -56,44 +58,44 @@ profile key, as literals or patterns, for example
 ::
 
    # all FACILITY profiles starting with BPX
-   r.generals.gfilter('FACILITY', 'BPX.**')
+   r.generals.find('FACILITY', 'BPX.**')
 
    # all general resource profiles starting with BPX
-   r.generals.gfilter('**', 'BPX.**')
+   r.generals.find('**', 'BPX.**')
 
    # all UNIXPRIV profiles
-   r.generals.gfilter('UNIXPRIV')
+   r.generals.find('UNIXPRIV')
 
 For PERMITs, the ID and ACCESS values are available for selection too:
 
 ::
 
    # dataset profiles where IBMUSER is permitted
-   r.datasetAccess.gfilter('**', 'IBMUSER')
+   r.datasetAccess.find('**', 'IBMUSER')
 
    # IDs with UPDATE PERMIT on a SYS1 dataset profile
-   r.datasetAccess.gfilter('SYS1.**', None, 'UPDATE')
+   r.datasetAccess.find('SYS1.**', None, 'UPDATE')
 
    # dataset where ID(*) has conditional access
-   r.datasetConditionalAccess.gfilter(None, '*')
+   r.datasetConditionalAccess.find(None, '*')
 
    # UPDATE on a UNIXPRIV profile
-   r.generalAccesss.gfilter('UNIXPRIV', '**', '**', 'UPDATE')
+   r.generalAccesss.find('UNIXPRIV', '**', '**', 'UPDATE')
 
 For group and user profiles, only one parameter is needed. Two
 parameters can be given for connect information:
 
 ::
 
-   r.groups.gfilter('CSF*')
+   r.groups.find('CSF*')
 
-   r.users.gfilter('IBM*')
+   r.users.find('IBM*')
 
    # users connected to SYS1, SYS2, etc.
-   r.connectData.gfilter('SYS%')
+   r.connectData.find('SYS%')
 
    # groups connected to PROD user IDs
-   r.connectData.gfilter('**', '%%%%PROD')
+   r.connectData.find('**', '%%%%PROD')
 
 Note: to check the index names defined in a DataFrame, use
 ``.index.names``
@@ -105,13 +107,32 @@ Note: to check the index names defined in a DataFrame, use
 
 If there is no matching value, an empty DataFrame will be produced.
 
-.rfilter(*regex*, *regex*, ... )
+.find(re.compile(*regex*), ... )
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``.rfilter`` method provides regular expression matching to the
-index fields of the DataFrame. Remember that ``*`` and ``.`` in these
+The ``.find`` method supports regex patterns by accepting a pattern object.
+Remember that ``*`` and ``.`` in these
 patterns have a special significance, so prefix them with ``\`` if you
 want to search for ``*`` and ``.`` in the RACF fields.
+
+::
+
+   import re
+
+   # SYS1 and SYS2 profiles
+   r.datasets.find(re.compile('SYS[12]\..*'))
+
+or
+
+::
+
+   from re import compile as R_
+
+   # dataset where ID(*) has conditional access
+   r.datasetConditionalAccess.find(None, R_('\*'))
+
+
+The ``.rfilter`` method is provided for backward compatibility, it interprets the index patterns as regex strings.  Internally, it also uses re.match().
 
 ::
 
@@ -127,6 +148,76 @@ want to search for ``*`` and ``.`` in the RACF fields.
    # groups ending in USER
    r.groups.rfilter('\S+USER$')
 
+
+.find(*COLUMN* = *value*, ... )
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``.find( )`` can be used to select entries through the value of a data field.  Specify the column name with or without the table prefix, use a single ``=`` sign, and specify the selection value in quotes, unless you need to search for an integer or float value::
+
+   # special users with revoked status
+   r.users.find(SPECIAL='YES').find(REVOKE='YES')
+
+Tests can also be combined, in which case both criteria must match::
+
+   # permit ID(SYS1) ACCESS(ALTER)
+   r.datasetAccess.find(DSACC_AUTH_ID='SYS1', DSACC_ACCESS='ALTER')
+
+Selection on index fields and test on data fields can be combined::
+
+   # SYS1 data sets with UACC(UPDATE)
+   r.datasets.find('SYS1.**', UACC='UPDATE')
+
+A list of values can be specified as a list::
+
+   # ID(*) with excessive access
+   r.datasetAccess.find(AUTH_ID='*',ACCESS=['UPDATE','CONTROL','ALTER'])
+
+.skip(*mask*, ... , *COLUMN* = *value*, ... )
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``.skip( )`` excludes entries from further processing.  The same parameters are supported as with ``.find( )``::
+
+   # special users with revoked status, except IBMUSER
+   r.users.find(SPECIAL='YES', REVOKE='YES').skip('IBMUSER')
+
+   # profiles that do not have UACC=NONE, except the user catalogs
+   r.datasets.skip(UACC='NONE').skip('UCAT.**')
+
+.match(*name*)
+^^^^^^^^^^^^^^^
+
+``match( )`` finds the best fitting profile for a name, or a list of names::
+
+   # profile covering SYS1.PARMLIB
+   r.datasets.match('SYS1.PARMLIB')
+
+   # profile covering SYS1.PARMLIB, list access list
+   r.datasets.match('SYS1.PARMLIB').acl()
+
+   # profile covering BPX.SUPERUSER and IRR.PWRESET
+   r.generals.find('FACILITY').match(['BPX.SUPERUSER','IRR.PWRESET'])
+
+Selection method syntax
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. automethod:: pyracf.profile_frame.ProfileFrame.find
+
+.. automethod:: pyracf.profile_frame.ProfileFrame.skip
+
+.. automethod:: pyracf.frame_filter.FrameFilter.match
+
+.. automethod:: pyracf.profile_frame.ProfileFrame.stripPrefix
+
+Deprecated method syntax
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. automethod:: pyracf.profile_frame.ProfileFrame.gfilter
+
+.. automethod:: pyracf.profile_frame.ProfileFrame.rfilter
+
+
+
+
 .. _pandas-methods:
 
 Pandas Methods
@@ -140,7 +231,7 @@ pandas <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__.
 
 The exact value is looked up in the index field(s). This method is very
 fast, but an ugly ``KeyError`` is issued when there is no exact match.
-``.gfilter`` also uses the index fields, but suppresses the
+``.find`` also uses the index fields, but suppresses the
 ``KeyError``.
 
 If there is one match, the result is given in a Series. To ensure the
@@ -185,20 +276,24 @@ first two levels, you cannot just type ``None`` in those levels.
 Instead, you can use a “select anything” generator, enclose all
 selections in parentheses, and ensure that this tuple only acts on
 ``axis=0`` by adding a comma at the end. This is how you would find all
-permits to ID(*) in general resource profiles:
+permits to ID(\*) in general resource profiles:
 
 ::
 
    r.generalAccess.loc[(slice(None),slice(None),'*'),]
 
-This is exactly what ``.gfilter('**','**','*')`` would do, but more like
+This is exactly what ``.find('**','**','*')`` would do, but more like
 a RACF person thinks.
 
-Note: - .loc uses square brackets to specify the index value(s). - if a
-table has more than one index field, you may specify one or several, as
-long as they are in the right order. - if a table has more than one
-index field and you use the double brackets method, specify the index
-values as a tuple.
+Note: 
+
+ * .loc uses square brackets to specify the index value(s). 
+
+ * if a table has more than one index field, you may specify one or several, as
+   long as they are in the right order.
+
+ * if a table has more than one index field and you use the double brackets method, specify the index
+   values as a tuple.
 
 .loc[*bit array*]
 ^^^^^^^^^^^^^^^^^^
@@ -234,6 +329,17 @@ name, like so:
           | r.datasetAccess.DSACC_AUTH_ID.eq('*')
           )
    ]
+
+The evaluations within the loc[ ] indexer are executed on all rows of the DataFrame, so for very large DataFrames, the number of comparisons may be ... large.
+In such cases, the number of evaluations may be reduced by creating ever-smaller, temporary tables, like so::
+
+  orphans = r.datasetAccess.loc[~r.datasetAccess.DSACC_AUTH_ID.isin(r.groups.index)]
+  orphans = orphans.loc[~orphans.DSACC_AUTH_ID.isin(r.users.index)]
+  orphans = orphans.loc[orphans.DSACC_AUTH_ID.ne('*')]
+
+Creating the temporary DataFrame does not really copy the data, but only pointers to the data, so the benefits may outweigh the cost of the assignment.
+
+
 Note:
 
   * .loc uses square brackets to specify the selection.
@@ -306,11 +412,20 @@ query() has to test.
    r.generalConditionalAccess.loc['OPERCMDS']\
                              .query("GRCACC_CATYPE=='CONSOLE'")
 
+With the pyracf ``find()`` method, this would be written as::
+
+   r.generalConditionalAccess.find('OPERCMDS',CATYPE='CONSOLE')
+
+or as::
+
+   r.generalConditionalAccess.find('OPERCMDS').find(CATYPE='CONSOLE')
+
+
 Data presentation methods
 -------------------------
 
-.acl(permits=True, explode=False, resolve=False, admin=False, access=None, allows=None, sort="profile")
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.acl( )
+^^^^^^^^
 
 The ``.acl`` method can be used on DataFrames with dataset and general
 resource profile, and on the corresponding access frames, to present
@@ -323,7 +438,7 @@ When ``.acl`` is used on one of the access frame,  ``.acl`` shows just this data
 
 ::
 
-   >>> r.datasets.gfilter('SYS1.**').acl()
+   >>> r.datasets.find('SYS1.**').acl()
                  NAME  VOL USER_ID AUTH_ID ACCESS
    ----------------------------------------------
               SYS1.**      -group-    SYS1  ALTER
@@ -336,51 +451,6 @@ The default layout shows *permits* much like the output of LISTDSD,
 except a column ``USER_ID`` is added. This contains the word ``-group-``
 if the ``AUTH_ID`` was found in ``r.groups``.
 
-permits=[ True | False ]
-""""""""""""""""""""""""""
-
-Show permits found in the profiles, with annotation if an ``AUTH_ID`` is
-a group name.
-
-explode=[ False | True ]
-""""""""""""""""""""""""""
-
-Replace each group in ``AUTH_ID`` with the user IDs connected to the
-group, put the result in ``USER_ID``. A user ID may occur several times
-in ``USER_ID`` with various ``ACCESS`` levels.
-
-resolve=[ False | True ]
-""""""""""""""""""""""""""
-
-Show the ``ACCESS`` level that RACF would allow for each user ID in
-``USER_ID`` with one of the originating group names in ``AUTH_ID``. A
-user ID will only occur once in ``USER_ID`` for each profile.
-
-admin=[ False | True ]
-""""""""""""""""""""""""""
-
-Shows the user IDs with the authority to issue RACF commands that change
-the profile, or any of the permitted groups. The privilege that allows
-the change is listed in ``AUTHORITY`` and the object or entity involved
-can be found in ``VIA``.
-
-access=[ None | 'NONE' | 'READ' | 'UPDATE' | 'CONTROL' | 'ALTER' ]
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
-Show only permits of the given access level. The value must be a quoted
-string. Specify None (without quotes) to show all permits.
-
-allows=[ None | 'NONE' | 'READ' | 'UPDATE' | 'CONTROL' | 'ALTER' ]
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
-Show permits that include/permit the given access level. The value must
-be a quoted string. Specify None (without quotes) to show all permits.
-
-sort=[ 'profile' | 'user' | 'id' | 'access' | 'admin' ]
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
-Sort the output by the given column value. The sort field must be a
-quoted string.
 
 ::
 
@@ -388,20 +458,37 @@ quoted string.
    r.dataset('SYS1.PARMLIB').acl(resolve=True)
 
    # permits with UPDATE on any SYS1 dataset profile
-   r.datasets.gfilter('SYS1.**').acl(access='UPDATE')
+   r.datasets.find('SYS1.**').acl(access='UPDATE')
 
    # permits with UPDATE, CONTROL or ALTER on any SYS1 dataset profile
-   r.datasets.gfilter('SYS1.**').acl(allows='UPDATE')
+   r.datasets.find('SYS1.**').acl(allows='UPDATE')
 
    # users that can make changes to SYS1 datasets
-   r.datasets.gfilter('SYS1.**').acl(allows='UPDATE',resolve=True)
+   r.datasets.find('SYS1.**').acl(allows='UPDATE',resolve=True)
 
-To filter the output of ``.acl()`` you can chain ``.query()``,
+To filter the output of ``.acl()`` you can chain ``.query()`` or ``find()``,
 referencing the column names like so:
 
 ::
 
    # access scope of IBMUSER in SYS1 data sets
-   r.datasets.gfilter('SYS1.**')\
+   r.datasets.find('SYS1.**')\
              .acl(resolve=True)\
              .query("USER_ID=='IBMUSER'")
+
+
+   # access scope of IBMUSER in SYS1 data sets
+   r.datasets.find('SYS1.**')\
+             .acl(resolve=True)\
+             .find(user='IBMUSER')
+
+.acl( ) syntax
+^^^^^^^^^^^^^
+
+.. automethod:: pyracf.profile_frame.ProfileFrame.acl
+
+.. automethod:: pyracf.profile_frame.AclFrame.find
+
+.. automethod:: pyracf.profile_frame.AclFrame.skip
+
+

@@ -7,6 +7,24 @@ from .frame_filter import FrameFilter
 from .racf_functions import generic2regex
 from .utils import listMe, readableList, simpleListed, nameInColumns
 
+def _construct_yaml_map(self, node):
+    '''Add suffix to duplicate node keys in yaml input'''
+    data = {}
+    yield data
+    for key_node, value_node in node.value:
+        key = self.construct_object(key_node, deep=True)
+        val = self.construct_object(value_node, deep=True)
+        if key in data:
+            for i in range(1,999):
+                candidate = f'{key}#{i}'
+                if candidate not in data:
+                    warnings.warn(f'duplicate key "{key}" in yaml input, new key value {candidate} substituted', FutureWarning)
+                    key = candidate
+                    break
+        data.update({key: val})
+
+yaml.constructor.SafeConstructor.add_constructor(u'tag:yaml.org,2002:map', _construct_yaml_map)
+
 
 class RuleFrame(pd.DataFrame,FrameFilter):
     ''' Output of a verify() action '''
@@ -54,7 +72,7 @@ class RuleVerifier:
         self._domains = {}
         self._module = None
 
-    def load(self, rules=None, domains={}, module=None, reset=False, defaultmodule=".profile_field_rules"):
+    def load(self, rules=None, domains=None, module=None, reset=False, defaultmodule=".profile_field_rules"):
         '''load rules + domains from yaml str, structure or from packaged module
 
         Args:
@@ -142,9 +160,9 @@ class RuleVerifier:
           v.add_domains({'SYS1': r.connect('SYS1').index})
 
         '''
-        if type(domains)==dict:  # just a dict
+        if domains and type(domains)==dict:  # just a dict
             pass
-        elif type(domains)==str:  # just a yaml (?) str
+        elif domains and type(domains)==str:  # just a yaml (?) str
             domains = yaml.safe_load(domains)
         else:
             raise TypeError('domains parameter must be a dict or a yaml string')
@@ -191,7 +209,7 @@ class RuleVerifier:
         else:
             raise TypeError('domains parameter must be the name of a domain, or missing')
 
-    def verify(self, rules=None, domains={}, module=None, reset=False, id=True, syntax_check=True) -> RuleFrame:
+    def verify(self, rules=None, domains=None, module=None, reset=False, id=True, syntax_check=True) -> RuleFrame:
         ''' verify fields in profiles against the expected value, issues are returned in a df
 
         Args:
@@ -250,13 +268,13 @@ class RuleVerifier:
             try:
                 return self._domains[item]
             except KeyError:
-                warnings.warn(f"fit argument {item} not in domain list, try {readableList(self._domains.keys())} instead")
+                warnings.warn(f"fit argument {item} not in domain list, try {readableList(self._domains.keys())} instead", SyntaxWarning)
                 return []
 
         if syntax_check:
             syntax = self.syntax_check(confirm=False)
             if not syntax.empty:
-                warnings.warn('verify() cannot process rules with syntax failures')
+                warnings.warn('verify() cannot process rules with syntax failures', SyntaxWarning)
                 return syntax
 
         columns = ['CLASS','PROFILE','FIELD_NAME','EXPECT','ACTUAL','RULE','ID']
@@ -269,7 +287,7 @@ class RuleVerifier:
                 try:
                     tbDF = self._RACFobject.table(tbName)
                 except KeyError:
-                    warnings.warn(f'no table {tbName} in RACF object')
+                    warnings.warn(f'no table {tbName} in RACF object', SyntaxWarning)
                     continue
                 if tbDF.empty:
                     continue
@@ -465,7 +483,7 @@ class RuleVerifier:
                                 brokenSum = pd.concat([brokenSum,broken[brokenSum.columns]],
                                                        sort=False, ignore_index=True)
                     else:
-                        warnings.warn(f'missing test directive in {tbCrit}')
+                        warnings.warn(f'missing test directive in {tbCrit}', SyntaxWarning)
 
         return RuleFrame(brokenSum)
 

@@ -16,7 +16,7 @@ class AclFrame(pd.DataFrame, FrameFilter):
         '''Search acl entries using GENERIC pattern on the data fields.
 
         selection can be one or more values, corresponding to data columns of the df.
-        alternatively specify the field names via an alias keyword or column name::
+        alternatively specify the field names via an alias keyword (user, auth, id or access) or column name in upper case::
 
             r.datasets.acl().find(user="IBM*")
 
@@ -30,9 +30,9 @@ class AclFrame(pd.DataFrame, FrameFilter):
         '''Exclude acl entries using GENERIC pattern on the data fields.
 
         selection can be one or more values, corresponding to data columns of the df.
-        alternatively specify the field names via an alias keyword or column name::
+        alternatively specify the field names via an alias keyword (user, auth, id or access) or column name in upper case::
 
-            r.datasets.acl().skip(USER_ID="IBMUSER")
+            r.datasets.acl().skip(USER_ID="IBMUSER", ACCESS='ALTER')
         '''
         return df._frameFilter(*selection, **kwds, kwdValues=df._aclFilterKwds, useIndex=False, exclude=True)
 
@@ -162,6 +162,11 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
             deep (bool): shallow only changes column names in the returned value, deep=True changes the ProfileFrame.
             prefix (str): specified the prefix to remove if df._fieldPrefix is unavailable.
             setprefix (str): restores _fieldPrefix in the ProfileFrame if it was removed by .merge.
+
+        Save typing with the query() function::
+
+            r.datasets.stripPrefix().query("UACC==['CONTROL','ALTER']")
+
         '''
         if df.shape==(0,0):
             return df
@@ -182,14 +187,15 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
         '''transform the {dataset,general}[Conditional]Access ProfileFrame into an access control list Frame
 
         args:
-            permits (bool): True: show normal ACL (with the groups identified in field USER_ID)
-            explode (bool): True: replace all groups with the users connected to the groups (in field USER_ID)
-            resolve (bool): True: show user specific permit, or the highest group permit for each user
-            admin (bool): True: add the users that have ability to change the groups on the ACL (in field ADMIN_ID),
-                VIA identifies the group name, AUTHORITY the RACF privilege involved
-            access (str): show entries that are equal to the access level specified, e.g., access='CONTROL'
-            allows (str): show entries that are higher or equal to the access level specified, e.g., allows='UPDATE'
-            sort (str): sort the resulting output by column: user, access, id, admin, profile
+            permits (bool): True: show normal ACL (with the groups identified as ``-group-`` in the USER_ID column).
+            explode (bool): True: replace each groups with the users connected to the group (in the USER_ID column).
+                A user ID may occur several times in USER_ID with various ACCESS levels.
+            resolve (bool): True: show user specific permit, or the highest group permit for each user.
+            admin (bool): True: add the users that have ability to change the profile or the groups on the ACL (in the ADMIN_ID column),
+                VIA identifies the group name, AUTHORITY the RACF privilege involved.
+            access (str): show entries that are equal to the access level specified, e.g., access='CONTROL'.
+            allows (str): show entries that are higher or equal to the access level specified, e.g., allows='UPDATE'.
+            sort (str): sort the resulting output by column: user, access, id, admin, profile.
         '''
         RACFobject = df._RACFobject
 
