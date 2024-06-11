@@ -19,7 +19,7 @@ To get started with PyRACF, install it using `pip install pyracf` or explore the
 
 [Installation steps](docs/Installation.rst)
 
-[Wiki](wiki)
+[Preview manual](docs/_build/markdown/index.md)
 
 ## Sample code
   

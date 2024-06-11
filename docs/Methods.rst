@@ -483,7 +483,7 @@ referencing the column names like so:
              .find(user='IBMUSER')
 
 .acl( ) syntax
-^^^^^^^^^^^^^
+^^^^^^^^^^^^^^
 
 .. automethod:: pyracf.profile_frame.ProfileFrame.acl
 

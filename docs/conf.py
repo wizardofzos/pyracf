@@ -35,6 +35,13 @@ html_css_files = [
     'css/custom.css',
 ]
 
+# -- Options for markdown output -------------------------------------------------
+
+# remove .md to ensure links work on github
+# markdown_http_base = ""
+# markdown_uri_doc_suffix = ""
+
+
 # -- autodoc configuration options ----------------------------------------------
 autodoc_member_order = 'bysource'
 import sys, os
