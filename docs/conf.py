@@ -37,7 +37,7 @@ html_css_files = [
 
 # -- Options for markdown output -------------------------------------------------
 
-# remove .md to ensure links work on github
+# remove .md to ensure links work on github's Wiki
 # markdown_http_base = ""
 # markdown_uri_doc_suffix = ""
 

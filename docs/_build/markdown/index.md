@@ -30,6 +30,8 @@ contain the root `toctree` directive. -->
   * [Selection Methods](Methods.md#selection-methods)
   * [Pandas Methods](Methods.md#pandas-methods)
   * [Data presentation methods](Methods.md#data-presentation-methods)
+* [Customizing output](CustomizingOutput.md)
+  * [Selecting columns for output](CustomizingOutput.md#selecting-columns-for-output)
 * [Printable and python object attributes](PrintPythonAttributes.md)
   * [Group Structure Properties](PrintPythonAttributes.md#group-structure-properties)
   * [Status Properties](PrintPythonAttributes.md#status-properties)

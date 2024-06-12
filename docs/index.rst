@@ -17,6 +17,7 @@ pyRACF user documentation
    DataFrames
    SpecificEntryFrames
    Methods
+   CustomizingOutput
    PrintPythonAttributes
    RuleVerifier
    source/modules
