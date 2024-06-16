@@ -1,5 +1,5 @@
-Methods to use on DataFrames
-============================
+Selection Methods to use on DataFrames
+======================================
 
 The data tables described in :ref:`DataFrames` present many entries.
 To find entries you can use standard pandas methods, or one of the
@@ -419,76 +419,4 @@ With the pyracf ``find()`` method, this would be written as::
 or as::
 
    r.generalConditionalAccess.find('OPERCMDS').find(CATYPE='CONSOLE')
-
-
-Data presentation methods
--------------------------
-
-.acl( )
-^^^^^^^^
-
-The ``.acl`` method can be used on DataFrames with dataset and general
-resource profile, and on the corresponding access frames, to present
-various views of the access controls defined in these profiles.
-
-When ``.acl`` is used on ``.datasets`` or ``.generals``, normal and conditional access information is combined in the output.
-When ``.acl`` is used on one of the access frame,  ``.acl`` shows just this data.
-
-``.acl`` returns a DataFrame without the prefixes of the originating frames.
-
-::
-
-   >>> r.datasets.find('SYS1.**').acl()
-                 NAME  VOL USER_ID AUTH_ID ACCESS
-   ----------------------------------------------
-              SYS1.**      -group-    SYS1  ALTER
-              SYS1.**        SPROG   SPROG  ALTER
-              SYS1.**        TCPIP   TCPIP   READ
-         SYS1.**.PAGE      -group-    SYS1  ALTER
-        SYS1.BRODCAST            *       *   READ
-
-The default layout shows *permits* much like the output of LISTDSD,
-except a column ``USER_ID`` is added. This contains the word ``-group-``
-if the ``AUTH_ID`` was found in ``r.groups``.
-
-
-::
-
-   # user IDs with access on SYS1.PARMLIB (if this profile exists)
-   r.dataset('SYS1.PARMLIB').acl(resolve=True)
-
-   # permits with UPDATE on any SYS1 dataset profile
-   r.datasets.find('SYS1.**').acl(access='UPDATE')
-
-   # permits with UPDATE, CONTROL or ALTER on any SYS1 dataset profile
-   r.datasets.find('SYS1.**').acl(allows='UPDATE')
-
-   # users that can make changes to SYS1 datasets
-   r.datasets.find('SYS1.**').acl(allows='UPDATE',resolve=True)
-
-To filter the output of ``.acl()`` you can chain ``.query()`` or ``find()``,
-referencing the column names like so:
-
-::
-
-   # access scope of IBMUSER in SYS1 data sets
-   r.datasets.find('SYS1.**')\
-             .acl(resolve=True)\
-             .query("USER_ID=='IBMUSER'")
-
-
-   # access scope of IBMUSER in SYS1 data sets
-   r.datasets.find('SYS1.**')\
-             .acl(resolve=True)\
-             .find(user='IBMUSER')
-
-.acl( ) syntax
-^^^^^^^^^^^^^^
-
-.. automethod:: pyracf.profile_frame.ProfileFrame.acl
-
-.. automethod:: pyracf.profile_frame.AclFrame.find
-
-.. automethod:: pyracf.profile_frame.AclFrame.skip
-
 

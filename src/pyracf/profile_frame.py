@@ -57,14 +57,15 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
         if method=='concat':
             # copy metadata from first available concatenation source
             for name in self._metadata:
-                for x in other.objs:
-                    if hasattr(x, name):
-                        object.__setattr__(self, name, getattr(x, name))
-                        break
+                if not hasattr(self, name):
+                    for x in other.objs:
+                        if hasattr(x, name):
+                            object.__setattr__(self, name, getattr(x, name))
+                            break
         else:
             if isinstance(other,ProfileFrame):
                 for name in self._metadata:
-                    if hasattr(other, name):
+                    if not hasattr(self, name) and hasattr(other, name):
                         object.__setattr__(self, name, getattr(other, name))
         return self
 

@@ -281,18 +281,23 @@ class RuleVerifier:
         if not id:
             columns = columns[:-1]
         brokenSum = RuleFrame(columns=columns)
+        savedViews = {}
 
         for tbRuleName, (tbNames,*tbCriteria) in self._rules.items():
             for tbName in listMe(tbNames):
-                try:
-                    tbDF = self._RACFobject.table(tbName)
-                except KeyError:
-                    warnings.warn(f'no table {tbName} in RACF object', SyntaxWarning)
-                    continue
+                if tbName in savedViews:
+                    (tbDF,tbModel) = savedViews[tbName]
+                else:
+                    tbModel = tbName  # in case the result of the selection is saved
+                    try:
+                        tbDF = self._RACFobject.table(tbName)
+                    except KeyError:
+                        warnings.warn(f'no table {tbName} in RACF object', SyntaxWarning)
+                        continue
                 if tbDF.empty:
                     continue
 
-                tbEntity = tbName[0:2]
+                tbEntity = tbModel[0:2]
                 tbClassName = {'DS':'dataset', 'GP':'group', 'GR':'general', 'US':'user'}[tbEntity]
                 ixLevel = 1 if tbEntity=='GR' else 0  # GR has CLASS before NAME in the index
 
@@ -341,7 +346,7 @@ class RuleVerifier:
                         actLocs = initArray(True, like=subjectDF)
                         for fldCrit in listMe(actCrit):
                             fldLocs = initArray(False, like=subjectDF)
-                            fldNames = nameInColumns(subjectDF,fldCrit['field'],returnAll=True)
+                            fldNames = nameInColumns(subjectDF,fldCrit['field'],prefix=tbModel,returnAll=True)
                             if len(fldNames)==1:
                                 fldName = fldNames[0]
                                 fldColumn = subjectDF[fldName]  # look only in the main table
@@ -390,13 +395,15 @@ class RuleVerifier:
                                 joinDF=joinDF.droplevel(0)  # so use the user ID index level for join
                         if joinCol:
                             joinCol=nameInColumns(subjectDF,joinCol)
+                        _prefix = subjectDF._fieldPrefix  # join borks the metadata
                         subjectDF = subjectDF.join(joinDF, on=joinCol, how=joinMethod).fillna('')
+                        subjectDF._fieldPrefix = _prefix  # restore needed metadata
 
                     if 'match' in tbCrit:
                         if type(tbCrit['match'])==str and tbCrit['match'].find('(')!=-1:  # match and extract
                             matchPattern = tbCrit['match'].replace('.',r'\.').replace('*',r'\*')\
                                                           .replace('(','(?P<').replace(')','>[^.]*)')
-                            matched = subjectDF[tbName+'_NAME'].str.extract(matchPattern)  # extract 1 qualifier
+                            matched = subjectDF[subjectDF._fieldPrefix+'NAME'].str.extract(matchPattern)  # extract 1 qualifier
 
                     # find and skip use same parser, if these kwds are used, actionLocs are filled
                     # suffix find and skip with any character(s) to specify alternative selections
@@ -435,16 +442,19 @@ class RuleVerifier:
                             actLocs &= fldLocs
                         actionLocs[action] |= actLocs
 
+                    tbLocs = initArray(True, like=subjectDF)
+                    if 'find' in actionLocs: tbLocs &= actionLocs['find']
+                    if 'skip' in actionLocs: tbLocs &= ~ actionLocs['skip']
+
+                    if 'save' in tbCrit:
+                        savedViews[tbCrit['save']] = (subjectDF.loc[tbLocs].copy(), tbModel)
+
                     # actual reporting, relies on subjectDF, matched and tbLocs to be aligned.
                     # when test: command is processed, we combine the class, profile and filter commands in tbLocs
                     # the blocks in test: each create a new fldLocs off tbLocs
                     # we run each field, from all tests separately, and combine results in brokenSum
 
                     if 'test' in tbCrit:
-                        tbLocs = initArray(True, like=subjectDF)
-                        if 'find' in actionLocs: tbLocs &= actionLocs['find']
-                        if 'skip' in actionLocs: tbLocs &= ~ actionLocs['skip']
-
                         for fldCrit in listMe(tbCrit['test']):
                             fldLocs = tbLocs.copy()  # updates to fldLocs clobber tbLocs too, unless you copy()
                             # test can contain 1 dict or a list of dicts
@@ -472,7 +482,7 @@ class RuleVerifier:
                             if any(fldLocs):
                                 broken = subjectDF.loc[fldLocs].copy()
                                 broken['ACTUAL'] = matched[fldName] if matchPattern and fldName in matched.columns else broken[fldName]
-                                broken = broken.rename({tbName+'_CLASS_NAME':'CLASS', tbName+'_NAME':'PROFILE'},axis=1)
+                                broken = broken.rename({tbModel+'_CLASS_NAME':'CLASS', tbModel+'_NAME':'PROFILE'},axis=1)
                                 if tbEntity!='GR':
                                     broken['CLASS'] = tbClassName
                                 broken['FIELD_NAME'] = fldName
@@ -514,6 +524,7 @@ class RuleVerifier:
             brokenList.append(dict(FIELD=field, VALUE=value, COMMENT=comment))
 
         brokenList = []
+        savedViews = {}
 
         for (name,*items) in self._domains:
             if type(name)!=str:
@@ -531,17 +542,21 @@ class RuleVerifier:
 
         for tbRuleName, (tbNames,*tbCriteria) in self._rules.items():
             for tbName in listMe(tbNames):
-                tbDF = self._RACFobject.table(tbName)
+                if tbName in savedViews:
+                    (tbDF,tbModel) = savedViews[tbName]
+                else:
+                    tbDF = self._RACFobject.table(tbName)
+                    tbModel = tbName
                 if isinstance(tbDF,pd.DataFrame):
                     if tbDF.empty:
                         tbDefined = False  # empty frame has no columns
                     else:
-                         tbDefined = True  # check the field names in the frame
+                        tbDefined = True  # check the field names in the frame
                 else:
                     broken('rule',tbRuleName,f"no table {tbName} in RACF object")
                     tbDefined = False
 
-                tbEntity = tbName[0:2]
+                tbEntity = tbModel[0:2]
                 tbClassName = {'DS':'dataset', 'GP':'group', 'GR':'general', 'US':'user'}[tbEntity]
                 ixLevel = 1 if tbEntity=='GR' else 0  # GR has CLASS before NAME in the index
 
@@ -553,7 +568,7 @@ class RuleVerifier:
                         tbColumns = tbDF.columns
 
                     for action in tbCrit.keys():
-                        if action not in ['class','-class','profile','-profile','join','match','-match','test','rule','id']:
+                        if action not in ['class','-class','profile','-profile','join','match','-match','test','rule','id','save']:
                             if action[0:4]!='find' and action[0:4]!='skip':
                                 broken('action',action,f"unsupported action {action} with table {tbNames}")
 
@@ -609,7 +624,7 @@ class RuleVerifier:
                         if isinstance(joinDF,pd.DataFrame):
                             tbColumns = tbColumns.union(joinDF.columns)  # field names available in find/skip/test
                             if joinCol:
-                                joinCols = nameInColumns(subjectDF,joinCol,returnAll=True)
+                                joinCols = nameInColumns(tbDF,joinCol,returnAll=True)
                                 if len(joinCols)==0:
                                     broken('join',tbCrit['join'],f"column name in join directive {tbCrit['join']} not found")
                                 elif len(joinCols)>1:
@@ -643,6 +658,9 @@ class RuleVerifier:
                                 broken('fit',fldCrit['fit'],f"domain name {fldCrit['fit']} in filter not defined")
                             if 'value' in fldCrit and type(fldCrit['value'])==bool:
                                 broken('value',fldCrit['field'],f"yaml text string {fldCrit['value']} for {fldCrit['field']} is not a str")
+
+                    if 'save' in tbCrit:
+                        savedViews[tbCrit['save']] = (tbDF, tbModel)
 
                     if 'test' in tbCrit:
                         for fldCrit in listMe(tbCrit['test']):

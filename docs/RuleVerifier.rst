@@ -290,14 +290,14 @@ If an OR condition is needed, you can specify additional ``find`` and ``skip`` d
 
 Parameters in the ``find`` and ``skip`` criteria:
 
-field:
+field
   Field name, with or without prefix.  You can specify field names from the current table, joined table, or dynamic fields from the ``match`` directive.
 
-value:
+value
   The value the field should have, or a list of values.  Be careful to add quotes around YES, NO, FAIL, FALSE and TRUE.  Patterns are not supported.
   If ``fit`` and ``value`` are both specified, the field value matches if it is either in the domain, or it matches the value.
 
-fit:
+fit
   The name of a domain entry, the current field value must be a member of the domain for ``find``, or not for ``skip``.
 
 join
@@ -352,15 +352,59 @@ Parameters of the ``join`` directive:
 
 or a dict with keys:
 
-table:
+table
   Name of the target table.
 
-on:
+on
   Field name in the current table to use for lookup in the target table.  When omitted, the index field of the current table is used.
 
-how:
+how
   Join method, 'left', 'right', 'outer', 'inner', or 'cross'.
   See `pandas documentation <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.join.html>`_ for the use of join methods.
+
+save
+""""
+Save the result of the current selection as a local (within this verify() run) table name, so a subsequent rule can refer to the saved results by name.
+All results of the directives in the current rule are saved, except the ``test:`` directive and the matched (dynamic) field values.
+Saving rule results may reduce processing time, especially when the results were derived from a ``match`` operation.
+
+An example where the APF data set names were used to select profiles, and the 3rd rule uses these profiles to verify corresponding records with access list info.
+Note how field names in the 3rd rule include the table prefix to prevent name clashes::
+
+	APF library updates must be controlled:
+	- DSBD
+	- match:
+	       - SYS1.LINKLIB
+	       - TEST.APFLOAD
+	       - TEST.USERAPF
+	  save: APF_profiles
+	  test:
+	    - field: UACC
+	      value:
+	        - NONE
+	        - READ
+	    - field: WARNING
+	      value: 'NO'
+	
+	APF library updates must be logged:
+	- APF_profiles
+	- test:
+	    - field: AUDIT_LEVEL
+	      value: [ALL,SUCCESS]
+	    - field: AUDIT_OKQUAL
+	      value: [READ,UPDATE]
+	
+	APF library update must be limited to sysprogs:
+	- APF_profiles
+	- join: DSACC
+	  find:
+	    - field: DSACC_ACCESS
+	      value: [UPDATE,CONTROL,ALTER]
+	  test:
+	    field: DSACC_AUTH_ID
+	    value:
+	      - SYS1
+	      - SYSPROG
 
 test
 """"
@@ -369,17 +413,17 @@ The directive requires one field criterium specifying the expected value(s), or 
 
 Parameters in the ``test`` directive:
 
-field:
+field
   Field name, with or without prefix.  You can specify field names from the current table, joined table, or dynamic fields from the ``match`` directive.
 
-value:
+value
   The value the field should have, or a list of values.  Be careful to add quotes around YES, NO, FAIL, FALSE and TRUE.  Patterns are not supported.
   If ``fit`` and ``value`` are both specified, the field value matches if it is either in the domain, or it matches the value.
 
-fit:
+fit
   The name of a domain entry, the current field value must be a member of the domain for ``find``, or not for ``skip``.
 
-action:
+action
   Reverse the result of the field test by specifying action: 'FAILURE', 'FAIL', 'F', or 'V'.
 
 id
@@ -402,31 +446,31 @@ If the ``load`` method finds a ``dict`` type parameter, it uses the dict as a ru
 
 The default policy module ``profile_field_rules.py`` introduces some useful domains:
 
-USER:
+USER
   List of all RACF defined user IDs.
 
-GROUP:
+GROUP
   List of all RACF defined group names.
 
-ID:
+ID
   The ``union`` of USER and GROUP, giving IDs that could be used as, for example, OWNER of a profile.
 
-SPECIALID:
+SPECIALID
   Special values that can be used in (some) PERMITs and profile qualifiers: ``*``, ``&RACUID``, and ``&RACGRP``.
 
-ACLID:
+ACLID
   The ``union`` of ID and SPECIALID, providing a domain to use for verifying PERMITs.
 
-RACFVARS:
+RACFVARS
   The RACFVARS profile keys, e.g., ``&RACLNDE``.
 
-USERQUAL:
+USERQUAL
   The ``union`` of USER and RACFVARS, used to check profile qualifiers that should contain a (configuarable) user ID.
 
-CATEGORY, SECLEVEL, SECLABEL:
+CATEGORY, SECLEVEL, SECLABEL
   List of categories, security levels and security labels defined in their relevant general resource profiles.
 
-DELETE:
+DELETE
   An empty domain, to ascertain a field is empty.
 
 These domain names may be used with the ``fit`` parameter in ``find``, ``skip`` and ``test`` directives, like so::

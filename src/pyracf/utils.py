@@ -55,5 +55,5 @@ def nameInColumns(df,name,columns=[],prefix=None,returnAll=False):
     elif len(found)==1:
         return found[0]
     else:
-        raise ValueError(f"field {name} matches {len(found)} column names")
+        raise ValueError(f"field {name} matches {len(found)} column names: {simpleListed(found)}")
 
