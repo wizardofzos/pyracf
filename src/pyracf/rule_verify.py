@@ -510,8 +510,10 @@ class RuleVerifier:
                                     broken['ID'] = fldCrit['id'] if 'id' in fldCrit else tbCrit['id'] if 'id' in tbCrit else ''
                                 brokenSum = pd.concat([brokenSum,broken[brokenSum.columns]],
                                                        sort=False, ignore_index=True)
+                    elif 'save' in tbCrit:
+                        pass
                     else:
-                        warnings.warn(f'missing test directive in {tbCrit}', SyntaxWarning)
+                        warnings.warn(f'missing output directive in {tbCrit}, test or save expected', SyntaxWarning)
 
         return RuleFrame(brokenSum)
 
@@ -711,8 +713,10 @@ class RuleVerifier:
                                 broken('value',fldCrit['field'],f"yaml text string {fldCrit['value']} for {fldCrit['field']} is not a str")
                             if 'action' in fldCrit and fldCrit['action'].upper() not in ['FAILURE','FAIL','F','V']:
                                 broken('action',fldCrit['field'],f"action {fldCrit['action']} for {fldCrit['field']} not recorgnized")
+                    elif 'save' in tbCrit:
+                        pass
                     else:
-                        broken('rule',tbRuleName,f'test directive missing in {tbRuleName}, no output will be generated')
+                        broken('rule',tbRuleName,f'no output directive found in {tbRuleName}, save or test expected')
 
         if not brokenList and confirm:
             brokenList.append(dict(field='rules', value='OK', comment='No problem found in rules'))

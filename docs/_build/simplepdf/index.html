@@ -7,14 +7,14 @@
   <title>
    pyRACF 0.9.0 documentation
   </title>
-  <link href="_static/pygments.css?v=649a27d8" rel="stylesheet" type="text/css"/>
+  <link href="_static/pygments.css" rel="stylesheet" type="text/css"/>
   <link href="_static/main.css?v=0eace31b" rel="stylesheet" type="text/css"/>
-  <link href="_static/css/custom.css?v=3f40e330" rel="stylesheet" type="text/css"/>
-  <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=cb58c174">
+  <link href="_static/css/custom.css" rel="stylesheet" type="text/css"/>
+  <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js">
   </script>
-  <script src="_static/doctools.js?v=888ff710">
+  <script src="_static/doctools.js">
   </script>
-  <script src="_static/sphinx_highlight.js?v=4825356b">
+  <script src="_static/sphinx_highlight.js">
   </script>
   <link href="genindex.html" rel="index" title="Index"/>
   <link href="search.html" rel="search" title="Search"/>
@@ -9538,7 +9538,7 @@ This also demonstrate that rule descriptions can be specified at the rule
 The table name can also be a dynamic table created with the
            <code class="docutils literal notranslate">
             <span class="pre">
-             save:
+             save
             </span>
            </code>
            directive.
@@ -9547,13 +9547,19 @@ The table name can also be a dynamic table created with the
            Subsequent list elements are test criteria.
           </p>
           <p>
-           Test criteria are a dict.  The keys of the criteria dict are referred to as directives.  A single
+           Test criteria are a dict.  The keys of the criteria dict are referred to as directives.  An output directive is required, that is
+           <code class="docutils literal notranslate">
+            <span class="pre">
+             save
+            </span>
+           </code>
+           or
            <code class="docutils literal notranslate">
             <span class="pre">
              test
             </span>
            </code>
-           directive is required, all others are optional.
+           , all others are optional.
           </p>
           <section id="class-class">
            <h4>
@@ -9787,7 +9793,7 @@ If
             , or a dynamic table name defined with the
             <code class="docutils literal notranslate">
              <span class="pre">
-              save:
+              save
              </span>
             </code>
             directive.
@@ -9898,7 +9904,7 @@ See
            <p>
             <code class="docutils literal notranslate">
              <span class="pre">
-              join:
+              join
              </span>
             </code>
             can also reference a saved table, for example, to match user IDs in
@@ -9926,7 +9932,7 @@ See
 All results of the directives in the current rule are saved, except the
             <code class="docutils literal notranslate">
              <span class="pre">
-              test:
+              test
              </span>
             </code>
             directive and the matched (dynamic) field values.
@@ -9985,28 +9991,25 @@ Note how field names in the 3rd rule include the table prefix to prevent name cl
             The saved table can also be used in a
             <code class="docutils literal notranslate">
              <span class="pre">
-              join:
+              join
              </span>
             </code>
-            function, for example, to select entries from a list built in a previous rule:
+            directive, for example, to select entries from a list built in a previous rule:
            </p>
            <div class="highlight-default notranslate">
             <div class="highlight">
-             <pre><span></span><span class="n">Users</span> <span class="k">with</span> <span class="n">special</span> <span class="n">should</span> <span class="ow">not</span> <span class="n">be</span> <span class="n">revoked</span><span class="p">:</span>
+             <pre><span></span><span class="n">Users</span> <span class="k">with</span> <span class="n">special</span><span class="p">:</span>
 <span class="o">-</span> <span class="n">USBD</span>
 <span class="o">-</span> <span class="n">find</span><span class="p">:</span>
     <span class="n">field</span><span class="p">:</span> <span class="n">SPECIAL</span>
     <span class="n">value</span><span class="p">:</span> <span class="s1">'YES'</span>
   <span class="o">-</span><span class="n">profile</span><span class="p">:</span> <span class="n">IBMUSER</span>
-  <span class="n">save</span><span class="p">:</span> <span class="n">Specials</span>
-  <span class="n">test</span><span class="p">:</span>
-    <span class="n">field</span><span class="p">:</span> <span class="n">REVOKE</span>
-    <span class="n">value</span><span class="p">:</span> <span class="s1">'NO'</span>
+  <span class="n">save</span><span class="p">:</span> <span class="n">Special_users</span>
 
 <span class="n">Specials</span> <span class="n">should</span> <span class="n">have</span> <span class="n">no</span> <span class="n">DATASET</span> <span class="n">permit</span> <span class="n">ALTER</span><span class="p">:</span>
 <span class="o">-</span> <span class="n">DSACC</span>
 <span class="o">-</span> <span class="n">join</span><span class="p">:</span>
-    <span class="n">table</span><span class="p">:</span> <span class="n">Specials</span>
+    <span class="n">table</span><span class="p">:</span> <span class="n">Special_users</span>
     <span class="n">on</span><span class="p">:</span> <span class="n">AUTH_ID</span>
     <span class="n">how</span><span class="p">:</span> <span class="n">inner</span>
   <span class="n">find</span><span class="p">:</span>
