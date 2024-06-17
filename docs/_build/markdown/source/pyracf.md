@@ -669,13 +669,14 @@ v.get_domains() # all domains as a dict
 v.get_domains('PROD_GROUPS') # one domain as a list
 ```
 
-#### verify(rules=None, domains=None, module=None, reset=False, id=True, syntax_check=True)
+#### verify(rules=None, domains=None, module=None, reset=False, id=True, syntax_check=True, verbose=False)
 
 verify fields in profiles against the expected value, issues are returned in a df
 
 * **Parameters:**
   * **id** (*bool*) – False: suppress ID column from the result frame. The values in this column are taken from the id property in rules
   * **syntax_check** (*bool*) – False: suppress implicit syntax check
+  * **verbose** (*bool*) – True: print progress messages
 * **Returns:**
   Result object (RuleFrame)
 

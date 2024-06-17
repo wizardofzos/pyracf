@@ -209,12 +209,13 @@ class RuleVerifier:
         else:
             raise TypeError('domains parameter must be the name of a domain, or missing')
 
-    def verify(self, rules=None, domains=None, module=None, reset=False, id=True, syntax_check=True) -> RuleFrame:
+    def verify(self, rules=None, domains=None, module=None, reset=False, id=True, syntax_check=True, verbose=False) -> RuleFrame:
         ''' verify fields in profiles against the expected value, issues are returned in a df
 
         Args:
             id (bool): False: suppress ID column from the result frame. The values in this column are taken from the id property in rules
             syntax_check (bool): False: suppress implicit syntax check
+            verbose (bool): True: print progress messages
 
         Returns:
             Result object (RuleFrame)
@@ -271,6 +272,16 @@ class RuleVerifier:
                 warnings.warn(f"fit argument {item} not in domain list, try {readableList(self._domains.keys())} instead", SyntaxWarning)
                 return []
 
+        v_m_rule = None
+        def v_m(*parms):
+            '''print verbose progress message'''
+            if verbose:
+                nonlocal v_m_rule
+                if v_m_rule != tbRuleName:
+                    v_m_rule = tbRuleName
+                    print("Processing",v_m_rule)
+                print(*parms)
+
         if syntax_check:
             syntax = self.syntax_check(confirm=False)
             if not syntax.empty:
@@ -296,6 +307,7 @@ class RuleVerifier:
                         continue
                 if tbDF.empty:
                     continue
+                v_m('table',tbName,'shape',tbDF.shape)
 
                 tbEntity = tbModel[0:2]
                 tbClassName = {'DS':'dataset', 'GP':'group', 'GR':'general', 'US':'user'}[tbEntity]
@@ -376,8 +388,10 @@ class RuleVerifier:
                             joinCol = None
                             if 'table' in tbCrit['join']:
                                 joinTab = tbCrit['join']['table']
-                            if  'on' in tbCrit['join']:
+                            if 'on' in tbCrit['join']:
                                 joinCol = tbCrit['join']['on']
+                            if True in tbCrit['join']:  # borked on:
+                                joinCol = tbCrit['join'][True]
                         else:
                             raise ValueError(f"join directive {tbCrit['join']} needs a table and on field name")
                         if 'how' in tbCrit['join']:
@@ -386,18 +400,20 @@ class RuleVerifier:
                                 raise ValueError("only 'left','right','outer','inner' and 'cross' are accepted join methods")
                         else:
                             joinMethod = 'inner'
-                        if joinTab.isupper():
+                        if joinTab in savedViews:
+                            (joinDF,joinTab) = savedViews[joinTab]
+                        elif joinTab.isupper():
                             joinDF = self._RACFobject.table(joinTab)
                         else:
-                            joinDF = getattr(_RACFobject,joinTab)
+                            joinDF = getattr(self._RACFobject,joinTab)
                         if joinTab=='USCON' or joinTab=='connectData':
-                            if tbName[0:2]=='US':  # link from user ID to connect groups
+                            if tbEntity=='US':  # link from user ID to connect groups
                                 joinDF=joinDF.droplevel(0)  # so use the user ID index level for join
                         if joinCol:
                             joinCol=nameInColumns(subjectDF,joinCol)
-                        _prefix = subjectDF._fieldPrefix  # join borks the metadata
+                        v_m('join','results before',subjectDF.shape,'join with',joinTab,joinDF.shape)
                         subjectDF = subjectDF.join(joinDF, on=joinCol, how=joinMethod).fillna('')
-                        subjectDF._fieldPrefix = _prefix  # restore needed metadata
+                        v_m('join','results after',subjectDF.shape)
 
                     if 'match' in tbCrit:
                         if type(tbCrit['match'])==str and tbCrit['match'].find('(')!=-1:  # match and extract
@@ -454,6 +470,7 @@ class RuleVerifier:
                     # the blocks in test: each create a new fldLocs off tbLocs
                     # we run each field, from all tests separately, and combine results in brokenSum
 
+                    v_m('selected',sum([t for t in tbLocs]),'from',subjectDF.shape)
                     if 'test' in tbCrit:
                         for fldCrit in listMe(tbCrit['test']):
                             fldLocs = tbLocs.copy()  # updates to fldLocs clobber tbLocs too, unless you copy()
@@ -479,6 +496,7 @@ class RuleVerifier:
                             else:
                                 fldAction = ''
 
+                            v_m('test','flagged',sum([t for t in fldLocs]),'from',subjectDF.shape)
                             if any(fldLocs):
                                 broken = subjectDF.loc[fldLocs].copy()
                                 broken['ACTUAL'] = matched[fldName] if matchPattern and fldName in matched.columns else broken[fldName]
@@ -606,21 +624,28 @@ class RuleVerifier:
                             joinTab = tbCrit['join']
                             joinCol = None
                         elif type(tbCrit['join'])==dict: # join: {table: userTSO, on: AUTH_ID}
+                            for d in tbCrit['join']:
+                                if d not in ['table','on',True,'how']:
+                                    broken('join',tbCrit['join'],f"unknown join parameter {d}")
                             joinTab = ''
                             joinCol = None
                             if 'table' in tbCrit['join']:
                                 joinTab = tbCrit['join']['table']
                             if  'on' in tbCrit['join']:
                                 joinCol = tbCrit['join']['on']
+                            if  True in tbCrit['join']:  # borked 'on'
+                                joinCol = tbCrit['join'][True]
                         else:
                             broken('join',tbCrit['join'],f"join directive {tbCrit['join']} needs a table and on field name")
                         if 'how' in tbCrit['join']:
                             if tbCrit['join']['how'] not in ['left','right','outer','inner','cross']:
                                 broken('join',tbCrit['join'], "only 'left','right','outer','inner' and 'cross' are accepted join methods")
-                        if joinTab.isupper():
+                        if joinTab in savedViews:
+                            (joinDF,joinTab) = savedViews[joinTab]
+                        elif joinTab.isupper():
                             joinDF = self._RACFobject.table(joinTab)
                         else:
-                            joinDF = getattr(_RACFobject,joinTab)
+                            joinDF = getattr(self._RACFobject,joinTab)
                         if isinstance(joinDF,pd.DataFrame):
                             tbColumns = tbColumns.union(joinDF.columns)  # field names available in find/skip/test
                             if joinCol:

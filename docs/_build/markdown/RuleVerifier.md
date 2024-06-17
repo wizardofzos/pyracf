@@ -243,7 +243,10 @@ v.load(rules=testAccess).verify().find(ID=1.4)
 
 Rules are a dictionary (dict), the description of the rule is the key of a dict entry.  Normally, yaml ignores entries with a duplicate description, however, RulesVerifier issues a warning and creates a unique key.
 
-The entry value is a list, the first element of the list identifies the table or tables this rule works on.  Subsequent list elements are test criteria.
+The entry value is a list, the first element of the list identifies the table or tables this rule works on.  The table name is identified by the *Prefix* value shown in [Record types and properties](DataFrames.md#dataframes).
+The table name can also be a dynamic table created with the `save:` directive.
+
+Subsequent list elements are test criteria.
 
 Test criteria are a dict.  The keys of the criteria dict are referred to as directives.  A single `test` directive is required, all others are optional.
 
@@ -332,7 +335,8 @@ fit
 
 ### join
 
-Retrieve additional data fields from another table.  The target table will be accessed through its index.  If the `on` parameter is omitted, a match with the current index value will be found, for example to add segment data to a base definitions table:
+Retrieve additional data fields from another table.  The target table will be accessed through its index.  The table name is a *Prefix*, or a dynamic table name defined with the `save:` directive.
+If the `on` parameter is omitted, a match with the current index value will be found, for example to add segment data to a base definitions table:
 
 ```default
 specials should not have root:
@@ -394,6 +398,8 @@ how
 : Join method, ‘left’, ‘right’, ‘outer’, ‘inner’, or ‘cross’.
   See [pandas documentation](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.join.html) for the use of join methods.
 
+`join:` can also reference a saved table, for example, to match user IDs in *permits* with a dynamic list of user IDs, see [below](#save-join).
+
 ### save
 
 Save the result of the current selection as a local (within this verify() run) table name, so a subsequent rule can refer to the saved results by name.
@@ -438,6 +444,36 @@ APF library update must be limited to sysprogs:
     value:
       - SYS1
       - SYSPROG
+```
+
+<a id="save-join"></a>
+
+The saved table can also be used in a `join:` function, for example, to select entries from a list built in a previous rule:
+
+```default
+Users with special should not be revoked:
+- USBD
+- find:
+    field: SPECIAL
+    value: 'YES'
+  -profile: IBMUSER
+  save: Specials
+  test:
+    field: REVOKE
+    value: 'NO'
+
+Specials should have no DATASET permit ALTER:
+- DSACC
+- join:
+    table: Specials
+    on: AUTH_ID
+    how: inner
+  find:
+    field: ACCESS
+    value: ALTER
+  test:
+    field: AUTH_ID
+    value: ''
 ```
 
 ### test
@@ -748,13 +784,14 @@ v.get_domains() # all domains as a dict
 v.get_domains('PROD_GROUPS') # one domain as a list
 ```
 
-#### verify(rules=None, domains=None, module=None, reset=False, id=True, syntax_check=True)
+#### verify(rules=None, domains=None, module=None, reset=False, id=True, syntax_check=True, verbose=False)
 
 verify fields in profiles against the expected value, issues are returned in a df
 
 * **Parameters:**
   * **id** (*bool*) – False: suppress ID column from the result frame. The values in this column are taken from the id property in rules
   * **syntax_check** (*bool*) – False: suppress implicit syntax check
+  * **verbose** (*bool*) – True: print progress messages
 * **Returns:**
   Result object (RuleFrame)
 

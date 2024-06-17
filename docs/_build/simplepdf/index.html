@@ -9524,7 +9524,27 @@ This also demonstrate that rule descriptions can be specified at the rule
            Rules are a dictionary (dict), the description of the rule is the key of a dict entry.  Normally, yaml ignores entries with a duplicate description, however, RulesVerifier issues a warning and creates a unique key.
           </p>
           <p>
-           The entry value is a list, the first element of the list identifies the table or tables this rule works on.  Subsequent list elements are test criteria.
+           The entry value is a list, the first element of the list identifies the table or tables this rule works on.  The table name is identified by the
+           <em>
+            Prefix
+           </em>
+           value shown in
+           <a class="reference internal" href="index.html#dataframes">
+            <span class="std std-ref">
+             Record types and properties
+            </span>
+           </a>
+           .
+The table name can also be a dynamic table created with the
+           <code class="docutils literal notranslate">
+            <span class="pre">
+             save:
+            </span>
+           </code>
+           directive.
+          </p>
+          <p>
+           Subsequent list elements are test criteria.
           </p>
           <p>
            Test criteria are a dict.  The keys of the criteria dict are referred to as directives.  A single
@@ -9760,7 +9780,18 @@ If
             </a>
            </h4>
            <p>
-            Retrieve additional data fields from another table.  The target table will be accessed through its index.  If the
+            Retrieve additional data fields from another table.  The target table will be accessed through its index.  The table name is a
+            <em>
+             Prefix
+            </em>
+            , or a dynamic table name defined with the
+            <code class="docutils literal notranslate">
+             <span class="pre">
+              save:
+             </span>
+            </code>
+            directive.
+If the
             <code class="docutils literal notranslate">
              <span class="pre">
               on
@@ -9864,6 +9895,24 @@ See
              </p>
             </dd>
            </dl>
+           <p>
+            <code class="docutils literal notranslate">
+             <span class="pre">
+              join:
+             </span>
+            </code>
+            can also reference a saved table, for example, to match user IDs in
+            <em>
+             permits
+            </em>
+            with a dynamic list of user IDs, see
+            <a class="reference internal" href="#save-join">
+             <span class="std std-ref">
+              below
+             </span>
+            </a>
+            .
+           </p>
           </section>
           <section id="save">
            <h4>
@@ -9929,6 +9978,43 @@ Note how field names in the 3rd rule include the table prefix to prevent name cl
     <span class="n">value</span><span class="p">:</span>
       <span class="o">-</span> <span class="n">SYS1</span>
       <span class="o">-</span> <span class="n">SYSPROG</span>
+</pre>
+            </div>
+           </div>
+           <p id="save-join">
+            The saved table can also be used in a
+            <code class="docutils literal notranslate">
+             <span class="pre">
+              join:
+             </span>
+            </code>
+            function, for example, to select entries from a list built in a previous rule:
+           </p>
+           <div class="highlight-default notranslate">
+            <div class="highlight">
+             <pre><span></span><span class="n">Users</span> <span class="k">with</span> <span class="n">special</span> <span class="n">should</span> <span class="ow">not</span> <span class="n">be</span> <span class="n">revoked</span><span class="p">:</span>
+<span class="o">-</span> <span class="n">USBD</span>
+<span class="o">-</span> <span class="n">find</span><span class="p">:</span>
+    <span class="n">field</span><span class="p">:</span> <span class="n">SPECIAL</span>
+    <span class="n">value</span><span class="p">:</span> <span class="s1">'YES'</span>
+  <span class="o">-</span><span class="n">profile</span><span class="p">:</span> <span class="n">IBMUSER</span>
+  <span class="n">save</span><span class="p">:</span> <span class="n">Specials</span>
+  <span class="n">test</span><span class="p">:</span>
+    <span class="n">field</span><span class="p">:</span> <span class="n">REVOKE</span>
+    <span class="n">value</span><span class="p">:</span> <span class="s1">'NO'</span>
+
+<span class="n">Specials</span> <span class="n">should</span> <span class="n">have</span> <span class="n">no</span> <span class="n">DATASET</span> <span class="n">permit</span> <span class="n">ALTER</span><span class="p">:</span>
+<span class="o">-</span> <span class="n">DSACC</span>
+<span class="o">-</span> <span class="n">join</span><span class="p">:</span>
+    <span class="n">table</span><span class="p">:</span> <span class="n">Specials</span>
+    <span class="n">on</span><span class="p">:</span> <span class="n">AUTH_ID</span>
+    <span class="n">how</span><span class="p">:</span> <span class="n">inner</span>
+  <span class="n">find</span><span class="p">:</span>
+    <span class="n">field</span><span class="p">:</span> <span class="n">ACCESS</span>
+    <span class="n">value</span><span class="p">:</span> <span class="n">ALTER</span>
+  <span class="n">test</span><span class="p">:</span>
+    <span class="n">field</span><span class="p">:</span> <span class="n">AUTH_ID</span>
+    <span class="n">value</span><span class="p">:</span> <span class="s1">''</span>
 </pre>
             </div>
            </div>
@@ -11442,6 +11528,24 @@ created from RACF object with the .rules property.
                 </span>
                </span>
               </em>
+              ,
+              <em class="sig-param">
+               <span class="n">
+                <span class="pre">
+                 verbose
+                </span>
+               </span>
+               <span class="o">
+                <span class="pre">
+                 =
+                </span>
+               </span>
+               <span class="default_value">
+                <span class="pre">
+                 False
+                </span>
+               </span>
+              </em>
               <span class="sig-paren">
                )
               </span>
@@ -11496,6 +11600,18 @@ created from RACF object with the .rules property.
                     bool
                    </em>
                    ) &ndash; False: suppress implicit syntax check
+                  </p>
+                 </li>
+                 <li>
+                  <p>
+                   <strong>
+                    verbose
+                   </strong>
+                   (
+                   <em>
+                    bool
+                   </em>
+                   ) &ndash; True: print progress messages
                   </p>
                  </li>
                 </ul>
@@ -17157,6 +17273,24 @@ created from RACF object with the .rules property.
                   </span>
                  </span>
                 </em>
+                ,
+                <em class="sig-param">
+                 <span class="n">
+                  <span class="pre">
+                   verbose
+                  </span>
+                 </span>
+                 <span class="o">
+                  <span class="pre">
+                   =
+                  </span>
+                 </span>
+                 <span class="default_value">
+                  <span class="pre">
+                   False
+                  </span>
+                 </span>
+                </em>
                 <span class="sig-paren">
                  )
                 </span>
@@ -17211,6 +17345,18 @@ created from RACF object with the .rules property.
                       bool
                      </em>
                      ) &ndash; False: suppress implicit syntax check
+                    </p>
+                   </li>
+                   <li>
+                    <p>
+                     <strong>
+                      verbose
+                     </strong>
+                     (
+                     <em>
+                      bool
+                     </em>
+                     ) &ndash; True: print progress messages
                     </p>
                    </li>
                   </ul>
