@@ -357,6 +357,7 @@ class RuleVerifier:
 
                         actLocs = initArray(True, like=subjectDF)
                         for fldCrit in listMe(actCrit):
+                            nameInDB = True  # are names for this field criterium already in subjectDF?
                             fldLocs = initArray(False, like=subjectDF)
                             fldNames = nameInColumns(subjectDF,fldCrit['field'],prefix=tbModel,returnAll=True)
                             if len(fldNames)==1:
@@ -369,8 +370,25 @@ class RuleVerifier:
                                         fldLocs |= fldColumn.eq(fldCrit['value'])
                                     else:
                                         fldLocs |= fldColumn.gt('') & fldColumn.isin(fldCrit['value'])
+                                if 'eq' in fldCrit:
+                                    fldNames = nameInColumns(subjectDF,fldCrit['eq'],prefix=tbModel,returnAll=True)
+                                    if len(fldNames)==1:
+                                        fldLocs |= fldColumn.eq(subjectDF[fldNames[0]])
+                                    else:
+                                        nameInDB = False
+                                if 'ne' in fldCrit:
+                                    fldNames = nameInColumns(subjectDF,fldCrit['ne'],prefix=tbModel,returnAll=True)
+                                    if len(fldNames)==1:
+                                        if any(fldLocs):
+                                            fldLocs &= fldColumn.ne(subjectDF[fldNames[0]])
+                                        else:
+                                            fldLocs = fldColumn.ne(subjectDF[fldNames[0]])
+                                    else:
+                                        nameInDB = False
                                 actLocs &= fldLocs
                             else:
+                                nameInDB = False
+                            if not nameInDB:
                                 doneFindSkip = False  # at least one field was not in subjectDF, so redo after join + match complete
                                 if action=='skip':  # a skip that cannot resolve a field would skip too much, so don't skip in first attempt
                                     actLocs = initArray(False, like=subjectDF)
@@ -455,6 +473,13 @@ class RuleVerifier:
                                     fldLocs |= fldColumn.eq(fldCrit['value'])
                                 else:
                                     fldLocs |= fldColumn.gt('') & fldColumn.isin(fldCrit['value'])
+                            if 'eq' in fldCrit:
+                                fldLocs |= fldColumn.eq(subjectDF[nameInColumns(subjectDF,fldCrit['eq'])])
+                            if 'ne' in fldCrit:
+                                if any(fldLocs):
+                                    fldLocs &= fldColumn.ne(subjectDF[nameInColumns(subjectDF,fldCrit['ne'])])
+                                else:
+                                    fldLocs = fldColumn.ne(subjectDF[nameInColumns(subjectDF,fldCrit['ne'])])
                             actLocs &= fldLocs
                         actionLocs[action] |= actLocs
 
@@ -473,7 +498,7 @@ class RuleVerifier:
                     v_m('selected',sum([t for t in tbLocs]),'from',subjectDF.shape)
                     if 'test' in tbCrit:
                         for fldCrit in listMe(tbCrit['test']):
-                            fldLocs = tbLocs.copy()  # updates to fldLocs clobber tbLocs too, unless you copy()
+                            fldLocs = initArray(False, like=subjectDF)
                             # test can contain 1 dict or a list of dicts
                             # entries in subjectDF and in matched must be compared, so combine test results in fldLocs array.
                             # final .loc[ ] test is done once in assignment to 'broken' frame.
@@ -484,17 +509,27 @@ class RuleVerifier:
                                 fldName = nameInColumns(subjectDF,fldCrit['field'])
                                 fldColumn = subjectDF[fldName]  # look in the main table
                             if 'fit' in fldCrit:
-                                fldLocs &= fldColumn.gt('') & ~ fldColumn.isin(safeDomain(fldCrit['fit']))
+                                fldLocs |= fldColumn.gt('') & fldColumn.isin(safeDomain(fldCrit['fit']))
                             if 'value' in fldCrit:
                                 if type(fldCrit['value'])==str:
-                                    fldLocs &= ~ fldColumn.eq(fldCrit['value'])
+                                    fldLocs |= fldColumn.eq(fldCrit['value'])
                                 else:
-                                    fldLocs &= fldColumn.gt('') & ~ fldColumn.isin(fldCrit['value'])
+                                    fldLocs |= fldColumn.gt('') & fldColumn.isin(fldCrit['value'])
+                            if 'eq' in fldCrit:
+                                fldLocs |= fldColumn.eq(subjectDF[nameInColumns(subjectDF,fldCrit['eq'])])
+                            if 'ne' in fldCrit:
+                                if any(fldLocs):
+                                    fldLocs &= fldColumn.ne(subjectDF[nameInColumns(subjectDF,fldCrit['ne'])])
+                                else:
+                                    fldLocs = fldColumn.ne(subjectDF[nameInColumns(subjectDF,fldCrit['ne'])])
                             if 'action' in fldCrit and fldCrit['action'].upper() in ['FAILURE','FAIL','F','V']:  # selection would fail the test, so reverse the reversed logic
                                 fldAction = 'not '
-                                fldLocs = ~ fldLocs
+                                NOTfldAction = ''
+                                fldLocs = tbLocs & fldLocs
                             else:
                                 fldAction = ''
+                                NOTfldAction = 'not '
+                                fldLocs = tbLocs & ~fldLocs
 
                             v_m('test','flagged',sum([t for t in fldLocs]),'from',subjectDF.shape)
                             if any(fldLocs):
@@ -504,7 +539,10 @@ class RuleVerifier:
                                 if tbEntity!='GR':
                                     broken['CLASS'] = tbClassName
                                 broken['FIELD_NAME'] = fldName
-                                broken['EXPECT'] = fldAction + (fldCrit['fit'] if 'fit' in fldCrit else simpleListed(fldCrit['value']) if 'value' in fldCrit else '?')
+                                broken['EXPECT'] = fldAction + fldCrit['fit'] if 'fit' in fldCrit else \
+                                                   fldAction + simpleListed(fldCrit['value']) if 'value' in fldCrit else \
+                                                   fldAction + broken[nameInColumns(subjectDF,fldCrit['eq'])] if 'eq' in fldCrit else \
+                                                   NOTfldAction + broken[nameInColumns(subjectDF,fldCrit['ne'])]  if 'ne' in fldCrit else '?'
                                 broken['RULE'] = fldCrit['rule'] if 'rule' in fldCrit else tbCrit['rule'] if 'rule' in tbCrit else tbRuleName
                                 if id:
                                     broken['ID'] = fldCrit['id'] if 'id' in fldCrit else tbCrit['id'] if 'id' in tbCrit else ''
@@ -668,19 +706,21 @@ class RuleVerifier:
                             if type(fldCrit)!=dict:
                                 broken('filter',fldCrit,'each of criteria should be a dict')
                             for section in fldCrit.keys():
-                                if section not in ['field','fit','value','rule']:
+                                if section not in ['field','fit','value','rule','eq','ne']:
                                     broken('filter',fldCrit,f"unsupported section {section} in {action}")
                             if 'field' not in fldCrit:
                                 broken('filter',fldCrit,f"field must be specified in filter {fldCrit}")
                             elif fldCrit['field'].find('(')!=-1:
                                 broken('field',fldCrit['field'],f"remove parentheses from matched field in filter {fldCrit}")
-                            if not('fit' in fldCrit or 'value' in fldCrit):
-                                broken('filter',fldCrit,f"fit or value should be specified in filter {fldCrit}")
+                            if not('fit' in fldCrit or 'value' in fldCrit or 'eq' in fldCrit or 'eq' in fldCrit):
+                                broken('filter',fldCrit,f"fit, value, eq or ne should be specified in filter {fldCrit}")
 
-                            if tbDefined and len(nameInColumns(None,fldCrit['field'],columns=tbColumns,returnAll=True))==0:
-                                if matchFields and fldCrit['field'] in matchFields: pass
+                            for fN in ['field','eq','ne']:
+                                if fN not in fldCrit: pass
+                                elif tbDefined and len(nameInColumns(None,fldCrit[fN],columns=tbColumns,returnAll=True))==1: pass
+                                elif matchFields and fldCrit[fN] in matchFields: pass
                                 else:
-                                    broken('field',fldCrit['field'],f"field name {fldCrit['field']} not found in {tbName} or match definition")
+                                    broken('field',fldCrit[fN],f"field name {fldCrit[fN]} not found in {tbName} or match definition")
                             if 'fit' in fldCrit and fldCrit['fit'] not in self._domains:
                                 broken('fit',fldCrit['fit'],f"domain name {fldCrit['fit']} in filter not defined")
                             if 'value' in fldCrit and type(fldCrit['value'])==bool:
@@ -694,19 +734,21 @@ class RuleVerifier:
                             if type(fldCrit)!=dict:
                                 broken('test',fldCrit,'each of criteria should be a dict')
                             for section in fldCrit.keys():
-                                if section not in ['field','fit','value','action','rule','id']:
+                                if section not in ['field','fit','value','action','rule','id','eq','ne']:
                                     broken('test',fldCrit,f"unsupported section {section} in {action}")
                             if 'field' not in fldCrit:
                                 broken('test',fldCrit,f"field must be specified in test {fldCrit}")
                             elif fldCrit['field'].find('(')!=-1:
                                 broken('field',fldCrit['field'],f"remove parentheses from matched field in filter {fldCrit}")
-                            if not('fit' in fldCrit or 'value' in fldCrit):
+                            if not('fit' in fldCrit or 'value' in fldCrit or 'eq' in fldCrit or 'ne' in fldCrit):
                                 broken('test',fldCrit,f"fit or value must be specified in test {fldCrit}")
 
-                            if tbDefined and len(nameInColumns(None,fldCrit['field'],columns=tbColumns,returnAll=True))==0:
-                                if matchFields and fldCrit['field'] in matchFields: pass
+                            for fN in ['field','eq','ne']:
+                                if fN not in fldCrit: pass
+                                elif tbDefined and len(nameInColumns(None,fldCrit[fN],columns=tbColumns,returnAll=True))==1: pass
+                                elif matchFields and fldCrit[fN] in matchFields: pass
                                 else:
-                                    broken('field',fldCrit['field'],f"field name {fldCrit['field']} not found in {tbName} or match definition")
+                                    broken('field',fldCrit[fN],f"field name {fldCrit[fN]} not found in {tbName} or match definition")
                             if 'fit' in fldCrit and fldCrit['fit'] not in self._domains:
                                 broken('fit',fldCrit['fit'],f"domain name {fldCrit['fit']} in test not defined")
                             if 'value' in fldCrit and type(fldCrit['value'])==bool:

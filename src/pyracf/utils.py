@@ -31,7 +31,7 @@ def nameInColumns(df,name,columns=[],prefix=None,returnAll=False):
 
     args:
         df: Frame to find column names, or None
-        name (str): name to search for, with prefix or without
+        name (str, list): name to search for, with prefix or without, or list of names
         columns (list): opt. ignore df parameter, caller has already extracted column names
         prefix (str, list): opt. verify that column name has the given prefix(es)
         returnAll (bool): always return all matches in a list
@@ -41,15 +41,22 @@ def nameInColumns(df,name,columns=[],prefix=None,returnAll=False):
     '''
     if len(columns)==0:
         columns = df.columns
-    if name in columns:
-        found = [name]
-    else:
-        found = [cname for cname in columns if cname.split('_',1)[1]==name]
-        if prefix:
-            if type(prefix)==str:
-                found = [cname for cname in found if cname.split('_',1)[0] == prefix]
-            else:
-                found = [cname for cname in found if cname.split('_',1)[0] in prefix]
+
+    if type(name)==str:
+        if name in columns:
+            found = [name]
+        else:
+            found = [cname for cname in columns if cname.split('_',1)[1]==name]
+    elif type(name)==list:
+        returnAll = True  # if a list of names is given, return a list
+        found = [cname for cname in columns if cname in name or cname.split('_',1)[1] in name]
+
+    if prefix:
+        if type(prefix)==str:
+            found = [cname for cname in found if cname.split('_',1)[0] == prefix]
+        else:
+            found = [cname for cname in found if cname.split('_',1)[0] in prefix]
+    
     if returnAll:
         return found
     elif len(found)==1:
