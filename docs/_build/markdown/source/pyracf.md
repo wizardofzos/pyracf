@@ -669,14 +669,15 @@ v.get_domains() # all domains as a dict
 v.get_domains('PROD_GROUPS') # one domain as a list
 ```
 
-#### verify(rules=None, domains=None, module=None, reset=False, id=True, syntax_check=True, verbose=False)
+#### verify(rules=None, domains=None, module=None, reset=False, id=True, verbose=False, syntax_check=None, optimize='rows cols')
 
 verify fields in profiles against the expected value, issues are returned in a df
 
 * **Parameters:**
   * **id** (*bool*) – False: suppress ID column from the result frame. The values in this column are taken from the id property in rules
-  * **syntax_check** (*bool*) – False: suppress implicit syntax check
+  * **syntax_check** (*bool*) – deprecated
   * **verbose** (*bool*) – True: print progress messages
+  * **optimize** (*str*) – cols to improve join speed, rows to use pre-selection
 * **Returns:**
   Result object (RuleFrame)
 
@@ -688,7 +689,7 @@ r.rules.load().verify()
 
 #### syntax_check(confirm=True)
 
-check rules and domains for consistency and unknown directives
+parse rules and domains, check for consistency and unknown directives, normalize field names
 
 specify confirm=False to suppress the message when all is OK
 
@@ -732,7 +733,7 @@ find prefixed column name in a Frame, return whole name, or all names if request
 
 * **Parameters:**
   * **df** – Frame to find column names, or None
-  * **name** (*str*) – name to search for, with prefix or without
+  * **name** (*str* *,* *list*) – name to search for, with prefix or without, or list of names
   * **columns** (*list*) – opt. ignore df parameter, caller has already extracted column names
   * **prefix** (*str* *,* *list*) – opt. verify that column name has the given prefix(es)
   * **returnAll** (*bool*) – always return all matches in a list

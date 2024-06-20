@@ -209,13 +209,14 @@ class RuleVerifier:
         else:
             raise TypeError('domains parameter must be the name of a domain, or missing')
 
-    def verify(self, rules=None, domains=None, module=None, reset=False, id=True, syntax_check=True, verbose=False) -> RuleFrame:
+    def verify(self, rules=None, domains=None, module=None, reset=False, id=True, verbose=False, syntax_check=None, optimize='rows cols') -> RuleFrame:
         ''' verify fields in profiles against the expected value, issues are returned in a df
 
         Args:
             id (bool): False: suppress ID column from the result frame. The values in this column are taken from the id property in rules
-            syntax_check (bool): False: suppress implicit syntax check
+            syntax_check (bool): deprecated
             verbose (bool): True: print progress messages
+            optimize (str): cols to improve join speed, rows to use pre-selection
 
         Returns:
             Result object (RuleFrame)
@@ -226,6 +227,8 @@ class RuleVerifier:
 
         '''
 
+        import time
+
         if rules or domains or module or reset or not (self._rules and self._domains):
             self.load(rules, domains, module, reset)
 
@@ -234,6 +237,9 @@ class RuleVerifier:
 
         if type(id)!=bool:
             raise TypeError('issue id must be True or False')
+
+        if syntax_check!=None:
+            warnings.warn('syntax_check option is deprecated, syntax_check is now implied')
 
         def initArray(value, like):
             ''' create an array of True to apply (AND) EXCLUDE type actions, or an array for False to OR SELECT type actions '''
@@ -272,17 +278,17 @@ class RuleVerifier:
                 warnings.warn(f"fit argument {item} not in domain list, try {readableList(self._domains.keys())} instead", SyntaxWarning)
                 return []
 
-        v_m_rule = None
+        v_m_rule = None  # current rule name
         def v_m(*parms):
             '''print verbose progress message'''
             if verbose:
                 nonlocal v_m_rule
                 if v_m_rule != tbRuleName:
                     v_m_rule = tbRuleName
-                    print("Processing",v_m_rule)
+                    print("Processing starts:",v_m_rule)
                 print(*parms)
 
-        if syntax_check:
+        if '_rules parsed, checked and normalized' not in self._rules:
             syntax = self.syntax_check(confirm=False)
             if not syntax.empty:
                 warnings.warn('verify() cannot process rules with syntax failures', SyntaxWarning)
@@ -295,6 +301,7 @@ class RuleVerifier:
         savedViews = {}
 
         for tbRuleName, (tbNames,*tbCriteria) in self._rules.items():
+            if tbRuleName == '_rules parsed, checked and normalized': continue
             for tbName in listMe(tbNames):
                 if tbName in savedViews:
                     (tbDF,tbModel) = savedViews[tbName]
@@ -348,6 +355,9 @@ class RuleVerifier:
                         if action[0:4]=='find': action = 'find'
                         elif action[0:4]=='skip': action = 'skip'
                         else: continue
+                        if 'rows' not in optimize.split():
+                            doneFindSkip = False
+                            continue
                         if action not in actionLocs:
                             actionLocs[action] = initArray(False, like=subjectDF)
 
@@ -357,11 +367,10 @@ class RuleVerifier:
 
                         actLocs = initArray(True, like=subjectDF)
                         for fldCrit in listMe(actCrit):
-                            nameInDB = True  # are names for this field criterium already in subjectDF?
+                            early = True  # are names for this field criterium already in subjectDF?
                             fldLocs = initArray(False, like=subjectDF)
-                            fldNames = nameInColumns(subjectDF,fldCrit['field'],prefix=tbModel,returnAll=True)
-                            if len(fldNames)==1:
-                                fldName = fldNames[0]
+                            if '_field_early' in fldCrit:
+                                fldName = nameInColumns(subjectDF,fldCrit['field'],prefix=tbModel)
                                 fldColumn = subjectDF[fldName]  # look only in the main table
                                 if 'fit' in fldCrit:
                                     fldLocs |= fldColumn.gt('') & fldColumn.isin(safeDomain(fldCrit['fit']))
@@ -371,24 +380,24 @@ class RuleVerifier:
                                     else:
                                         fldLocs |= fldColumn.gt('') & fldColumn.isin(fldCrit['value'])
                                 if 'eq' in fldCrit:
-                                    fldNames = nameInColumns(subjectDF,fldCrit['eq'],prefix=tbModel,returnAll=True)
-                                    if len(fldNames)==1:
-                                        fldLocs |= fldColumn.eq(subjectDF[fldNames[0]])
+                                    if '_eq_early' in fldCrit:
+                                        fldName = nameInColumns(subjectDF,fldCrit['eq'],prefix=tbModel)
+                                        fldLocs |= fldColumn.eq(subjectDF[fldName])
                                     else:
-                                        nameInDB = False
+                                        early = False
                                 if 'ne' in fldCrit:
-                                    fldNames = nameInColumns(subjectDF,fldCrit['ne'],prefix=tbModel,returnAll=True)
-                                    if len(fldNames)==1:
+                                    if '_ne_early' in fldCrit:
+                                        fldName = nameInColumns(subjectDF,fldCrit['ne'],prefix=tbModel)
                                         if any(fldLocs):
-                                            fldLocs &= fldColumn.ne(subjectDF[fldNames[0]])
+                                            fldLocs &= fldColumn.ne(subjectDF[fldName])
                                         else:
-                                            fldLocs = fldColumn.ne(subjectDF[fldNames[0]])
+                                            fldLocs = fldColumn.ne(subjectDF[fldName])
                                     else:
-                                        nameInDB = False
+                                        early = False
                                 actLocs &= fldLocs
                             else:
-                                nameInDB = False
-                            if not nameInDB:
+                                early = False
+                            if not early:
                                 doneFindSkip = False  # at least one field was not in subjectDF, so redo after join + match complete
                                 if action=='skip':  # a skip that cannot resolve a field would skip too much, so don't skip in first attempt
                                     actLocs = initArray(False, like=subjectDF)
@@ -398,40 +407,54 @@ class RuleVerifier:
                     if 'skip' in actionLocs: subjectDF = subjectDF.loc[~ actionLocs['skip']]
 
                     if 'join' in tbCrit:
-                        if type(tbCrit['join'])==str: # join: userTSO or join: USOMVS
-                            joinTab = tbCrit['join']
+                        joinCrit = tbCrit['join']
+                        if type(joinCrit)==str: # join: userTSO or join: USOMVS
+                            joinTab = joinCrit
                             joinCol = None
-                        elif type(tbCrit['join'])==dict: # join: {table: userTSO, on: AUTH_ID}
+                        elif type(joinCrit)==dict: # join: {table: userTSO, on: AUTH_ID}
                             joinTab = ''
                             joinCol = None
-                            if 'table' in tbCrit['join']:
-                                joinTab = tbCrit['join']['table']
-                            if 'on' in tbCrit['join']:
-                                joinCol = tbCrit['join']['on']
-                            if True in tbCrit['join']:  # borked on:
-                                joinCol = tbCrit['join'][True]
+                            if 'table' in joinCrit:
+                                joinTab = joinCrit['table']
+                            if 'on' in joinCrit:
+                                joinCol = joinCrit['on']
                         else:
-                            raise ValueError(f"join directive {tbCrit['join']} needs a table and on field name")
-                        if 'how' in tbCrit['join']:
-                            joinMethod = tbCrit['join']['how']
+                            raise ValueError(f"join directive {joinCrit} needs a table and on field name")
+                        if 'how' in joinCrit:
+                            joinMethod = joinCrit['how']
                             if joinMethod not in ['left','right','outer','inner','cross']:
                                 raise ValueError("only 'left','right','outer','inner' and 'cross' are accepted join methods")
                         else:
                             joinMethod = 'inner'
+
                         if joinTab in savedViews:
-                            (joinDF,joinTab) = savedViews[joinTab]
+                            (joinDF,joinModel) = savedViews[joinTab]
                         elif joinTab.isupper():
                             joinDF = self._RACFobject.table(joinTab)
+                            joinModel = joinTab
                         else:
                             joinDF = getattr(self._RACFobject,joinTab)
-                        if joinTab=='USCON' or joinTab=='connectData':
+                            joinModel = joinDF._fieldPrefix
+                        if joinModel=='': print('panic joinModel',joinTab)
+                        if joinModel=='USCON':
                             if tbEntity=='US':  # link from user ID to connect groups
                                 joinDF=joinDF.droplevel(0)  # so use the user ID index level for join
+
                         if joinCol:
                             joinCol=nameInColumns(subjectDF,joinCol)
+
+                        if 'cols' in optimize.split():
+                            left_cols = nameInColumns(tbDF,tbCrit['_refFields'],returnAll=True)
+                            right_cols = nameInColumns(joinDF,tbCrit['_refFields'],returnAll=True)
+                        else:
+                            left_cols = slice(None)
+                            right_cols = slice(None)
+
                         v_m('join','results before',subjectDF.shape,'join with',joinTab,joinDF.shape)
-                        subjectDF = subjectDF.join(joinDF, on=joinCol, how=joinMethod).fillna('')
-                        v_m('join','results after',subjectDF.shape)
+                        start = time.time()
+                        subjectDF = subjectDF[left_cols].join(joinDF[right_cols], on=joinCol, how=joinMethod).fillna('')
+                        used = time.time() - start
+                        v_m('join','results after',subjectDF.shape,'elapsed {:.6f} seconds'.format(used))
 
                     if 'match' in tbCrit:
                         if type(tbCrit['match'])==str and tbCrit['match'].find('(')!=-1:  # match and extract
@@ -460,26 +483,29 @@ class RuleVerifier:
                         actLocs = initArray(True, like=subjectDF)
                         for fldCrit in listMe(actCrit):
                             fldLocs = initArray(False, like=subjectDF)
-                            if matchPattern and fldCrit['field'] in matched.columns:
-                                fldName = fldCrit['field']
-                                fldColumn = matched[fldName]  # look in the match result
+                            if '_field_matched' in fldCrit:
+                                fldColumn = matched[fldCrit['field']]  # look in the match result
                             else:  # not a matching field name in match result, look in data columns
                                 fldName = nameInColumns(subjectDF,fldCrit['field'])
                                 fldColumn = subjectDF[fldName]  # look in the main table
                             if 'fit' in fldCrit:
-                                fldLocs |= fldColumn.gt('') & fldColumn.isin(safeDomain(fldCrit['fit']))
+                                fldLocs |= fldColumn.isin(safeDomain(fldCrit['fit']))
                             if 'value' in fldCrit:
                                 if type(fldCrit['value'])==str:
                                     fldLocs |= fldColumn.eq(fldCrit['value'])
+                                elif '' in fldCrit['value']:
+                                    fldLocs |= fldColumn.isin(fldCrit['value'])
                                 else:
                                     fldLocs |= fldColumn.gt('') & fldColumn.isin(fldCrit['value'])
                             if 'eq' in fldCrit:
-                                fldLocs |= fldColumn.eq(subjectDF[nameInColumns(subjectDF,fldCrit['eq'])])
+                                series = matched[fldCrit['_eq']] if '_eq_matched' in fldCrit else subjectDF[nameInColumns(subjectDF,fldCrit['eq'])]
+                                fldLocs |= fldColumn.eq(series)
                             if 'ne' in fldCrit:
+                                series = matched[fldCrit['_ne']] if '_ne_matched' in fldCrit else subjectDF[nameInColumns(subjectDF,fldCrit['ne'])]
                                 if any(fldLocs):
-                                    fldLocs &= fldColumn.ne(subjectDF[nameInColumns(subjectDF,fldCrit['ne'])])
+                                    fldLocs &= fldColumn.ne(series)
                                 else:
-                                    fldLocs = fldColumn.ne(subjectDF[nameInColumns(subjectDF,fldCrit['ne'])])
+                                    fldLocs = fldColumn.ne(series)
                             actLocs &= fldLocs
                         actionLocs[action] |= actLocs
 
@@ -488,7 +514,10 @@ class RuleVerifier:
                     if 'skip' in actionLocs: tbLocs &= ~ actionLocs['skip']
 
                     if 'save' in tbCrit:
-                        savedViews[tbCrit['save']] = (subjectDF.loc[tbLocs].copy(), tbModel)
+                        if type(tbNames)==str or (type(tbNames)==list and len(tbNames)==1):
+                            savedViews[tbCrit['save']] = (subjectDF.loc[tbLocs].copy(), tbModel)
+                        else:
+                            warnings.warn(f"save: {tbCrit['save']} ignored, {tbNames} is more than 1 input table")
 
                     # actual reporting, relies on subjectDF, matched and tbLocs to be aligned.
                     # when test: command is processed, we combine the class, profile and filter commands in tbLocs
@@ -499,42 +528,45 @@ class RuleVerifier:
                     if 'test' in tbCrit:
                         for fldCrit in listMe(tbCrit['test']):
                             fldLocs = initArray(False, like=subjectDF)
-                            # test can contain 1 dict or a list of dicts
-                            # entries in subjectDF and in matched must be compared, so combine test results in fldLocs array.
-                            # final .loc[ ] test is done once in assignment to 'broken' frame.
-                            if matchPattern and fldCrit['field'] in matched.columns:
+                            if '_field_matched' in fldCrit:
                                 fldName = fldCrit['field']
-                                fldColumn = matched[fldName]  # look in the match result
+                                fldColumn = matched[fldCrit['field']]  # look in the match result
                             else:  # not a matching field name in match result, look in data columns
                                 fldName = nameInColumns(subjectDF,fldCrit['field'])
                                 fldColumn = subjectDF[fldName]  # look in the main table
                             if 'fit' in fldCrit:
-                                fldLocs |= fldColumn.gt('') & fldColumn.isin(safeDomain(fldCrit['fit']))
+                                fldLocs |= fldColumn.isin(safeDomain(fldCrit['fit']))
                             if 'value' in fldCrit:
                                 if type(fldCrit['value'])==str:
                                     fldLocs |= fldColumn.eq(fldCrit['value'])
+                                elif '' in fldCrit['value']:
+                                    fldLocs |= fldColumn.isin(fldCrit['value'])
                                 else:
                                     fldLocs |= fldColumn.gt('') & fldColumn.isin(fldCrit['value'])
                             if 'eq' in fldCrit:
-                                fldLocs |= fldColumn.eq(subjectDF[nameInColumns(subjectDF,fldCrit['eq'])])
+                                series = matched[fldCrit['_eq']] if '_eq_matched' in fldCrit else subjectDF[nameInColumns(subjectDF,fldCrit['eq'])]
+                                fldLocs |= fldColumn.eq(series)
                             if 'ne' in fldCrit:
+                                series = matched[fldCrit['_ne']] if '_ne_matched' in fldCrit else subjectDF[nameInColumns(subjectDF,fldCrit['ne'])]
                                 if any(fldLocs):
-                                    fldLocs &= fldColumn.ne(subjectDF[nameInColumns(subjectDF,fldCrit['ne'])])
+                                    fldLocs &= fldColumn.ne(series)
                                 else:
-                                    fldLocs = fldColumn.ne(subjectDF[nameInColumns(subjectDF,fldCrit['ne'])])
-                            if 'action' in fldCrit and fldCrit['action'].upper() in ['FAILURE','FAIL','F','V']:  # selection would fail the test, so reverse the reversed logic
+                                    fldLocs = fldColumn.ne(series)
+                            if 'action' in fldCrit and fldCrit['action'].upper() in ['FAILURE','FAIL','F','V']:  # fldLocs selection fails the test
                                 fldAction = 'not '
                                 NOTfldAction = ''
                                 fldLocs = tbLocs & fldLocs
-                            else:
+                            else:  # fldLocs selection is policy compliant, so report items where fldLocs is False
                                 fldAction = ''
                                 NOTfldAction = 'not '
                                 fldLocs = tbLocs & ~fldLocs
+                            if '_field_matched' in fldCrit:  # match: also selects the records that match
+                                fldLocs &= fldColumn.notna()
 
                             v_m('test','flagged',sum([t for t in fldLocs]),'from',subjectDF.shape)
                             if any(fldLocs):
                                 broken = subjectDF.loc[fldLocs].copy()
-                                broken['ACTUAL'] = matched[fldName] if matchPattern and fldName in matched.columns else broken[fldName]
+                                broken['ACTUAL'] = matched[fldName] if '_field_matched' in fldCrit else broken[fldName]
                                 broken = broken.rename({tbModel+'_CLASS_NAME':'CLASS', tbModel+'_NAME':'PROFILE'},axis=1)
                                 if tbEntity!='GR':
                                     broken['CLASS'] = tbClassName
@@ -556,7 +588,7 @@ class RuleVerifier:
         return RuleFrame(brokenSum)
 
     def syntax_check(self, confirm=True) -> RuleFrame:
-        ''' check rules and domains for consistency and unknown directives
+        ''' parse rules and domains, check for consistency and unknown directives, normalize field names
 
         specify confirm=False to suppress the message when all is OK
 
@@ -601,7 +633,7 @@ class RuleVerifier:
         for tbRuleName, (tbNames,*tbCriteria) in self._rules.items():
             for tbName in listMe(tbNames):
                 if tbName in savedViews:
-                    (tbDF,tbModel) = savedViews[tbName]
+                    (tbDF,tbModel,_) = savedViews[tbName]
                 else:
                     tbDF = self._RACFobject.table(tbName)
                     tbModel = tbName
@@ -621,12 +653,16 @@ class RuleVerifier:
                 # each tbCrit is a dict with 0 or 1 class, profile, match, select and test specifications
 
                 for tbCrit in tbCriteria:
+                    tbCrit['_matchFields'] = []
+                    tbCrit['_refFields'] = ['CLASS_NAME', 'NAME']
                     matchFields = None
                     if tbDefined:
                         tbColumns = tbDF.columns
+                    else:
+                        tbColumns = [tbModel+'_NAME']
 
                     for action in tbCrit.keys():
-                        if action not in ['class','-class','profile','-profile','join','match','-match','test','rule','id','save']:
+                        if action not in ['class','-class','profile','-profile','join','match','-match','test','rule','id','save'] and action[0]!='_':
                             if action[0:4]!='find' and action[0:4]!='skip':
                                 broken('action',action,f"unsupported action {action} with table {tbNames}")
 
@@ -639,6 +675,8 @@ class RuleVerifier:
                             matchFields = re.findall(r'\((\S+?)\)',tbCrit['match'])
                             if len(matchFields)==0:
                                 broken('match',tbCrit['match'],f"at least 1 field should be defined between parentheses")
+                            else:
+                                tbCrit['_matchFields'] = matchFields
                         else:
                             if type(tbCrit['match'])==str or type(tbCrit['match'])==list:
                                 for m in listMe(tbCrit['match']):
@@ -660,28 +698,30 @@ class RuleVerifier:
                             broken('-match',tbCrit['-match'],f"unrecognized type type(tbCrit['-match'])")
 
                     if 'join' in tbCrit:
-                        if type(tbCrit['join'])==str: # join: userTSO or join: USOMVS
-                            joinTab = tbCrit['join']
+                        joinCrit = tbCrit['join']
+                        if type(joinCrit)==str: # join: userTSO or join: USOMVS
+                            joinTab = joinCrit
                             joinCol = None
-                        elif type(tbCrit['join'])==dict: # join: {table: userTSO, on: AUTH_ID}
-                            for d in tbCrit['join']:
-                                if d not in ['table','on',True,'how']:
-                                    broken('join',tbCrit['join'],f"unknown join parameter {d}")
+                        elif type(joinCrit)==dict: # join: {table: userTSO, on: AUTH_ID}
+                            for d in joinCrit:
+                                if d not in ['table','on',True,'how'] and d[0]!='_':
+                                    broken('join',joinCrit,f"unknown join parameter {d}")
                             joinTab = ''
                             joinCol = None
-                            if 'table' in tbCrit['join']:
-                                joinTab = tbCrit['join']['table']
-                            if  'on' in tbCrit['join']:
-                                joinCol = tbCrit['join']['on']
-                            if  True in tbCrit['join']:  # borked 'on'
-                                joinCol = tbCrit['join'][True]
+                            if 'table' in joinCrit:
+                                joinTab = joinCrit['table']
+                            if  'on' in joinCrit:
+                                joinCol = joinCrit['on']
+                            if  True in joinCrit:  # borked 'on'
+                                joinCrit['on'] = joinCrit[True]
+                                joinCol = joinCrit[True]
                         else:
-                            broken('join',tbCrit['join'],f"join directive {tbCrit['join']} needs a table and on field name")
-                        if 'how' in tbCrit['join']:
-                            if tbCrit['join']['how'] not in ['left','right','outer','inner','cross']:
-                                broken('join',tbCrit['join'], "only 'left','right','outer','inner' and 'cross' are accepted join methods")
+                            broken('join',joinCrit,f"join directive {joinCrit} needs a table and on field name")
+                        if 'how' in joinCrit:
+                            if joinCrit['how'] not in ['left','right','outer','inner','cross']:
+                                broken('join',joinCrit, "only 'left','right','outer','inner' and 'cross' are accepted join methods")
                         if joinTab in savedViews:
-                            (joinDF,joinTab) = savedViews[joinTab]
+                            (joinDF,joinModel,_) = savedViews[joinTab]
                         elif joinTab.isupper():
                             joinDF = self._RACFobject.table(joinTab)
                         else:
@@ -689,24 +729,28 @@ class RuleVerifier:
                         if isinstance(joinDF,pd.DataFrame):
                             tbColumns = tbColumns.union(joinDF.columns)  # field names available in find/skip/test
                             if joinCol:
-                                joinCols = nameInColumns(tbDF,joinCol,returnAll=True)
-                                if len(joinCols)==0:
-                                    broken('join',tbCrit['join'],f"column name in join directive {tbCrit['join']} not found")
-                                elif len(joinCols)>1:
-                                    broken('join',tbCrit['join'],f"column name in join directive {tbCrit['join']} ambiguous, found ','.join(joincols)")
+                                names = nameInColumns(tbDF,joinCol,returnAll=True)
+                                if tbDefined and len(names)==1:
+                                     tbCrit['_refFields'].append(joinCol)
+                                elif len(names)==0:
+                                    broken('join',joinCrit,f"column name in join directive {joinCrit} not found")
+                                elif len(names)>1:
+                                    broken('join',joinCrit,f"column name in join directive {joinCrit} ambiguous, found ','.join(joincols)")
+                                else:
+                                    broken('join',joinCrit,f"column name in join directive {joinCrit} unusable")
                         else:
-                            broken('join',tbCrit['join'],f"join directive {tbCrit['join']} contains non-existing table name")
+                            broken('join',joinCrit,f"join directive {joinCrit} contains non-existing table name")
 
                     for (action,actCrit) in tbCrit.items():
                         if action[0:4]=='find': action = 'find'
                         elif action[0:4]=='skip': action = 'skip'
-                        else: break
+                        else: continue
 
                         for fldCrit in listMe(actCrit):
                             if type(fldCrit)!=dict:
                                 broken('filter',fldCrit,'each of criteria should be a dict')
                             for section in fldCrit.keys():
-                                if section not in ['field','fit','value','rule','eq','ne']:
+                                if section not in ['field','fit','value','rule','eq','ne'] and section[0]!='_':
                                     broken('filter',fldCrit,f"unsupported section {section} in {action}")
                             if 'field' not in fldCrit:
                                 broken('filter',fldCrit,f"field must be specified in filter {fldCrit}")
@@ -715,26 +759,35 @@ class RuleVerifier:
                             if not('fit' in fldCrit or 'value' in fldCrit or 'eq' in fldCrit or 'eq' in fldCrit):
                                 broken('filter',fldCrit,f"fit, value, eq or ne should be specified in filter {fldCrit}")
 
-                            for fN in ['field','eq','ne']:
-                                if fN not in fldCrit: pass
-                                elif tbDefined and len(nameInColumns(None,fldCrit[fN],columns=tbColumns,returnAll=True))==1: pass
-                                elif matchFields and fldCrit[fN] in matchFields: pass
-                                else:
-                                    broken('field',fldCrit[fN],f"field name {fldCrit[fN]} not found in {tbName} or match definition")
                             if 'fit' in fldCrit and fldCrit['fit'] not in self._domains:
                                 broken('fit',fldCrit['fit'],f"domain name {fldCrit['fit']} in filter not defined")
                             if 'value' in fldCrit and type(fldCrit['value'])==bool:
                                 broken('value',fldCrit['field'],f"yaml text string {fldCrit['value']} for {fldCrit['field']} is not a str")
 
+                            for fN in ['field','eq','ne']:
+                                if fN in fldCrit:
+                                    names = nameInColumns(None,fldCrit[fN],columns=tbColumns,returnAll=True)
+                                    if tbDefined and len(names)==1:
+                                         tbCrit['_refFields'].append(fldCrit[fN])
+                                         if names[0] in tbDF.columns:
+                                             fldCrit['_'+fN+'_early'] = True
+                                    elif matchFields and fldCrit[fN] in matchFields:
+                                         fldCrit['_'+fN+'_matched'] = True
+                                    elif tbDefined:
+                                        broken('field',fldCrit[fN],f"field name {fldCrit[fN]} not found in {tbName} or match definition")
+
                     if 'save' in tbCrit:
-                        savedViews[tbCrit['save']] = (tbDF, tbModel)
+                        if type(tbNames)==str or (type(tbNames)==list and len(tbNames)==1):
+                            savedViews[tbCrit['save']] = (tbDF, tbModel, tbCrit)
+                        else:
+                            broken('save',tbCrit['save'],f"save: supported for 1 input table, {tbNames} has more than 1")
 
                     if 'test' in tbCrit:
                         for fldCrit in listMe(tbCrit['test']):
                             if type(fldCrit)!=dict:
                                 broken('test',fldCrit,'each of criteria should be a dict')
                             for section in fldCrit.keys():
-                                if section not in ['field','fit','value','action','rule','id','eq','ne']:
+                                if section not in ['field','fit','value','action','rule','id','eq','ne'] and section[0]!='_':
                                     broken('test',fldCrit,f"unsupported section {section} in {action}")
                             if 'field' not in fldCrit:
                                 broken('test',fldCrit,f"field must be specified in test {fldCrit}")
@@ -744,11 +797,14 @@ class RuleVerifier:
                                 broken('test',fldCrit,f"fit or value must be specified in test {fldCrit}")
 
                             for fN in ['field','eq','ne']:
-                                if fN not in fldCrit: pass
-                                elif tbDefined and len(nameInColumns(None,fldCrit[fN],columns=tbColumns,returnAll=True))==1: pass
-                                elif matchFields and fldCrit[fN] in matchFields: pass
-                                else:
-                                    broken('field',fldCrit[fN],f"field name {fldCrit[fN]} not found in {tbName} or match definition")
+                                if fN in fldCrit:
+                                    names = nameInColumns(None,fldCrit[fN],columns=tbColumns,returnAll=True)
+                                    if tbDefined and len(names)==1:
+                                         tbCrit['_refFields'].append(fldCrit[fN])
+                                    elif matchFields and fldCrit[fN] in matchFields:
+                                         fldCrit['_'+fN+'_matched'] = True
+                                    elif tbDefined:
+                                        broken('field',fldCrit[fN],f"field name {fldCrit[fN]} not found in {tbName} or match definition")
                             if 'fit' in fldCrit and fldCrit['fit'] not in self._domains:
                                 broken('fit',fldCrit['fit'],f"domain name {fldCrit['fit']} in test not defined")
                             if 'value' in fldCrit and type(fldCrit['value'])==bool:
@@ -759,6 +815,17 @@ class RuleVerifier:
                         pass
                     else:
                         broken('rule',tbRuleName,f'no output directive found in {tbRuleName}, save or test expected')
+
+                    tbCrit['_refFields'] = list(set(tbCrit['_refFields']))
+                    # update tbCrit where view was created with the referenced field names
+                    if tbName in savedViews:
+                        (_,_,defCrit) = savedViews[tbName]
+                        defCrit['_refFields'].extend(tbCrit['_refFields'])
+                    if 'join' in tbCrit and joinTab in savedViews:
+                        (_,_,defCrit) = savedViews[joinTab]
+                        defCrit['_refFields'].extend(tbCrit['_refFields'])
+
+        self._rules['_rules parsed, checked and normalized'] = ['',{}]
 
         if not brokenList and confirm:
             brokenList.append(dict(field='rules', value='OK', comment='No problem found in rules'))

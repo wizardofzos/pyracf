@@ -63,7 +63,10 @@ orphan permits:
 
 DFP resower must be user or group:
   - DSDFP
-  - test:
+  - skip:
+    - field: RESOWNER_ID
+      value: ''
+    test:
     - field: RESOWNER_ID
       fit: ID
 
@@ -72,7 +75,8 @@ ID references in resouce profiles:
   - test:
     - field: NOTIFY_ID
       fit: USER
-      rule: notify on dataset and resource profiles must be user
+      value: ''
+      rule: notify on dataset and resource profiles must be user, or empty
     - field: OWNER_ID
       fit: ID
       rule: owner must be user or group
@@ -125,7 +129,7 @@ orphans in STARTED profiles:
       value: =MEMBER
     - field: GROUP_ID
       fit: GROUP
-      value: =MEMBER
+      value: ['','=MEMBER']
 
 users should have valid default group and owner:
   - USBD
@@ -141,6 +145,7 @@ valid CATEGORY (except in SECDATA and SECLABEL profiles where the internal value
     test:
     - field: CATEGORY
       fit: CATEGORY
+      value: ''
 
 valid SECLEVEL (except in SECDATA and SECLABEL profiles where the internal values are used):
   - [DSBD, GRBD, GRMEM, USBD]
@@ -148,13 +153,14 @@ valid SECLEVEL (except in SECDATA and SECLABEL profiles where the internal value
     test:
     - field: SECLEVEL
       fit: SECLEVEL
-      value: '000'
+      value: ['','000','00000']
 
 valid SECLABEL:
   - [DSBD, GRBD, USBD, USTSO]
   - test:
     - field: SECLABEL
       fit: SECLABEL
+      value: ''
 
     '''
 

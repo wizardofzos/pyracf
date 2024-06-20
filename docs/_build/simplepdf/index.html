@@ -7,14 +7,14 @@
   <title>
    pyRACF 0.9.0 documentation
   </title>
-  <link href="_static/pygments.css" rel="stylesheet" type="text/css"/>
+  <link href="_static/pygments.css?v=649a27d8" rel="stylesheet" type="text/css"/>
   <link href="_static/main.css?v=0eace31b" rel="stylesheet" type="text/css"/>
-  <link href="_static/css/custom.css" rel="stylesheet" type="text/css"/>
-  <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js">
+  <link href="_static/css/custom.css?v=3f40e330" rel="stylesheet" type="text/css"/>
+  <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=cb58c174">
   </script>
-  <script src="_static/doctools.js">
+  <script src="_static/doctools.js?v=888ff710">
   </script>
-  <script src="_static/sphinx_highlight.js">
+  <script src="_static/sphinx_highlight.js?v=4825356b">
   </script>
   <link href="genindex.html" rel="index" title="Index"/>
   <link href="search.html" rel="search" title="Search"/>
@@ -9740,7 +9740,7 @@ For example, this excludes all permits to SYS1 with ALTER access:
             </dt>
             <dd>
              <p>
-              The value the field should have, or a list of values.  Be careful to add quotes around YES, NO, FAIL, FALSE and TRUE.  Patterns are not supported.
+              The value the field should have, or a list of values.  Be careful to add quotes around YES, NO, ON, OFF, FAIL, FALSE and TRUE.  Patterns are not supported.
 If
               <code class="docutils literal notranslate">
                <span class="pre">
@@ -9774,6 +9774,34 @@ If
                </span>
               </code>
               .
+             </p>
+            </dd>
+            <dt>
+             eq
+            </dt>
+            <dd>
+             <p>
+              Field name, with or without prefix, to compare with the value of
+              <code class="docutils literal notranslate">
+               <span class="pre">
+                field
+               </span>
+              </code>
+              , for example, to select groups where owner and superior group are equal.
+             </p>
+            </dd>
+            <dt>
+             ne
+            </dt>
+            <dd>
+             <p>
+              Field name, with or without prefix, to compare with the value of
+              <code class="docutils literal notranslate">
+               <span class="pre">
+                field
+               </span>
+              </code>
+              , for example, to select DSACC records where the user ID on the ACL is not the same as the hight level qualifier.
              </p>
             </dd>
            </dl>
@@ -9943,6 +9971,12 @@ Saving rule results may reduce processing time, especially when the results were
              </span>
             </code>
             operation.
+            <code class="docutils literal notranslate">
+             <span class="pre">
+              save
+             </span>
+            </code>
+            is denied if the rule reads from multiple tables.
            </p>
            <p>
             An example where the APF data set names were used to select profiles, and the 3rd rule uses these profiles to verify corresponding records with access list info.
@@ -9959,6 +9993,10 @@ Note how field names in the 3rd rule include the table prefix to prevent name cl
   <span class="n">save</span><span class="p">:</span> <span class="n">APF_profiles</span>
   <span class="n">test</span><span class="p">:</span>
     <span class="o">-</span> <span class="n">field</span><span class="p">:</span> <span class="n">UACC</span>
+      <span class="n">value</span><span class="p">:</span>
+        <span class="o">-</span> <span class="n">NONE</span>
+        <span class="o">-</span> <span class="n">READ</span>
+    <span class="o">-</span> <span class="n">field</span><span class="p">:</span> <span class="n">IDSTAR_ACCESS</span>
       <span class="n">value</span><span class="p">:</span>
         <span class="o">-</span> <span class="n">NONE</span>
         <span class="o">-</span> <span class="n">READ</span>
@@ -10062,7 +10100,7 @@ The directive requires one field criterium specifying the expected value(s), or 
             </dt>
             <dd>
              <p>
-              The value the field should have, or a list of values.  Be careful to add quotes around YES, NO, FAIL, FALSE and TRUE.  Patterns are not supported.
+              The value the field should have, or a list of values.  Be careful to add quotes around YES, NO, ON, OFF, FAIL, FALSE and TRUE.  Patterns are not supported.
 If
               <code class="docutils literal notranslate">
                <span class="pre">
@@ -10096,6 +10134,34 @@ If
                </span>
               </code>
               .
+             </p>
+            </dd>
+            <dt>
+             eq
+            </dt>
+            <dd>
+             <p>
+              Field name, with or without prefix, to compare with the value of
+              <code class="docutils literal notranslate">
+               <span class="pre">
+                field
+               </span>
+              </code>
+              , for example, to check if owner and superior group are equal.
+             </p>
+            </dd>
+            <dt>
+             ne
+            </dt>
+            <dd>
+             <p>
+              Field name, with or without prefix, to compare with the value of
+              <code class="docutils literal notranslate">
+               <span class="pre">
+                field
+               </span>
+              </code>
+              , for example, to check if the user ID on the ACL is not the same as the hight level qualifier.
              </p>
             </dd>
             <dt>
@@ -11517,24 +11583,6 @@ created from RACF object with the .rules property.
               <em class="sig-param">
                <span class="n">
                 <span class="pre">
-                 syntax_check
-                </span>
-               </span>
-               <span class="o">
-                <span class="pre">
-                 =
-                </span>
-               </span>
-               <span class="default_value">
-                <span class="pre">
-                 True
-                </span>
-               </span>
-              </em>
-              ,
-              <em class="sig-param">
-               <span class="n">
-                <span class="pre">
                  verbose
                 </span>
                </span>
@@ -11546,6 +11594,45 @@ created from RACF object with the .rules property.
                <span class="default_value">
                 <span class="pre">
                  False
+                </span>
+               </span>
+              </em>
+              ,
+              <em class="sig-param">
+               <span class="n">
+                <span class="pre">
+                 syntax_check
+                </span>
+               </span>
+               <span class="o">
+                <span class="pre">
+                 =
+                </span>
+               </span>
+               <span class="default_value">
+                <span class="pre">
+                 None
+                </span>
+               </span>
+              </em>
+              ,
+              <em class="sig-param">
+               <span class="n">
+                <span class="pre">
+                 optimize
+                </span>
+               </span>
+               <span class="o">
+                <span class="pre">
+                 =
+                </span>
+               </span>
+               <span class="default_value">
+                <span class="pre">
+                 'rows
+                </span>
+                <span class="pre">
+                 cols'
                 </span>
                </span>
               </em>
@@ -11602,7 +11689,7 @@ created from RACF object with the .rules property.
                    <em>
                     bool
                    </em>
-                   ) &ndash; False: suppress implicit syntax check
+                   ) &ndash; deprecated
                   </p>
                  </li>
                  <li>
@@ -11615,6 +11702,18 @@ created from RACF object with the .rules property.
                     bool
                    </em>
                    ) &ndash; True: print progress messages
+                  </p>
+                 </li>
+                 <li>
+                  <p>
+                   <strong>
+                    optimize
+                   </strong>
+                   (
+                   <em>
+                    str
+                   </em>
+                   ) &ndash; cols to improve join speed, rows to use pre-selection
                   </p>
                  </li>
                 </ul>
@@ -11690,7 +11789,7 @@ created from RACF object with the .rules property.
              </dt>
              <dd>
               <p>
-               check rules and domains for consistency and unknown directives
+               parse rules and domains, check for consistency and unknown directives, normalize field names
               </p>
               <p>
                specify confirm=False to suppress the message when all is OK
@@ -17262,24 +17361,6 @@ created from RACF object with the .rules property.
                 <em class="sig-param">
                  <span class="n">
                   <span class="pre">
-                   syntax_check
-                  </span>
-                 </span>
-                 <span class="o">
-                  <span class="pre">
-                   =
-                  </span>
-                 </span>
-                 <span class="default_value">
-                  <span class="pre">
-                   True
-                  </span>
-                 </span>
-                </em>
-                ,
-                <em class="sig-param">
-                 <span class="n">
-                  <span class="pre">
                    verbose
                   </span>
                  </span>
@@ -17291,6 +17372,45 @@ created from RACF object with the .rules property.
                  <span class="default_value">
                   <span class="pre">
                    False
+                  </span>
+                 </span>
+                </em>
+                ,
+                <em class="sig-param">
+                 <span class="n">
+                  <span class="pre">
+                   syntax_check
+                  </span>
+                 </span>
+                 <span class="o">
+                  <span class="pre">
+                   =
+                  </span>
+                 </span>
+                 <span class="default_value">
+                  <span class="pre">
+                   None
+                  </span>
+                 </span>
+                </em>
+                ,
+                <em class="sig-param">
+                 <span class="n">
+                  <span class="pre">
+                   optimize
+                  </span>
+                 </span>
+                 <span class="o">
+                  <span class="pre">
+                   =
+                  </span>
+                 </span>
+                 <span class="default_value">
+                  <span class="pre">
+                   'rows
+                  </span>
+                  <span class="pre">
+                   cols'
                   </span>
                  </span>
                 </em>
@@ -17347,7 +17467,7 @@ created from RACF object with the .rules property.
                      <em>
                       bool
                      </em>
-                     ) &ndash; False: suppress implicit syntax check
+                     ) &ndash; deprecated
                     </p>
                    </li>
                    <li>
@@ -17360,6 +17480,18 @@ created from RACF object with the .rules property.
                       bool
                      </em>
                      ) &ndash; True: print progress messages
+                    </p>
+                   </li>
+                   <li>
+                    <p>
+                     <strong>
+                      optimize
+                     </strong>
+                     (
+                     <em>
+                      str
+                     </em>
+                     ) &ndash; cols to improve join speed, rows to use pre-selection
                     </p>
                    </li>
                   </ul>
@@ -17435,7 +17567,7 @@ created from RACF object with the .rules property.
                </dt>
                <dd>
                 <p>
-                 check rules and domains for consistency and unknown directives
+                 parse rules and domains, check for consistency and unknown directives, normalize field names
                 </p>
                 <p>
                  specify confirm=False to suppress the message when all is OK
@@ -17768,7 +17900,13 @@ as a result you can just: for options in listMe(optioORoptions)
                    <em>
                     str
                    </em>
-                   ) &ndash; name to search for, with prefix or without
+                   <em>
+                    ,
+                   </em>
+                   <em>
+                    list
+                   </em>
+                   ) &ndash; name to search for, with prefix or without, or list of names
                   </p>
                  </li>
                  <li>

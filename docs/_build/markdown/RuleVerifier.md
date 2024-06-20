@@ -327,11 +327,17 @@ field
 : Field name, with or without prefix.  You can specify field names from the current table, joined table, or dynamic fields from the `match` directive.
 
 value
-: The value the field should have, or a list of values.  Be careful to add quotes around YES, NO, FAIL, FALSE and TRUE.  Patterns are not supported.
+: The value the field should have, or a list of values.  Be careful to add quotes around YES, NO, ON, OFF, FAIL, FALSE and TRUE.  Patterns are not supported.
   If `fit` and `value` are both specified, the field value matches if it is either in the domain, or it matches the value.
 
 fit
 : The name of a domain entry, the current field value must be a member of the domain for `find`, or not for `skip`.
+
+eq
+: Field name, with or without prefix, to compare with the value of `field`, for example, to select groups where owner and superior group are equal.
+
+ne
+: Field name, with or without prefix, to compare with the value of `field`, for example, to select DSACC records where the user ID on the ACL is not the same as the hight level qualifier.
 
 ### join
 
@@ -405,6 +411,7 @@ how
 Save the result of the current selection as a local (within this verify() run) table name, so a subsequent rule can refer to the saved results by name.
 All results of the directives in the current rule are saved, except the `test` directive and the matched (dynamic) field values.
 Saving rule results may reduce processing time, especially when the results were derived from a `match` operation.
+`save` is denied if the rule reads from multiple tables.
 
 An example where the APF data set names were used to select profiles, and the 3rd rule uses these profiles to verify corresponding records with access list info.
 Note how field names in the 3rd rule include the table prefix to prevent name clashes:
@@ -419,6 +426,10 @@ APF library updates must be controlled:
   save: APF_profiles
   test:
     - field: UACC
+      value:
+        - NONE
+        - READ
+    - field: IDSTAR_ACCESS
       value:
         - NONE
         - READ
@@ -484,11 +495,17 @@ field
 : Field name, with or without prefix.  You can specify field names from the current table, joined table, or dynamic fields from the `match` directive.
 
 value
-: The value the field should have, or a list of values.  Be careful to add quotes around YES, NO, FAIL, FALSE and TRUE.  Patterns are not supported.
+: The value the field should have, or a list of values.  Be careful to add quotes around YES, NO, ON, OFF, FAIL, FALSE and TRUE.  Patterns are not supported.
   If `fit` and `value` are both specified, the field value matches if it is either in the domain, or it matches the value.
 
 fit
 : The name of a domain entry, the current field value must be a member of the domain for `find`, or not for `skip`.
+
+eq
+: Field name, with or without prefix, to compare with the value of `field`, for example, to check if owner and superior group are equal.
+
+ne
+: Field name, with or without prefix, to compare with the value of `field`, for example, to check if the user ID on the ACL is not the same as the hight level qualifier.
 
 action
 : Reverse the result of the field test by specifying action: ‘FAILURE’, ‘FAIL’, ‘F’, or ‘V’.
@@ -781,14 +798,15 @@ v.get_domains() # all domains as a dict
 v.get_domains('PROD_GROUPS') # one domain as a list
 ```
 
-#### verify(rules=None, domains=None, module=None, reset=False, id=True, syntax_check=True, verbose=False)
+#### verify(rules=None, domains=None, module=None, reset=False, id=True, verbose=False, syntax_check=None, optimize='rows cols')
 
 verify fields in profiles against the expected value, issues are returned in a df
 
 * **Parameters:**
   * **id** (*bool*) – False: suppress ID column from the result frame. The values in this column are taken from the id property in rules
-  * **syntax_check** (*bool*) – False: suppress implicit syntax check
+  * **syntax_check** (*bool*) – deprecated
   * **verbose** (*bool*) – True: print progress messages
+  * **optimize** (*str*) – cols to improve join speed, rows to use pre-selection
 * **Returns:**
   Result object (RuleFrame)
 
@@ -800,7 +818,7 @@ r.rules.load().verify()
 
 #### syntax_check(confirm=True)
 
-check rules and domains for consistency and unknown directives
+parse rules and domains, check for consistency and unknown directives, normalize field names
 
 specify confirm=False to suppress the message when all is OK
 
