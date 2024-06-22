@@ -21,6 +21,10 @@ To get started with PyRACF, install it using `pip install pyracf` or explore the
 
 [Preview manual](docs/_build/markdown/index.md)
 
+[Wiki](../../wiki)
+
+[Concepts presentation, May 2024](docs/_external/GSE-NL-2024-concepts.pdf)
+
 ## Sample code
   
 ### Parsing IRRDBU00 unloads like a boss
