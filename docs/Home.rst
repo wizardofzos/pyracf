@@ -2,7 +2,7 @@ pyRACF background
 =================
 
 pyRACF was written for the sole purpose of being able to work with RACF
-confugurations from a python runtime.
+configurations from a python runtime.
 
 At its core pyRACF converts every recordtype from an IRRDBU00-unload
 into its own Panda DataFrame. These DataFrames can be saved as ‘pickle-files’

@@ -26,6 +26,9 @@ class FrameFilter():
         in this case we prune the entries that must be excluded from an intial array, and only call .loc[ ] once.
         '''
 
+        if not isinstance(df,pd.DataFrame) or df.empty:
+            return df
+
         skipSelect = (None,'**','.*') if regexPattern else (None,'**')
         if exclude:  # reverse selection, so collect all comparison results
             locs = pd.Series(True, index=df.index)
@@ -66,7 +69,10 @@ class FrameFilter():
                 else:
                     raise TypeError('match keyword only applies to DS (dataset) and GR (general resource) ProfileFrames')
             elif kwd in kwdValues:
-                columnSelect.append([kwdValues[kwd],sel])
+                if callable(kwdValues[kwd]):
+                    columnSelect.append(kwdValues[kwd](df,kwd,sel))  # function returns [column,selection]
+                else:
+                    columnSelect.append([kwdValues[kwd],sel])
             elif kwd in df.columns:
                 columnSelect.append([kwd,sel])
             elif hasattr(df,'_fieldPrefix') and df._fieldPrefix+kwd in df.columns:
@@ -89,7 +95,7 @@ class FrameFilter():
                     result = df[column]==sel
                 else:
                     result = df[column].str.match(generic2regex(sel))
-            elif type(sel)==list:
+            elif type(sel) in (list,set,tuple):
                 generic = any([s.find('*')>=0 or s.find('%')>=0 for s in sel])
                 if generic:
                     sel = '|'.join([generic2regex(s) for s in sel])
@@ -108,21 +114,22 @@ class FrameFilter():
             df = df.loc[~ locs]
         return df
 
-    def match(df, *selection):
+    def match(df, *selection, show_resource=False):
         """dataset or general resource related records that match a given dataset name or resource.
 
         Args:
             *selection: for dataset Frames: a dataset name.  for general Frames: a resource name, or a class and a resource name.
                 Each of these can be a str, or a list of str.
+            show_resource (bool): True: add a column with the resource name in the output Frame
 
         Returns:
-            ProfileFrame with 0 or 1 entries
+            ProfileFrame with 0 or 1 entries for one resource, several if a list of resources is given
 
         Example::
 
           r.datasets.match('SYS1.PROCLIB')
 
-          r.datasets.match(['SYS1.PARMLIB','SYS1.PROCLIB'])
+          r.datasets.match(['SYS1.PARMLIB','SYS1.PROCLIB'], show_resource=True)
 
           r.generals.match('FACILITY', 'BPX.SUPERUSER')
 
@@ -153,7 +160,7 @@ class FrameFilter():
 
           profileList.acl(resolve=True, allows='UPDATE')
 
-        Note: the resource name is not included in ProfileFrames, so you should specify similar resources in the selection.
+        Note: the resource name is not included in the output of acl(), so you should specify similar resources in the selection.
         """
         frames = []
         if hasattr(df,'_fieldPrefix'):
@@ -162,17 +169,23 @@ class FrameFilter():
                 if len(selection)!=1:
                     raise TypeError('match keyword requires one parameter containing the data set name')
                 else:
-                    for sel in listMe(selection[0]):
-                        qualp = sel[0:sel.find('.')+1]
-                        if qualp:
-                            result = df.filter(like=qualp, axis=0)
-                            if not result.empty:
-                                result = result[[re.match(x,sel)!=None for x in result[''.join([df._fieldPrefix,'NAME'])].apply(generic2regex)]]
-                                # uses DSxx_NAME because filter() borks the index in multivalue index Frames
+                    byQual = {}
+                    for q,d in map(lambda dsn: (dsn.split('.',1)[0],dsn), listMe(selection[0])):
+                        byQual.setdefault(q,[]).append(d)
+                    for qual,dsns in byQual.items():
+                        inqual = df.filter(like=qual+'.', axis=0)
+                        if not inqual.empty:
+                            for sel in dsns:
+                                result = inqual.loc[inqual.index.get_level_values(0)==sel]  # check if there is a matching fully qualified
+                                if result.empty:
+                                    result = inqual[[re.match(x,sel)!=None for x in inqual[''.join([df._fieldPrefix,'NAME'])].apply(generic2regex)]]
+                                if show_resource:
+                                    result = result.copy()
+                                    result['RESOURCE'] = sel
                                 # for DSBD we expect 1 profile (or 0), for DSACC and DSCACC we must return all permits for the profile
                                 frames.append(result.head(1) if len(result.index.names)==1 else result.loc[[result.index[0][0]]])
                         else:
-                            raise ValueError(f'fully qualified data set name expected, with dots between qualifiers, not {sel}')
+                            raise ValueError(f'fully qualified data set name expected, with dots between qualifiers, not {selection[0]}')
             elif frameType == 'GR':
                 if len(selection)==1:
                     start = df
@@ -187,7 +200,9 @@ class FrameFilter():
                     raise TypeError('match keyword requires an optional resclass and a parameter containing the resource name')
                 if not start.empty:
                     for sel in listMe(sel):
-                        result = start[[re.match(x,sel)!=None for x in start[''.join([df._fieldPrefix,'NAME'])].apply(generic2regex)]]
+                        result = start.loc[start.index.get_level_values(1)==sel]  # check if there is a matching discrete
+                        if result.empty:
+                            result = start[[re.match(x,sel)!=None for x in start[''.join([df._fieldPrefix,'NAME'])].apply(generic2regex)]]
                         # find first profile (the first match) for each class, store True/False in array
                         locs = []
                         prevClass = ''
@@ -196,7 +211,12 @@ class FrameFilter():
                                 prevClass = i0
                                 prevResource = i1
                             locs.append(i0==prevClass and i1==prevResource)
-                        frames.append(result.loc[locs])
+                        if show_resource:
+                            result = result.loc[locs].copy()
+                            result['RESOURCE'] = sel
+                            frames.append(result)
+                        else:
+                            frames.append(result.loc[locs])
             else:
                 frames = None
 

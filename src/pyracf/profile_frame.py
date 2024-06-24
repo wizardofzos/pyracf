@@ -1,5 +1,6 @@
 import pandas as pd
 from .frame_filter import FrameFilter
+from .profile_filter_keywords import ProfileFilterKeywords
 from .racf_functions import accessAllows, accessKeywords, generic2regex
 from .xls_writers import XlsWriter
 
@@ -79,6 +80,9 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
         pd.to_pickle(self,path)
         self._metadata = md
 
+    # (alias) keywords to use in find/skip
+    _profileFilterKwds = ProfileFilterKeywords._map
+
     def find(df, *selection, **kwds):
         r'''Search profiles using GENERIC pattern on the index fields.
 
@@ -91,7 +95,7 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
 
             r.datasets.find(re.compile(r'SYS[12]\..*') )
         '''
-        return df._frameFilter(*selection, **kwds, useIndex=True)
+        return df._frameFilter(*selection, **kwds, kwdValues=df._profileFilterKwds, useIndex=True)
 
     def skip(df, *selection, **kwds):
         '''Exclude profiles using GENERIC pattern on the index fields.
@@ -101,7 +105,7 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
 
             r.datasets.skip(DSBD_UACC="NONE")
         '''
-        return df._frameFilter(*selection, **kwds, useIndex=True, exclude=True)
+        return df._frameFilter(*selection, **kwds, kwdValues=df._profileFilterKwds, useIndex=True, exclude=True)
 
     def gfilter(df, *selection, **kwds):
         '''Search profiles using GENERIC pattern on the index fields.

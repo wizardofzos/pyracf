@@ -173,6 +173,17 @@ A list of values can be specified as a list:
 r.datasetAccess.find(AUTH_ID='*',ACCESS=['UPDATE','CONTROL','ALTER'])
 ```
 
+### .find(*alias* = *value*, … )
+
+Depending on the input table, alias names may be defined for specific columns.  For access list related tables, `permits` is available to select permit entries for the user ID(s) and any of their connect groups:
+
+```default
+# dataset permissions of CICSPRxx users
+r.datasetAccess.find(permits='CICSPR*')
+```
+
+This offers a more efficient selection than `.acl(explode=True).find(user='CICSPR*')` or can be used as a pre-selection.
+
 ### .skip(*mask*, … , *COLUMN* = *value*, … )
 
 `.skip( )` excludes entries from further processing.  The same parameters are supported as with `.find( )`:
@@ -198,6 +209,11 @@ r.datasets.match('SYS1.PARMLIB').acl()
 
 # profile covering BPX.SUPERUSER and IRR.PWRESET
 r.generals.find('FACILITY').match(['BPX.SUPERUSER','IRR.PWRESET'])
+
+Specify optional keyword ``show_resource=True`` to add a column ``RESOURCE`` to the ProfileFrame, containing the matched data set or resource name::
+
+# profile covering APF libraries
+r.datasets.match(['SYS1.LINKLIB', 'SYS1.SVCLIB','USER.APFLOAD'], show_resource=True)
 ```
 
 ### Selection method syntax
@@ -230,22 +246,23 @@ alternatively, specify field names via an alias keyword or column name:
 r.datasets.skip(DSBD_UACC="NONE")
 ```
 
-#### FrameFilter.match(\*selection)
+#### FrameFilter.match(\*selection, show_resource=False)
 
 dataset or general resource related records that match a given dataset name or resource.
 
 * **Parameters:**
-  **\*selection** – for dataset Frames: a dataset name.  for general Frames: a resource name, or a class and a resource name.
-  Each of these can be a str, or a list of str.
+  * **\*selection** – for dataset Frames: a dataset name.  for general Frames: a resource name, or a class and a resource name.
+    Each of these can be a str, or a list of str.
+  * **show_resource** (*bool*) – True: add a column with the resource name in the output Frame
 * **Returns:**
-  ProfileFrame with 0 or 1 entries
+  ProfileFrame with 0 or 1 entries for one resource, several if a list of resources is given
 
 Example:
 
 ```default
 r.datasets.match('SYS1.PROCLIB')
 
-r.datasets.match(['SYS1.PARMLIB','SYS1.PROCLIB'])
+r.datasets.match(['SYS1.PARMLIB','SYS1.PROCLIB'], show_resource=True)
 
 r.generals.match('FACILITY', 'BPX.SUPERUSER')
 
@@ -285,7 +302,7 @@ and apply any of the methods on this profileList, such as:
 profileList.acl(resolve=True, allows='UPDATE')
 ```
 
-Note: the resource name is not included in ProfileFrames, so you should specify similar resources in the selection.
+Note: the resource name is not included in the output of acl(), so you should specify similar resources in the selection.
 
 #### ProfileFrame.stripPrefix(deep=False, prefix=None, setprefix=None)
 

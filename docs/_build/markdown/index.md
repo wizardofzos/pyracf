@@ -51,6 +51,7 @@ contain the root `toctree` directive. -->
   * [pyracf.getOffsets module](source/pyracf.md#pyracf-getoffsets-module)
   * [pyracf.group_structure module](source/pyracf.md#module-pyracf.group_structure)
   * [pyracf.profile_field_rules module](source/pyracf.md#module-pyracf.profile_field_rules)
+  * [pyracf.profile_filter_keywords module](source/pyracf.md#module-pyracf.profile_filter_keywords)
   * [pyracf.profile_frame module](source/pyracf.md#module-pyracf.profile_frame)
   * [pyracf.profile_publishers module](source/pyracf.md#module-pyracf.profile_publishers)
   * [pyracf.racf_functions module](source/pyracf.md#module-pyracf.racf_functions)

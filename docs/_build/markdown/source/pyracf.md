@@ -10,22 +10,23 @@ Bases: `object`
 
 filter routines that select or exclude records from a the 3 DataFrames classes
 
-#### match(\*selection)
+#### match(\*selection, show_resource=False)
 
 dataset or general resource related records that match a given dataset name or resource.
 
 * **Parameters:**
-  **\*selection** – for dataset Frames: a dataset name.  for general Frames: a resource name, or a class and a resource name.
-  Each of these can be a str, or a list of str.
+  * **\*selection** – for dataset Frames: a dataset name.  for general Frames: a resource name, or a class and a resource name.
+    Each of these can be a str, or a list of str.
+  * **show_resource** (*bool*) – True: add a column with the resource name in the output Frame
 * **Returns:**
-  ProfileFrame with 0 or 1 entries
+  ProfileFrame with 0 or 1 entries for one resource, several if a list of resources is given
 
 Example:
 
 ```default
 r.datasets.match('SYS1.PROCLIB')
 
-r.datasets.match(['SYS1.PARMLIB','SYS1.PROCLIB'])
+r.datasets.match(['SYS1.PARMLIB','SYS1.PROCLIB'], show_resource=True)
 
 r.generals.match('FACILITY', 'BPX.SUPERUSER')
 
@@ -65,7 +66,7 @@ and apply any of the methods on this profileList, such as:
 profileList.acl(resolve=True, allows='UPDATE')
 ```
 
-Note: the resource name is not included in ProfileFrames, so you should specify similar resources in the selection.
+Note: the resource name is not included in the output of acl(), so you should specify similar resources in the selection.
 
 ## pyracf.getOffsets module
 
@@ -141,6 +142,35 @@ match changes . to . and \* to \*, so for regex patterns you should use S and +?
 test verifies that the value occurs in one of the domains, or a (list of) literal(s).
 
 id and rule document the test at the test level or at the field level within a test.
+
+## pyracf.profile_filter_keywords module
+
+### *class* pyracf.profile_filter_keywords.ProfileFilterKeywords
+
+Bases: `object`
+
+generation routines for keywords on find/skip.
+
+* **Parameters:**
+  * **df** ([*ProfileFrame*](#pyracf.profile_frame.ProfileFrame)) – frame to filter
+  * **kwd** (*str*) – (alias) keyword found in filter command
+  * **sel** (*str* *,* *list*) – selection value found in filter command
+* **Returns:**
+  list of field name and field values to use in loc[ ]
+
+#### add(entry)
+
+Add alias to map.
+
+* **Parameters:**
+  * **kwd** (*str*) – alias name to use in find/skip on ProfileFrames
+  * **entry** (*str* *,* *callable*) – processor of alias
+
+### Example
+
+import pyracf
+from pyracf.profile_filter_keywords import ProfileFilterKeywords
+ProfileFilterKeywords.add(‘name’, ‘COLUMN_NAME’)
 
 ## pyracf.profile_frame module
 

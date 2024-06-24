@@ -172,6 +172,16 @@ A list of values can be specified as a list::
    # ID(*) with excessive access
    r.datasetAccess.find(AUTH_ID='*',ACCESS=['UPDATE','CONTROL','ALTER'])
 
+.find(*alias* = *value*, ... )
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Depending on the input table, alias names may be defined for specific columns.  For access list related tables, ``permits`` is available to select permit entries for the user ID(s) and any of their connect groups::
+
+   # dataset permissions of CICSPRxx users
+   r.datasetAccess.find(permits='CICSPR*')
+
+This offers a more efficient selection than ``.acl(explode=True).find(user='CICSPR*')`` or can be used as a pre-selection.
+
 .skip(*mask*, ... , *COLUMN* = *value*, ... )
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -196,6 +206,12 @@ A list of values can be specified as a list::
 
    # profile covering BPX.SUPERUSER and IRR.PWRESET
    r.generals.find('FACILITY').match(['BPX.SUPERUSER','IRR.PWRESET'])
+
+   Specify optional keyword ``show_resource=True`` to add a column ``RESOURCE`` to the ProfileFrame, containing the matched data set or resource name::
+
+   # profile covering APF libraries
+   r.datasets.match(['SYS1.LINKLIB', 'SYS1.SVCLIB','USER.APFLOAD'], show_resource=True)
+
 
 Selection method syntax
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -285,9 +301,9 @@ permits to ID(\*) in general resource profiles:
 This is exactly what ``.find('**','**','*')`` would do, but more like
 a RACF person thinks.
 
-Note: 
+Note:
 
- * .loc uses square brackets to specify the index value(s). 
+ * .loc uses square brackets to specify the index value(s).
 
  * if a table has more than one index field, you may specify one or several, as
    long as they are in the right order.

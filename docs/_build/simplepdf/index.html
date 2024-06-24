@@ -311,6 +311,11 @@
          </a>
         </li>
         <li class="toctree-l2">
+         <a class="reference internal" href="#module-pyracf.profile_filter_keywords">
+          pyracf.profile_filter_keywords module
+         </a>
+        </li>
+        <li class="toctree-l2">
          <a class="reference internal" href="#module-pyracf.profile_frame">
           pyracf.profile_frame module
          </a>
@@ -374,7 +379,7 @@
          </h2>
          <p>
           pyRACF was written for the sole purpose of being able to work with RACF
-confugurations from a python runtime.
+configurations from a python runtime.
          </p>
          <p>
           At its core pyRACF converts every recordtype from an IRRDBU00-unload
@@ -6185,6 +6190,47 @@ want to search for
             </div>
            </div>
           </section>
+          <section id="find-alias-value">
+           <h4>
+            .find(
+            <em>
+             alias
+            </em>
+            =
+            <em>
+             value
+            </em>
+            , &hellip; )
+            <a class="headerlink" href="#find-alias-value" title="Permalink to this heading">
+             &para;
+            </a>
+           </h4>
+           <p>
+            Depending on the input table, alias names may be defined for specific columns.  For access list related tables,
+            <code class="docutils literal notranslate">
+             <span class="pre">
+              permits
+             </span>
+            </code>
+            is available to select permit entries for the user ID(s) and any of their connect groups:
+           </p>
+           <div class="highlight-default notranslate">
+            <div class="highlight">
+             <pre><span></span><span class="c1"># dataset permissions of CICSPRxx users</span>
+<span class="n">r</span><span class="o">.</span><span class="n">datasetAccess</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">permits</span><span class="o">=</span><span class="s1">'CICSPR*'</span><span class="p">)</span>
+</pre>
+            </div>
+           </div>
+           <p>
+            This offers a more efficient selection than
+            <code class="docutils literal notranslate">
+             <span class="pre">
+              .acl(explode=True).find(user='CICSPR*')
+             </span>
+            </code>
+            or can be used as a pre-selection.
+           </p>
+          </section>
           <section id="skip-mask-column-value">
            <h4>
             .skip(
@@ -6259,14 +6305,19 @@ want to search for
            </p>
            <div class="highlight-default notranslate">
             <div class="highlight">
-             <pre><span></span><span class="c1"># profile covering SYS1.PARMLIB</span>
-<span class="n">r</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s1">'SYS1.PARMLIB'</span><span class="p">)</span>
+             <pre><span></span># profile covering SYS1.PARMLIB
+r.datasets.match('SYS1.PARMLIB')
 
-<span class="c1"># profile covering SYS1.PARMLIB, list access list</span>
-<span class="n">r</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s1">'SYS1.PARMLIB'</span><span class="p">)</span><span class="o">.</span><span class="n">acl</span><span class="p">()</span>
+# profile covering SYS1.PARMLIB, list access list
+r.datasets.match('SYS1.PARMLIB').acl()
 
-<span class="c1"># profile covering BPX.SUPERUSER and IRR.PWRESET</span>
-<span class="n">r</span><span class="o">.</span><span class="n">generals</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">'FACILITY'</span><span class="p">)</span><span class="o">.</span><span class="n">match</span><span class="p">([</span><span class="s1">'BPX.SUPERUSER'</span><span class="p">,</span><span class="s1">'IRR.PWRESET'</span><span class="p">])</span>
+# profile covering BPX.SUPERUSER and IRR.PWRESET
+r.generals.find('FACILITY').match(['BPX.SUPERUSER','IRR.PWRESET'])
+
+Specify optional keyword ``show_resource=True`` to add a column ``RESOURCE`` to the ProfileFrame, containing the matched data set or resource name::
+
+# profile covering APF libraries
+r.datasets.match(['SYS1.LINKLIB', 'SYS1.SVCLIB','USER.APFLOAD'], show_resource=True)
 </pre>
             </div>
            </div>
@@ -6446,6 +6497,24 @@ alternatively, specify field names via an alias keyword or column name:
                </span>
               </span>
              </em>
+             ,
+             <em class="sig-param">
+              <span class="n">
+               <span class="pre">
+                show_resource
+               </span>
+              </span>
+              <span class="o">
+               <span class="pre">
+                =
+               </span>
+              </span>
+              <span class="default_value">
+               <span class="pre">
+                False
+               </span>
+              </span>
+             </em>
              <span class="sig-paren">
               )
              </span>
@@ -6465,13 +6534,29 @@ alternatively, specify field names via an alias keyword or column name:
                </span>
               </dt>
               <dd class="field-odd">
-               <p>
-                <strong>
-                 *selection
-                </strong>
-                &ndash; for dataset Frames: a dataset name.  for general Frames: a resource name, or a class and a resource name.
+               <ul class="simple">
+                <li>
+                 <p>
+                  <strong>
+                   *selection
+                  </strong>
+                  &ndash; for dataset Frames: a dataset name.  for general Frames: a resource name, or a class and a resource name.
 Each of these can be a str, or a list of str.
-               </p>
+                 </p>
+                </li>
+                <li>
+                 <p>
+                  <strong>
+                   show_resource
+                  </strong>
+                  (
+                  <em>
+                   bool
+                  </em>
+                  ) &ndash; True: add a column with the resource name in the output Frame
+                 </p>
+                </li>
+               </ul>
               </dd>
               <dt class="field-even">
                Returns
@@ -6481,7 +6566,7 @@ Each of these can be a str, or a list of str.
               </dt>
               <dd class="field-even">
                <p>
-                ProfileFrame with 0 or 1 entries
+                ProfileFrame with 0 or 1 entries for one resource, several if a list of resources is given
                </p>
               </dd>
              </dl>
@@ -6492,7 +6577,7 @@ Each of these can be a str, or a list of str.
               <div class="highlight">
                <pre><span></span><span class="n">r</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s1">'SYS1.PROCLIB'</span><span class="p">)</span>
 
-<span class="n">r</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">match</span><span class="p">([</span><span class="s1">'SYS1.PARMLIB'</span><span class="p">,</span><span class="s1">'SYS1.PROCLIB'</span><span class="p">])</span>
+<span class="n">r</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">match</span><span class="p">([</span><span class="s1">'SYS1.PARMLIB'</span><span class="p">,</span><span class="s1">'SYS1.PROCLIB'</span><span class="p">],</span> <span class="n">show_resource</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 <span class="n">r</span><span class="o">.</span><span class="n">generals</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s1">'FACILITY'</span><span class="p">,</span> <span class="s1">'BPX.SUPERUSER'</span><span class="p">)</span>
 
@@ -6552,7 +6637,7 @@ Next you concatenate these into one ProfileFrame and remove any duplicate profil
               </div>
              </div>
              <p>
-              Note: the resource name is not included in ProfileFrames, so you should specify similar resources in the selection.
+              Note: the resource name is not included in the output of acl(), so you should specify similar resources in the selection.
              </p>
             </dd>
            </dl>
@@ -11936,6 +12021,24 @@ created from RACF object with the .rules property.
                   </span>
                  </span>
                 </em>
+                ,
+                <em class="sig-param">
+                 <span class="n">
+                  <span class="pre">
+                   show_resource
+                  </span>
+                 </span>
+                 <span class="o">
+                  <span class="pre">
+                   =
+                  </span>
+                 </span>
+                 <span class="default_value">
+                  <span class="pre">
+                   False
+                  </span>
+                 </span>
+                </em>
                 <span class="sig-paren">
                  )
                 </span>
@@ -11955,13 +12058,29 @@ created from RACF object with the .rules property.
                   </span>
                  </dt>
                  <dd class="field-odd">
-                  <p>
-                   <strong>
-                    *selection
-                   </strong>
-                   &ndash; for dataset Frames: a dataset name.  for general Frames: a resource name, or a class and a resource name.
+                  <ul class="simple">
+                   <li>
+                    <p>
+                     <strong>
+                      *selection
+                     </strong>
+                     &ndash; for dataset Frames: a dataset name.  for general Frames: a resource name, or a class and a resource name.
 Each of these can be a str, or a list of str.
-                  </p>
+                    </p>
+                   </li>
+                   <li>
+                    <p>
+                     <strong>
+                      show_resource
+                     </strong>
+                     (
+                     <em>
+                      bool
+                     </em>
+                     ) &ndash; True: add a column with the resource name in the output Frame
+                    </p>
+                   </li>
+                  </ul>
                  </dd>
                  <dt class="field-even">
                   Returns
@@ -11971,7 +12090,7 @@ Each of these can be a str, or a list of str.
                  </dt>
                  <dd class="field-even">
                   <p>
-                   ProfileFrame with 0 or 1 entries
+                   ProfileFrame with 0 or 1 entries for one resource, several if a list of resources is given
                   </p>
                  </dd>
                 </dl>
@@ -11982,7 +12101,7 @@ Each of these can be a str, or a list of str.
                  <div class="highlight">
                   <pre><span></span><span class="n">r</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s1">'SYS1.PROCLIB'</span><span class="p">)</span>
 
-<span class="n">r</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">match</span><span class="p">([</span><span class="s1">'SYS1.PARMLIB'</span><span class="p">,</span><span class="s1">'SYS1.PROCLIB'</span><span class="p">])</span>
+<span class="n">r</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">match</span><span class="p">([</span><span class="s1">'SYS1.PARMLIB'</span><span class="p">,</span><span class="s1">'SYS1.PROCLIB'</span><span class="p">],</span> <span class="n">show_resource</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 <span class="n">r</span><span class="o">.</span><span class="n">generals</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s1">'FACILITY'</span><span class="p">,</span> <span class="s1">'BPX.SUPERUSER'</span><span class="p">)</span>
 
@@ -12042,7 +12161,7 @@ Next you concatenate these into one ProfileFrame and remove any duplicate profil
                  </div>
                 </div>
                 <p>
-                 Note: the resource name is not included in ProfileFrames, so you should specify similar resources in the selection.
+                 Note: the resource name is not included in the output of acl(), so you should specify similar resources in the selection.
                 </p>
                </dd>
               </dl>
@@ -12532,6 +12651,200 @@ match changes . to . and * to *, so for regex patterns you should use S and +? i
               <p>
                id and rule document the test at the test level or at the field level within a test.
               </p>
+             </dd>
+            </dl>
+           </section>
+           <section id="module-pyracf.profile_filter_keywords">
+            <span id="pyracf-profile-filter-keywords-module">
+            </span>
+            <h4>
+             pyracf.profile_filter_keywords module
+             <a class="headerlink" href="#module-pyracf.profile_filter_keywords" title="Permalink to this heading">
+              &para;
+             </a>
+            </h4>
+            <dl class="py class">
+             <dt class="sig sig-object py" id="pyracf.profile_filter_keywords.ProfileFilterKeywords">
+              <em class="property">
+               <span class="pre">
+                class
+               </span>
+               <span class="w">
+               </span>
+              </em>
+              <span class="sig-prename descclassname">
+               <span class="pre">
+                pyracf.profile_filter_keywords.
+               </span>
+              </span>
+              <span class="sig-name descname">
+               <span class="pre">
+                ProfileFilterKeywords
+               </span>
+              </span>
+              <a class="headerlink" href="#pyracf.profile_filter_keywords.ProfileFilterKeywords" title="Permalink to this definition">
+               &para;
+              </a>
+             </dt>
+             <dd>
+              <p>
+               Bases:
+               <code class="xref py py-class docutils literal notranslate">
+                <span class="pre">
+                 object
+                </span>
+               </code>
+              </p>
+              <p>
+               generation routines for keywords on find/skip.
+              </p>
+              <dl class="field-list simple">
+               <dt class="field-odd">
+                Parameters
+                <span class="colon">
+                 :
+                </span>
+               </dt>
+               <dd class="field-odd">
+                <ul class="simple">
+                 <li>
+                  <p>
+                   <strong>
+                    df
+                   </strong>
+                   (
+                   <a class="reference internal" href="index.html#pyracf.profile_frame.ProfileFrame" title="pyracf.profile_frame.ProfileFrame">
+                    <em>
+                     ProfileFrame
+                    </em>
+                   </a>
+                   ) &ndash; frame to filter
+                  </p>
+                 </li>
+                 <li>
+                  <p>
+                   <strong>
+                    kwd
+                   </strong>
+                   (
+                   <em>
+                    str
+                   </em>
+                   ) &ndash; (alias) keyword found in filter command
+                  </p>
+                 </li>
+                 <li>
+                  <p>
+                   <strong>
+                    sel
+                   </strong>
+                   (
+                   <em>
+                    str
+                   </em>
+                   <em>
+                    ,
+                   </em>
+                   <em>
+                    list
+                   </em>
+                   ) &ndash; selection value found in filter command
+                  </p>
+                 </li>
+                </ul>
+               </dd>
+               <dt class="field-even">
+                Returns
+                <span class="colon">
+                 :
+                </span>
+               </dt>
+               <dd class="field-even">
+                <p>
+                 list of field name and field values to use in loc[ ]
+                </p>
+               </dd>
+              </dl>
+              <dl class="py method">
+               <dt class="sig sig-object py" id="pyracf.profile_filter_keywords.ProfileFilterKeywords.add">
+                <span class="sig-name descname">
+                 <span class="pre">
+                  add
+                 </span>
+                </span>
+                <span class="sig-paren">
+                 (
+                </span>
+                <em class="sig-param">
+                 <span class="n">
+                  <span class="pre">
+                   entry
+                  </span>
+                 </span>
+                </em>
+                <span class="sig-paren">
+                 )
+                </span>
+                <a class="headerlink" href="#pyracf.profile_filter_keywords.ProfileFilterKeywords.add" title="Permalink to this definition">
+                 &para;
+                </a>
+               </dt>
+               <dd>
+                <p>
+                 Add alias to map.
+                </p>
+                <dl class="field-list simple">
+                 <dt class="field-odd">
+                  Parameters
+                  <span class="colon">
+                   :
+                  </span>
+                 </dt>
+                 <dd class="field-odd">
+                  <ul class="simple">
+                   <li>
+                    <p>
+                     <strong>
+                      kwd
+                     </strong>
+                     (
+                     <em>
+                      str
+                     </em>
+                     ) &ndash; alias name to use in find/skip on ProfileFrames
+                    </p>
+                   </li>
+                   <li>
+                    <p>
+                     <strong>
+                      entry
+                     </strong>
+                     (
+                     <em>
+                      str
+                     </em>
+                     <em>
+                      ,
+                     </em>
+                     <em>
+                      callable
+                     </em>
+                     ) &ndash; processor of alias
+                    </p>
+                   </li>
+                  </ul>
+                 </dd>
+                </dl>
+                <p class="rubric">
+                 Example
+                </p>
+                <p>
+                 import pyracf
+from pyracf.profile_filter_keywords import ProfileFilterKeywords
+ProfileFilterKeywords.add(&lsquo;name&rsquo;, &lsquo;COLUMN_NAME&rsquo;)
+                </p>
+               </dd>
+              </dl>
              </dd>
             </dl>
            </section>
