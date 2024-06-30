@@ -31,6 +31,8 @@ class FrameFilter():
 
         skipSelect = (None,'**','.*') if regexPattern else (None,'**')
         if exclude:  # reverse selection, so collect all comparison results
+            if len(selection)==0 and len(kwds)==0:  # empty skip criteria means don't skip anything
+                return df
             locs = pd.Series(True, index=df.index)
         columnSelect = []  # combine column+value from positional and keyword parameters
 
