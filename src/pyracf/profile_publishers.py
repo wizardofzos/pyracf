@@ -318,6 +318,19 @@ class EnhancedProfileFrame():
     """Profile presentation properties that make data easier to report by adding fields to the original ProfileFrame.
     """
 
+    ### group frames
+
+    @property
+    def groupOMVS(self) -> ProfileFrame: # GROMVS
+        """add column ``GPOMVS_GID_`` into ``._groupOMVS`` with leading zeros stripped from ``GPOMVS_GID``.
+        """
+        col = 'GPOMVS_GID'
+        columns = list(self._groupOMVS.columns)
+        split = columns.index(col)
+        columns = columns[:split]+[col+'_']+columns[split+1:]+[col]
+        return self._groupOMVS.assign(GPOMVS_GID_=self._groupOMVS[col].str.replace(r'^0+([\d]*.)$', r'\1',regex=True))[columns]
+
+
     ### user frames
 
     @property
@@ -331,6 +344,16 @@ class EnhancedProfileFrame():
         """
         warnings.warn('This property is for documentation purposes only and should be superceded by the RACF class property')
         return self._connectData.head(0)
+
+    @property
+    def userOMVS(self) -> ProfileFrame: # USOMVS
+        """add column ``USOMVS_UID_`` into ``._userOMVS`` with leading zeros stripped from ``USOMVS_UID``.
+        """
+        col = 'USOMVS_UID'
+        columns = list(self._userOMVS.columns)
+        split = columns.index(col)
+        columns = columns[:split]+[col+'_']+columns[split+1:]+[col]
+        return self._userOMVS.assign(USOMVS_UID_=self._userOMVS[col].str.replace(r'^0+([\d]*.)$', r'\1',regex=True))[columns]
 
 
     ### dataset frames
@@ -361,6 +384,18 @@ class EnhancedProfileFrame():
         return self._generals.head(0)
 
     @property
+    def CERT(self) -> ProfileFrame: # GRCERT
+        """combined DataFrame of ``._generalCERT`` and ``.generals``, copying the ``GRBD_UACC`` and ``GRBD_APPL_DATA`` fields to show if the certificate is trusted, and the associated user ID.
+        """
+        return self._generalCERT.join(self._generals[['GRBD_UACC','GRBD_APPL_DATA']])
+
+    @property
+    def KEYRING(self) -> ProfileFrame: # KEYR
+        """combined DataFrame of ``._generalKEYRING`` and ``.generals``, copying the ``GRBD_APPL_DATA`` field to show the associated user ID.
+        """
+        return self._generalCERT.join(self._generals['GRBD_APPL_DATA'])
+
+    @property
     def SSIGNON(self) -> ProfileFrame: # GRSIGN
         """combined DataFrame of ``._generalSSIGNON`` and ``.generals``, copying the ``GRBD_APPL_DATA`` field to show if replay protection is available for the passticket.
         """
@@ -372,4 +407,6 @@ class ProfilePublisher(ProfileSelectionFrame,ProfileAnalysisFrame,EnhancedProfil
     straight-forward presentation and easy filtered results of Profile Frames from the RACF object.
     These are hand-crafted additions to the properties automatically defined from _recordtype_info.
     '''
+
+    _doc_stubs = ['connectData','datasets','generals']  # methods that should not be activated
 

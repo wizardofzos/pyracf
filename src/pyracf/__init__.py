@@ -46,16 +46,17 @@ class RACF(ProfilePublisher,XlsWriter):
     #                   'name' -> Internal name (and prefix for pickle-files, variables in the dfs (GPMEM_NAME etc... from offsets.json))
     #                   'df'   -> name of internal df
     #                   'index' -> index if different from <name>_NAME (and <name>_CLASS_NAME for GRxxx)
-    #                   'publisher' -> adds property in class to get the df (default: no publisher)
-    #                                *         -> same as df without the _
-    #                                all but * -> this name as property
+    #                   'publisher' -> adds property in class to get the df
+    #                                missing   -> same as df without the _
+    #                                str       -> define this name as property, unless there is a method in ProfilePublisher with this name
+
     _recordtype_info = {
     '0100': {'name':'GPBD', 'df':'_groups'},
     '0101': {'name':'GPSGRP', 'df':'_subgroups'},
     '0102': {'name':'GPMEM', 'df':'_connects', "index":["GPMEM_NAME","GPMEM_MEMBER_ID"]},
     '0103': {'name':'GPINSTD', 'df':'_groupUSRDATA'},
     '0110': {'name':'GPDFP', 'df':'_groupDFP'},
-    '0120': {'name':'GPOMVS', 'df':'_groupOMVS'},
+    '0120': {'name':'GPOMVS', 'df':'_groupOMVS'}, # add GPOMVS_GID_
     '0130': {'name':'GPOVM', 'df':'_groupOVM'},
     '0141': {'name':'GPTME', 'df':'_groupTME'},
     '0151': {'name':'GPCSD', 'df':'_groupCSDATA'},
@@ -81,7 +82,7 @@ class RACF(ProfilePublisher,XlsWriter):
     '0250': {'name':'USOPR', 'df':'_userOPERPARM'},
     '0251': {'name':'USOPRP', 'df':'_userOPERPARMscope'},
     '0260': {'name':'USWRK', 'df':'_userWORKATTR'},
-    '0270': {'name':'USOMVS', 'df':'_userOMVS'},
+    '0270': {'name':'USOMVS', 'df':'_userOMVS'}, # add USOMVS_UID_
     '0280': {'name':'USNETV', 'df':'_userNETVIEW'},
     '0281': {'name':'USNOPC', 'df':'_userNETVIEWopclass'},
     '0282': {'name':'USNDOM', 'df':'_userNETVIEWdomains'},
@@ -118,13 +119,13 @@ class RACF(ProfilePublisher,XlsWriter):
     '0511': {'name':'GRSESE', 'df':'_generalSESSIONentities', 'publisher':'SESSIONentities'},
     '0520': {'name':'GRDLF', 'df':'_generalDLFDATA', 'publisher':'DLFDATA'},
     '0521': {'name':'GRDLFJ', 'df':'_generalDLFDATAjobnames', 'publisher':'DLFDATAjobnames'},
-    '0530': {'name':'GRSIGN', 'df':'_generalSSIGNON', 'publisher':False}, # needs APPLDATA
+    '0530': {'name':'GRSIGN', 'df':'_generalSSIGNON', 'publisher':'SSIGNON'}, # add APPLDATA
     '0540': {'name':'GRST', 'df':'_generalSTDATA', 'publisher':'STDATA'},
     '0550': {'name':'GRSV', 'df':'_generalSVFMR', 'publisher':'SVFMR'}, # SYSMVIEW profiles
-    '0560': {'name':'GRCERT', 'df':'_generalCERT', 'publisher':'CERT'},
+    '0560': {'name':'GRCERT', 'df':'_generalCERT', 'publisher':'CERT'}, # add UACC and APPLDATA
     '1560': {'name':'CERTN', 'df':'_generalCERTname', 'publisher':'CERTname'},
     '0561': {'name':'CERTR', 'df':'_generalCERTreferences', 'publisher':'CERTreferences'},
-    '0562': {'name':'KEYR', 'df':'_generalKEYRING', 'publisher':'KEYRING'},
+    '0562': {'name':'KEYR', 'df':'_generalKEYRING', 'publisher':'KEYRING'}, # add APPLDATA
     '0570': {'name':'GRTME', 'df':'_generalTME', 'publisher':'TME'},
     '0571': {'name':'GRTMEC', 'df':'_generalTMEchild', 'publisher':'TMEchild'},
     '0572': {'name':'GRTMER', 'df':'_generalTMEresource', 'publisher':'TMEresource'},
@@ -151,6 +152,7 @@ class RACF(ProfilePublisher,XlsWriter):
 
     _recordname_type = {}    # {'GPBD': '0100', ....}
     _recordname_df = {}      # {'GPBD': '_groups', ....}
+    _recordname_publisher = {}      # {'GPBD': 'groups', ....}
     for (rtype,rinfo) in _recordtype_info.items():
         _recordname_type.update({rinfo['name']: rtype})
         _recordname_df.update({rinfo['name']: rinfo['df']})
@@ -167,17 +169,21 @@ class RACF(ProfilePublisher,XlsWriter):
     # define publishers as class properties so they turn up in sphinx-autodoc
     for (rtype,rinfo) in _recordtype_info.items():
         publisher = rinfo['publisher'] if 'publisher' in rinfo else rinfo['df'].lstrip('_')
-        if publisher:  # if publisher was not declared False
-            purpose = rinfo['offsets'][0]['field-desc']\
-                      .replace('Record type of the','')\
-                      .replace('Record Type of the','')\
-                      .replace(' record','')\
-                      .replace(' Record','')
+        if publisher:
+            _recordname_publisher.update({rinfo['name']: publisher}) # add publisher name to map for use in r.table()
 
-            def _publish(self,frame=rinfo['df']) -> ProfileFrame:
-                return getattr(self,frame)
+            if not hasattr(ProfilePublisher,publisher) or publisher in getattr(ProfilePublisher,'_doc_stubs'):
+                # publisher is not a method in ProfilePublisher, so add property and for docs add purpose too
+                purpose = rinfo['offsets'][0]['field-desc']\
+                          .replace('Record type of the','')\
+                          .replace('Record Type of the','')\
+                          .replace(' record','')\
+                          .replace(' Record','')
 
-            vars()[publisher] = property(_publish,doc=purpose)
+                def _publish(self,frame=rinfo['df']) -> ProfileFrame:
+                    return getattr(self,frame)
+
+                vars()[publisher] = property(_publish,doc=purpose)
 
     _grouptreeLines     = None  # df with all supgroups up to SYS1
     _ownertreeLines     = None  # df with owners up to SYS1 or user ID
@@ -360,11 +366,11 @@ class RACF(ProfilePublisher,XlsWriter):
         """ return table with this name (type) """
         if rname:
             try:
-                return getattr(self, RACF._recordname_df[rname])
+                return getattr(self, RACF._recordname_publisher[rname])
             except KeyError:
                 warnings.warn(f'RACF object does not have a table {rname}')
         else:
-            raise TypeError(f"table name missing, try {readableList(sorted(RACF._recordname_df.keys()))}")
+            raise TypeError(f"table name missing, try {readableList(sorted(RACF._recordname_publisher.keys()))}")
 
     def _correlate(self, thingswewant=_recordtype_info.keys()):
         """ construct tables that combine the raw dataframes for improved processing """

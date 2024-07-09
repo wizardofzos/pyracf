@@ -530,6 +530,10 @@ Bases: `object`
 
 Profile presentation properties that make data easier to report by adding fields to the original ProfileFrame.
 
+#### *property* groupOMVS *: [ProfileFrame](#pyracf.profile_frame.ProfileFrame)*
+
+add column `GPOMVS_GID_` into `._groupOMVS` with leading zeros stripped from `GPOMVS_GID`.
+
 #### *property* connectData *: [ProfileFrame](#pyracf.profile_frame.ProfileFrame)*
 
 complete connect group information
@@ -538,6 +542,10 @@ Combines fields from USER profiles (0205) and GROUP profiles (0102). The
 `GPMEM_AUTH` field shows group connect authority, whereas all other
 field names start with `USCON`. This property should be used for most
 connect group analysis, instead of `.connects` and `.groupConnect`.
+
+#### *property* userOMVS *: [ProfileFrame](#pyracf.profile_frame.ProfileFrame)*
+
+add column `USOMVS_UID_` into `._userOMVS` with leading zeros stripped from `USOMVS_UID`.
 
 #### *property* datasets *: [ProfileFrame](#pyracf.profile_frame.ProfileFrame)*
 
@@ -554,6 +562,14 @@ unspecifiec access columns added to .generals Frame
 Column `IDSTAR_ACCESS` is added by selecting records from `.generalAccess` referencing `ID(*)`. The higher
 value of `GRBD_UACC` and `IDSTAR_ACCESS` is stored in `ALL_USER_ACCESS` indicating the access level granted to all RACF
 defined users, except when restricted by specific access.
+
+#### *property* CERT *: [ProfileFrame](#pyracf.profile_frame.ProfileFrame)*
+
+combined DataFrame of `._generalCERT` and `.generals`, copying the `GRBD_UACC` and `GRBD_APPL_DATA` fields to show if the certificate is trusted, and the associated user ID.
+
+#### *property* KEYRING *: [ProfileFrame](#pyracf.profile_frame.ProfileFrame)*
+
+combined DataFrame of `._generalKEYRING` and `.generals`, copying the `GRBD_APPL_DATA` field to show the associated user ID.
 
 #### *property* SSIGNON *: [ProfileFrame](#pyracf.profile_frame.ProfileFrame)*
 
@@ -827,10 +843,6 @@ general resource ALIAS group (05B0).
 
 general resource CDTINFO data (05C0).
 
-#### *property* CERT *: [ProfileFrame](#pyracf.profile_frame.ProfileFrame)*
-
-Certificate Data (0560).
-
 #### *property* CERTname *: [ProfileFrame](#pyracf.profile_frame.ProfileFrame)*
 
 general resource certificate information (1560).
@@ -890,10 +902,6 @@ JES data (05L0).
 #### *property* KERB *: [ProfileFrame](#pyracf.profile_frame.ProfileFrame)*
 
 general resource KERB segment (0580).
-
-#### *property* KEYRING *: [ProfileFrame](#pyracf.profile_frame.ProfileFrame)*
-
-Key Ring Data (0562).
 
 #### *property* MFA *: [ProfileFrame](#pyracf.profile_frame.ProfileFrame)*
 
@@ -1047,10 +1055,6 @@ User Group Connections (0203).
 
 Group DFP Data (0110).
 
-#### *property* groupOMVS *: [ProfileFrame](#pyracf.profile_frame.ProfileFrame)*
-
-Group OMVS Data (0120).
-
 #### *property* groupOVM *: [ProfileFrame](#pyracf.profile_frame.ProfileFrame)*
 
 Group OVM Data (0130).
@@ -1162,10 +1166,6 @@ user DOMAINS (0282).
 #### *property* userNETVIEWopclass *: [ProfileFrame](#pyracf.profile_frame.ProfileFrame)*
 
 user OPCLASS (0281).
-
-#### *property* userOMVS *: [ProfileFrame](#pyracf.profile_frame.ProfileFrame)*
-
-User Data (0270).
 
 #### *property* userOPERPARM *: [ProfileFrame](#pyracf.profile_frame.ProfileFrame)*
 

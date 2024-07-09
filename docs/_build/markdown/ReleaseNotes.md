@@ -2,6 +2,12 @@
 
 ## Summary of changes
 
+### 0.9.1 (GID, UID without leading zeros, UACC and APPLID in CERT and KEYRING)
+
+- ProfilePublisher methods for GPOMVS, USOMVS, CERT and KEYRING tables
+- r.table() now uses the profile publisher method to return a df, instead of the df itself.
+- new property \_doc_stubs in ProfilePublisher with names of methods that are only there for ducmentation purposes, and should not be called
+
 ### 0.9.0 (rules, sphinx-autodoc, find, skip)
 
 - rule-based verification of profile fields

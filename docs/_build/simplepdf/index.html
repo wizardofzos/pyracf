@@ -418,6 +418,31 @@ USBD) containing all the users that have been revoked.
             &para;
            </a>
           </h3>
+          <section id="gid-uid-without-leading-zeros-uacc-and-applid-in-cert-and-keyring">
+           <h4>
+            0.9.1 (GID, UID without leading zeros, UACC and APPLID in CERT and KEYRING)
+            <a class="headerlink" href="#gid-uid-without-leading-zeros-uacc-and-applid-in-cert-and-keyring" title="Permalink to this heading">
+             &para;
+            </a>
+           </h4>
+           <ul class="simple">
+            <li>
+             <p>
+              ProfilePublisher methods for GPOMVS, USOMVS, CERT and KEYRING tables
+             </p>
+            </li>
+            <li>
+             <p>
+              r.table() now uses the profile publisher method to return a df, instead of the df itself.
+             </p>
+            </li>
+            <li>
+             <p>
+              new property _doc_stubs in ProfilePublisher with names of methods that are only there for ducmentation purposes, and should not be called
+             </p>
+            </li>
+           </ul>
+          </section>
           <section id="rules-sphinx-autodoc-find-skip">
            <h4>
             0.9.0 (rules, sphinx-autodoc, find, skip)
@@ -16169,6 +16194,62 @@ The functionality is also, and generalized, available in RuleVerifier.
                Profile presentation properties that make data easier to report by adding fields to the original ProfileFrame.
               </p>
               <dl class="py property">
+               <dt class="sig sig-object py" id="pyracf.profile_publishers.EnhancedProfileFrame.groupOMVS">
+                <em class="property">
+                 <span class="pre">
+                  property
+                 </span>
+                 <span class="w">
+                 </span>
+                </em>
+                <span class="sig-name descname">
+                 <span class="pre">
+                  groupOMVS
+                 </span>
+                </span>
+                <em class="property">
+                 <span class="p">
+                  <span class="pre">
+                   :
+                  </span>
+                 </span>
+                 <span class="w">
+                 </span>
+                 <a class="reference internal" href="index.html#pyracf.profile_frame.ProfileFrame" title="pyracf.profile_frame.ProfileFrame">
+                  <span class="pre">
+                   ProfileFrame
+                  </span>
+                 </a>
+                </em>
+                <a class="headerlink" href="#pyracf.profile_publishers.EnhancedProfileFrame.groupOMVS" title="Permalink to this definition">
+                 &para;
+                </a>
+               </dt>
+               <dd>
+                <p>
+                 add column
+                 <code class="docutils literal notranslate">
+                  <span class="pre">
+                   GPOMVS_GID_
+                  </span>
+                 </code>
+                 into
+                 <code class="docutils literal notranslate">
+                  <span class="pre">
+                   ._groupOMVS
+                  </span>
+                 </code>
+                 with leading zeros stripped from
+                 <code class="docutils literal notranslate">
+                  <span class="pre">
+                   GPOMVS_GID
+                  </span>
+                 </code>
+                 .
+                </p>
+               </dd>
+              </dl>
+              <dl class="py property">
                <dt class="sig sig-object py" id="pyracf.profile_publishers.EnhancedProfileFrame.connectData">
                 <em class="property">
                  <span class="pre">
@@ -16229,6 +16310,62 @@ connect group analysis, instead of
                  <code class="docutils literal notranslate">
                   <span class="pre">
                    .groupConnect
+                  </span>
+                 </code>
+                 .
+                </p>
+               </dd>
+              </dl>
+              <dl class="py property">
+               <dt class="sig sig-object py" id="pyracf.profile_publishers.EnhancedProfileFrame.userOMVS">
+                <em class="property">
+                 <span class="pre">
+                  property
+                 </span>
+                 <span class="w">
+                 </span>
+                </em>
+                <span class="sig-name descname">
+                 <span class="pre">
+                  userOMVS
+                 </span>
+                </span>
+                <em class="property">
+                 <span class="p">
+                  <span class="pre">
+                   :
+                  </span>
+                 </span>
+                 <span class="w">
+                 </span>
+                 <a class="reference internal" href="index.html#pyracf.profile_frame.ProfileFrame" title="pyracf.profile_frame.ProfileFrame">
+                  <span class="pre">
+                   ProfileFrame
+                  </span>
+                 </a>
+                </em>
+                <a class="headerlink" href="#pyracf.profile_publishers.EnhancedProfileFrame.userOMVS" title="Permalink to this definition">
+                 &para;
+                </a>
+               </dt>
+               <dd>
+                <p>
+                 add column
+                 <code class="docutils literal notranslate">
+                  <span class="pre">
+                   USOMVS_UID_
+                  </span>
+                 </code>
+                 into
+                 <code class="docutils literal notranslate">
+                  <span class="pre">
+                   ._userOMVS
+                  </span>
+                 </code>
+                 with leading zeros stripped from
+                 <code class="docutils literal notranslate">
+                  <span class="pre">
+                   USOMVS_UID
                   </span>
                  </code>
                  .
@@ -16390,6 +16527,124 @@ value of
                  </code>
                  indicating the access level granted to all RACF
 defined users, except when restricted by specific access.
+                </p>
+               </dd>
+              </dl>
+              <dl class="py property">
+               <dt class="sig sig-object py" id="pyracf.profile_publishers.EnhancedProfileFrame.CERT">
+                <em class="property">
+                 <span class="pre">
+                  property
+                 </span>
+                 <span class="w">
+                 </span>
+                </em>
+                <span class="sig-name descname">
+                 <span class="pre">
+                  CERT
+                 </span>
+                </span>
+                <em class="property">
+                 <span class="p">
+                  <span class="pre">
+                   :
+                  </span>
+                 </span>
+                 <span class="w">
+                 </span>
+                 <a class="reference internal" href="index.html#pyracf.profile_frame.ProfileFrame" title="pyracf.profile_frame.ProfileFrame">
+                  <span class="pre">
+                   ProfileFrame
+                  </span>
+                 </a>
+                </em>
+                <a class="headerlink" href="#pyracf.profile_publishers.EnhancedProfileFrame.CERT" title="Permalink to this definition">
+                 &para;
+                </a>
+               </dt>
+               <dd>
+                <p>
+                 combined DataFrame of
+                 <code class="docutils literal notranslate">
+                  <span class="pre">
+                   ._generalCERT
+                  </span>
+                 </code>
+                 and
+                 <code class="docutils literal notranslate">
+                  <span class="pre">
+                   .generals
+                  </span>
+                 </code>
+                 , copying the
+                 <code class="docutils literal notranslate">
+                  <span class="pre">
+                   GRBD_UACC
+                  </span>
+                 </code>
+                 and
+                 <code class="docutils literal notranslate">
+                  <span class="pre">
+                   GRBD_APPL_DATA
+                  </span>
+                 </code>
+                 fields to show if the certificate is trusted, and the associated user ID.
+                </p>
+               </dd>
+              </dl>
+              <dl class="py property">
+               <dt class="sig sig-object py" id="pyracf.profile_publishers.EnhancedProfileFrame.KEYRING">
+                <em class="property">
+                 <span class="pre">
+                  property
+                 </span>
+                 <span class="w">
+                 </span>
+                </em>
+                <span class="sig-name descname">
+                 <span class="pre">
+                  KEYRING
+                 </span>
+                </span>
+                <em class="property">
+                 <span class="p">
+                  <span class="pre">
+                   :
+                  </span>
+                 </span>
+                 <span class="w">
+                 </span>
+                 <a class="reference internal" href="index.html#pyracf.profile_frame.ProfileFrame" title="pyracf.profile_frame.ProfileFrame">
+                  <span class="pre">
+                   ProfileFrame
+                  </span>
+                 </a>
+                </em>
+                <a class="headerlink" href="#pyracf.profile_publishers.EnhancedProfileFrame.KEYRING" title="Permalink to this definition">
+                 &para;
+                </a>
+               </dt>
+               <dd>
+                <p>
+                 combined DataFrame of
+                 <code class="docutils literal notranslate">
+                  <span class="pre">
+                   ._generalKEYRING
+                  </span>
+                 </code>
+                 and
+                 <code class="docutils literal notranslate">
+                  <span class="pre">
+                   .generals
+                  </span>
+                 </code>
+                 , copying the
+                 <code class="docutils literal notranslate">
+                  <span class="pre">
+                   GRBD_APPL_DATA
+                  </span>
+                 </code>
+                 field to show the associated user ID.
                 </p>
                </dd>
               </dl>
@@ -19022,44 +19277,6 @@ runs as method on the RACF object, table(&lsquo;DSACC&rsquo;) or table(&lsquo;GR
                </dd>
               </dl>
               <dl class="py property">
-               <dt class="sig sig-object py" id="pyracf.RACF.CERT">
-                <em class="property">
-                 <span class="pre">
-                  property
-                 </span>
-                 <span class="w">
-                 </span>
-                </em>
-                <span class="sig-name descname">
-                 <span class="pre">
-                  CERT
-                 </span>
-                </span>
-                <em class="property">
-                 <span class="p">
-                  <span class="pre">
-                   :
-                  </span>
-                 </span>
-                 <span class="w">
-                 </span>
-                 <a class="reference internal" href="index.html#pyracf.profile_frame.ProfileFrame" title="pyracf.profile_frame.ProfileFrame">
-                  <span class="pre">
-                   ProfileFrame
-                  </span>
-                 </a>
-                </em>
-                <a class="headerlink" href="#pyracf.RACF.CERT" title="Permalink to this definition">
-                 &para;
-                </a>
-               </dt>
-               <dd>
-                <p>
-                 Certificate Data (0560).
-                </p>
-               </dd>
-              </dl>
-              <dl class="py property">
                <dt class="sig sig-object py" id="pyracf.RACF.CERTname">
                 <em class="property">
                  <span class="pre">
@@ -19626,44 +19843,6 @@ runs as method on the RACF object, table(&lsquo;DSACC&rsquo;) or table(&lsquo;GR
                <dd>
                 <p>
                  general resource KERB segment (0580).
-                </p>
-               </dd>
-              </dl>
-              <dl class="py property">
-               <dt class="sig sig-object py" id="pyracf.RACF.KEYRING">
-                <em class="property">
-                 <span class="pre">
-                  property
-                 </span>
-                 <span class="w">
-                 </span>
-                </em>
-                <span class="sig-name descname">
-                 <span class="pre">
-                  KEYRING
-                 </span>
-                </span>
-                <em class="property">
-                 <span class="p">
-                  <span class="pre">
-                   :
-                  </span>
-                 </span>
-                 <span class="w">
-                 </span>
-                 <a class="reference internal" href="index.html#pyracf.profile_frame.ProfileFrame" title="pyracf.profile_frame.ProfileFrame">
-                  <span class="pre">
-                   ProfileFrame
-                  </span>
-                 </a>
-                </em>
-                <a class="headerlink" href="#pyracf.RACF.KEYRING" title="Permalink to this definition">
-                 &para;
-                </a>
-               </dt>
-               <dd>
-                <p>
-                 Key Ring Data (0562).
                 </p>
                </dd>
               </dl>
@@ -21112,44 +21291,6 @@ runs as method on the RACF object, table(&lsquo;DSACC&rsquo;) or table(&lsquo;GR
                </dd>
               </dl>
               <dl class="py property">
-               <dt class="sig sig-object py" id="pyracf.RACF.groupOMVS">
-                <em class="property">
-                 <span class="pre">
-                  property
-                 </span>
-                 <span class="w">
-                 </span>
-                </em>
-                <span class="sig-name descname">
-                 <span class="pre">
-                  groupOMVS
-                 </span>
-                </span>
-                <em class="property">
-                 <span class="p">
-                  <span class="pre">
-                   :
-                  </span>
-                 </span>
-                 <span class="w">
-                 </span>
-                 <a class="reference internal" href="index.html#pyracf.profile_frame.ProfileFrame" title="pyracf.profile_frame.ProfileFrame">
-                  <span class="pre">
-                   ProfileFrame
-                  </span>
-                 </a>
-                </em>
-                <a class="headerlink" href="#pyracf.RACF.groupOMVS" title="Permalink to this definition">
-                 &para;
-                </a>
-               </dt>
-               <dd>
-                <p>
-                 Group OMVS Data (0120).
-                </p>
-               </dd>
-              </dl>
-              <dl class="py property">
                <dt class="sig sig-object py" id="pyracf.RACF.groupOVM">
                 <em class="property">
                  <span class="pre">
@@ -22210,44 +22351,6 @@ runs as method on the RACF object, table(&lsquo;DSACC&rsquo;) or table(&lsquo;GR
                <dd>
                 <p>
                  user OPCLASS (0281).
-                </p>
-               </dd>
-              </dl>
-              <dl class="py property">
-               <dt class="sig sig-object py" id="pyracf.RACF.userOMVS">
-                <em class="property">
-                 <span class="pre">
-                  property
-                 </span>
-                 <span class="w">
-                 </span>
-                </em>
-                <span class="sig-name descname">
-                 <span class="pre">
-                  userOMVS
-                 </span>
-                </span>
-                <em class="property">
-                 <span class="p">
-                  <span class="pre">
-                   :
-                  </span>
-                 </span>
-                 <span class="w">
-                 </span>
-                 <a class="reference internal" href="index.html#pyracf.profile_frame.ProfileFrame" title="pyracf.profile_frame.ProfileFrame">
-                  <span class="pre">
-                   ProfileFrame
-                  </span>
-                 </a>
-                </em>
-                <a class="headerlink" href="#pyracf.RACF.userOMVS" title="Permalink to this definition">
-                 &para;
-                </a>
-               </dt>
-               <dd>
-                <p>
-                 User Data (0270).
                 </p>
                </dd>
               </dl>

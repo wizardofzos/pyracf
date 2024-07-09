@@ -254,8 +254,9 @@ otherAttributes = [
  '_correlate',
  '_publish',
  '_recordname_df',
- '_recordname_type',
  '_recordtype_info',
+ '_recordname_publisher',
+ '_recordname_type',
  '_records',
  '_starttime',
  '_stoptime',
@@ -265,6 +266,7 @@ otherAttributes = [
 # attributes that don't get created for pickles (for example), so if we find them that's fine, if we don't it's fine too
 optionalAttributes = [
  'THREAD_COUNT',
+ '_doc_stubs',
  '_irrdbu00',
  '_parsed',
  '_unloadlines',
