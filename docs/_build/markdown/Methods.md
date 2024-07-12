@@ -79,6 +79,13 @@ r.datasetConditionalAccess.find(None, '*')
 r.generalAccesss.find('UNIXPRIV', '**', '**', 'UPDATE')
 ```
 
+Selections can also contain a list of (literal) values:
+
+```default
+# READ or UPDATE on a UNIXPRIV profile
+r.generalAccesss.find('UNIXPRIV', '**', '**', ['READ','UPDATE'])
+```
+
 For group and user profiles, only one parameter is needed. Two
 parameters can be given for connect information:
 
@@ -171,6 +178,9 @@ A list of values can be specified as a list:
 ```default
 # ID(*) with excessive access
 r.datasetAccess.find(AUTH_ID='*',ACCESS=['UPDATE','CONTROL','ALTER'])
+
+# permits for users with OPERATIONS
+r.datasetAccess.find(AUTH_ID=r.operations.index)
 ```
 
 ### .find(*alias* = *value*, … )

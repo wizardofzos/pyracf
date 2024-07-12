@@ -62,6 +62,24 @@ value of *prefix*\ \_UACC and IDSTAR_ACCESS is stored in
 ``ALL_USER_ACCESS`` indicating the access level granted to all RACF
 defined users, except when restricted by specific access.
 
+.groupOMVS and .userOMVS
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Column ``GPOMVS_GID`` and ``USOMVS_UID`` contain the id of the entity in 10 digits with leading zeros, making for errors in specifying a value.
+A copy of the GID or UID without leading zeros is available in ``GPOMVS_GID_`` and ``USOMVS_UID_``, resp.
+
+.CERT
+^^^^^^^^
+
+Returns a combined DataFrame of the DataFrames ``._generalCERT`` en
+``.generals``, copying the ``GRBD_APPL_DATA`` and ``GRBD_UACC`` fields to show the user ID associated with the certificate and the trust level.
+
+.KEYRING
+^^^^^^^^
+
+Returns a combined DataFrame of the DataFrames ``._generalKEYRING`` en
+``.generals``, copying the ``GRBD_APPL_DATA`` field to show the user ID associated with the keyring.
+
 .SSIGNON
 ^^^^^^^^
 

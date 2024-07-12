@@ -40,25 +40,30 @@ class FrameFilter():
             s = -1
             for sel in selection:
                 s += 1
-                if sel not in skipSelect:
-                    if regexPattern or isinstance(sel,re.Pattern):
-                        result = df.index.get_level_values(s).str.match(sel)
-                    elif len(sel)>2 and sel[0]=='*' and sel[-1]=='*' and sel[1:-1].find('*')==-1:
-                        result = df.index.get_level_values(s).str.contains(sel[1:-1])
-                    elif sel=='*' or (sel.find('*')==-1 and sel.find('%')==-1):
-                        result = df.index.get_level_values(s)==sel
-                    else:
-                        result = df.index.get_level_values(s).str.match(generic2regex(sel))
+                if sel is None or (isinstance(sel,str) and sel in skipSelect):
+                    continue
+                elif regexPattern or isinstance(sel,re.Pattern):
+                    result = df.index.get_level_values(s).str.match(sel)
+                elif isinstance(sel,(list,pd.Index,pd.Series)):
+                    result = df.index.get_level_values(s).isin(sel)
+                elif len(sel)>2 and sel[0]=='*' and sel[-1]=='*' and sel[1:-1].find('*')==-1:
+                    result = df.index.get_level_values(s).str.contains(sel[1:-1])
+                elif sel=='*' or (sel.find('*')==-1 and sel.find('%')==-1):
+                    result = df.index.get_level_values(s)==sel
+                else:
+                    result = df.index.get_level_values(s).str.match(generic2regex(sel))
 
-                    if exclude:
-                        locs &= result
-                    else:
-                        df = df.loc[result]
+                if exclude:
+                    locs &= result
+                else:
+                    df = df.loc[result]
         else:
             s = -1
             for sel in selection:
                 s += 1
-                if sel not in skipSelect:
+                if sel is None or (isinstance(sel,str) and sel in skipSelect):
+                    continue
+                else:
                     columnSelect.append([df.columns[s],sel])
 
         for kwd,sel in kwds.items():
@@ -88,7 +93,7 @@ class FrameFilter():
         for [column,sel] in columnSelect:
             if regexPattern or isinstance(sel,re.Pattern):
                 result = df[column].str.match(sel)
-            elif type(sel)==str:
+            elif isinstance(sel,str):
                 if sel=='**':
                     result = df[column].gt('')
                 elif len(sel)>2 and sel[0]=='*' and sel[-1]=='*' and sel[1:-1].find('*')==-1:
@@ -97,7 +102,7 @@ class FrameFilter():
                     result = df[column]==sel
                 else:
                     result = df[column].str.match(generic2regex(sel))
-            elif type(sel) in (list,set,tuple):
+            elif isinstance(sel,(list,set,tuple,pd.Index,pd.Series)):
                 generic = any([s.find('*')>=0 or s.find('%')>=0 for s in sel])
                 if generic:
                     sel = '|'.join([generic2regex(s) for s in sel])
@@ -193,7 +198,7 @@ class FrameFilter():
                     start = df
                     sel = selection[0]
                 elif len(selection)==2:
-                    if type(selection[0])==str:
+                    if isinstance(selection[0],str):
                         start = df.find(selection[0])
                     else:
                         start = df.loc[selection[0]]

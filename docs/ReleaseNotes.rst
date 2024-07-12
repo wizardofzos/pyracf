@@ -11,6 +11,10 @@ Summary of changes
 - r.table() now uses the profile publisher method to return a df, instead of the df itself.
 - new property _doc_stubs in ProfilePublisher with names of methods that are only there for ducmentation purposes, and should not be called
 
+- .find( ) and .skip( ) accept list specification of values, these must be literals, e.g.,
+  r.datasetAccess.find(None,None,['SYS1','SYS2'])
+  r.users.find(OWNER=['SYS1','SYS2'])
+
 
 0.9.0 (rules, sphinx-autodoc, find, skip)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

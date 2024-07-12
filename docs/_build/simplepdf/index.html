@@ -441,6 +441,13 @@ USBD) containing all the users that have been revoked.
               new property _doc_stubs in ProfilePublisher with names of methods that are only there for ducmentation purposes, and should not be called
              </p>
             </li>
+            <li>
+             <p>
+              .find( ) and .skip( ) accept list specification of values, these must be literals, e.g.,
+r.datasetAccess.find(None,None,[&lsquo;SYS1&rsquo;,&rsquo;SYS2&rsquo;])
+r.users.find(OWNER=[&lsquo;SYS1&rsquo;,&rsquo;SYS2&rsquo;])
+             </p>
+            </li>
            </ul>
           </section>
           <section id="rules-sphinx-autodoc-find-skip">
@@ -3863,6 +3870,106 @@ value of
 defined users, except when restricted by specific access.
            </p>
           </section>
+          <section id="groupomvs-and-useromvs">
+           <h4>
+            .groupOMVS and .userOMVS
+            <a class="headerlink" href="#groupomvs-and-useromvs" title="Permalink to this heading">
+             &para;
+            </a>
+           </h4>
+           <p>
+            Column
+            <code class="docutils literal notranslate">
+             <span class="pre">
+              GPOMVS_GID
+             </span>
+            </code>
+            and
+            <code class="docutils literal notranslate">
+             <span class="pre">
+              USOMVS_UID
+             </span>
+            </code>
+            contain the id of the entity in 10 digits with leading zeros, making for errors in specifying a value.
+A copy of the GID or UID without leading zeros is available in
+            <code class="docutils literal notranslate">
+             <span class="pre">
+              GPOMVS_GID_
+             </span>
+            </code>
+            and
+            <code class="docutils literal notranslate">
+             <span class="pre">
+              USOMVS_UID_
+             </span>
+            </code>
+            , resp.
+           </p>
+          </section>
+          <section id="cert">
+           <h4>
+            .CERT
+            <a class="headerlink" href="#cert" title="Permalink to this heading">
+             &para;
+            </a>
+           </h4>
+           <p>
+            Returns a combined DataFrame of the DataFrames
+            <code class="docutils literal notranslate">
+             <span class="pre">
+              ._generalCERT
+             </span>
+            </code>
+            en
+            <code class="docutils literal notranslate">
+             <span class="pre">
+              .generals
+             </span>
+            </code>
+            , copying the
+            <code class="docutils literal notranslate">
+             <span class="pre">
+              GRBD_APPL_DATA
+             </span>
+            </code>
+            and
+            <code class="docutils literal notranslate">
+             <span class="pre">
+              GRBD_UACC
+             </span>
+            </code>
+            fields to show the user ID associated with the certificate and the trust level.
+           </p>
+          </section>
+          <section id="keyring">
+           <h4>
+            .KEYRING
+            <a class="headerlink" href="#keyring" title="Permalink to this heading">
+             &para;
+            </a>
+           </h4>
+           <p>
+            Returns a combined DataFrame of the DataFrames
+            <code class="docutils literal notranslate">
+             <span class="pre">
+              ._generalKEYRING
+             </span>
+            </code>
+            en
+            <code class="docutils literal notranslate">
+             <span class="pre">
+              .generals
+             </span>
+            </code>
+            , copying the
+            <code class="docutils literal notranslate">
+             <span class="pre">
+              GRBD_APPL_DATA
+             </span>
+            </code>
+            field to show the user ID associated with the keyring.
+           </p>
+          </section>
           <section id="ssignon">
            <h4>
             .SSIGNON
@@ -6009,6 +6116,16 @@ profile key, as literals or patterns, for example
             </div>
            </div>
            <p>
+            Selections can also contain a list of (literal) values:
+           </p>
+           <div class="highlight-default notranslate">
+            <div class="highlight">
+             <pre><span></span><span class="c1"># READ or UPDATE on a UNIXPRIV profile</span>
+<span class="n">r</span><span class="o">.</span><span class="n">generalAccesss</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">'UNIXPRIV'</span><span class="p">,</span> <span class="s1">'**'</span><span class="p">,</span> <span class="s1">'**'</span><span class="p">,</span> <span class="p">[</span><span class="s1">'READ'</span><span class="p">,</span><span class="s1">'UPDATE'</span><span class="p">])</span>
+</pre>
+            </div>
+           </div>
+           <p>
             For group and user profiles, only one parameter is needed. Two
 parameters can be given for connect information:
            </p>
@@ -6211,6 +6328,9 @@ want to search for
             <div class="highlight">
              <pre><span></span><span class="c1"># ID(*) with excessive access</span>
 <span class="n">r</span><span class="o">.</span><span class="n">datasetAccess</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">AUTH_ID</span><span class="o">=</span><span class="s1">'*'</span><span class="p">,</span><span class="n">ACCESS</span><span class="o">=</span><span class="p">[</span><span class="s1">'UPDATE'</span><span class="p">,</span><span class="s1">'CONTROL'</span><span class="p">,</span><span class="s1">'ALTER'</span><span class="p">])</span>
+
+<span class="c1"># permits for users with OPERATIONS</span>
+<span class="n">r</span><span class="o">.</span><span class="n">datasetAccess</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">AUTH_ID</span><span class="o">=</span><span class="n">r</span><span class="o">.</span><span class="n">operations</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
 </pre>
             </div>
            </div>
