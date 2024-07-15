@@ -18,18 +18,13 @@ import glob
 
 import warnings
 
+from .exceptions import PyRacfException
 from .profile_frame import ProfileFrame
 from .profile_publishers import ProfilePublisher
 from .rule_verify import RuleVerifier
 from .racf_functions import accessKeywords
 from .utils import deprecated, readableList
 from .xls_writers import XlsWriter
-
-
-class PyRacfException(Exception):
-    def __init__(self, message):
-        self.message = message
-        super().__init__(self.message)
 
 
 class RACF(ProfilePublisher,XlsWriter):

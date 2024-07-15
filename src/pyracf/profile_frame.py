@@ -140,9 +140,9 @@ class ProfileFrame(pd.DataFrame, FrameFilter, XlsWriter):
             raise TypeError('profile criteria not specified...')
         if option in (None,'LIST','L'):  # return 1 profile
             # 1 string, several strings in a tuple, or a mix of strings and None
-            if type(selection)==str and not option:
+            if isinstance(selection,str) and not option:
                 selection = [selection]  # [] forces return of a df, not a Series
-            elif type(selection)==tuple:
+            elif isinstance(selection,tuple):
                 if any([s in (None,'**') for s in selection]):  # any qualifiers are a mask
                     selection = tuple(slice(None) if s in (None,'**') else s for s in selection),
                 else:

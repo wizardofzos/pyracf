@@ -185,7 +185,7 @@ class FrameFilter():
                             for sel in dsns:
                                 result = inqual.loc[inqual.index.get_level_values(0)==sel]  # check if there is a matching fully qualified
                                 if result.empty:
-                                    result = inqual[[re.match(x,sel)!=None for x in inqual[''.join([df._fieldPrefix,'NAME'])].apply(generic2regex)]]
+                                    result = inqual[[re.match(x,sel) is not None for x in inqual[''.join([df._fieldPrefix,'NAME'])].apply(generic2regex)]]
                                 if show_resource:
                                     result = result.copy()
                                     result['RESOURCE'] = sel
@@ -209,7 +209,7 @@ class FrameFilter():
                     for sel in listMe(sel):
                         result = start.loc[start.index.get_level_values(1)==sel]  # check if there is a matching discrete
                         if result.empty:
-                            result = start[[re.match(x,sel)!=None for x in start[''.join([df._fieldPrefix,'NAME'])].apply(generic2regex)]]
+                            result = start[[re.match(x,sel) is not None for x in start[''.join([df._fieldPrefix,'NAME'])].apply(generic2regex)]]
                         # find first profile (the first match) for each class, store True/False in array
                         locs = []
                         prevClass = ''
@@ -227,7 +227,7 @@ class FrameFilter():
             else:
                 frames = None
 
-            if frames!=None:
+            if frames is not None:
                 if len(frames)==0:
                     return df.head(0)
                 elif len(frames)==1:

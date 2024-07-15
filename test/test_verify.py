@@ -43,7 +43,7 @@ def test_rules_syntax(testparms):
 
   with pytest.warns(UserWarning) as record: # should be RACF object does not have a table :
       t.load(rules = {'test4': (['GRBLAA'], {'test': {'field':'AUTH_ID', 'fit':'ACLID'}}) } ).syntax_check(confirm=False)
-      assert record[0].message.args[0].find('does not have a table')>-1, f'syntax_check shoulld identify incorrect table name'
+      assert record[0].message.args[0].find('does not have a table')>-1, f'syntax_check should identify incorrect table name'
 
 def test_rules_orphans(testparms):
   r = testparms['object']

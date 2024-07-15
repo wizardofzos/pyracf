@@ -131,9 +131,9 @@ class RuleVerifier:
             if not domains:
                 domains = ruleset.domains(self,pd)  # needs pandas
 
-        if rules and type(rules)==str:
+        if rules and isinstance(rules,str):
             rules = yaml.safe_load(rules)
-        if domains and type(domains)==str:
+        if domains and isinstance(domains,str):
             domains = yaml.safe_load(domains)
 
         self._rules=rules
@@ -160,16 +160,16 @@ class RuleVerifier:
           v.add_domains({'SYS1': r.connect('SYS1').index})
 
         '''
-        if domains and type(domains)==dict:  # just a dict
+        if domains and isinstance(domains,dict):  # just a dict
             pass
-        elif domains and type(domains)==str:  # just a yaml (?) str
+        elif domains and isinstance(domains,str):  # just a yaml (?) str
             domains = yaml.safe_load(domains)
         else:
             raise TypeError('domains parameter must be a dict or a yaml string')
 
         for (name,items) in domains.items():
-            if type(name)==str:
-                if type(items)==list:  # name and list?
+            if isinstance(name,str):
+                if isinstance(items,list):  # name and list?
                     pass
                 else:  # name and list?
                     try:
@@ -204,7 +204,7 @@ class RuleVerifier:
         '''
         if not domains:
             return self._domains
-        elif type(domains)==str:  # just 1 domain?
+        elif isinstance(domains,str):  # just 1 domain?
             return self._domains[domains] if domains in self._domains else []
         else:
             raise TypeError('domains parameter must be the name of a domain, or missing')
@@ -235,18 +235,15 @@ class RuleVerifier:
         if not (self._rules and self._domains):
             raise TypeError('rules and domains must be loaded before running verify')
 
-        if type(id)!=bool:
+        if not isinstance(id,bool):
             raise TypeError('issue id must be True or False')
 
-        if syntax_check!=None:
+        if syntax_check is not None:
             warnings.warn('syntax_check option is deprecated, syntax_check is now implied')
 
         def initArray(value, like):
             ''' create an array of True to apply (AND) EXCLUDE type actions, or an array for False to OR SELECT type actions '''
-            if value:
-                return pd.Series(True, index=like.index)
-            else:
-                return pd.Series(False, index=like.index)
+            return pd.Series(value, index=like.index)
             #if value:
             #    return pd.array([True]*like.shape[0],bool)
             #else:
@@ -265,7 +262,7 @@ class RuleVerifier:
                 generic &= cl.find('*')==-1 and cl.find('%')==-1
             if generic:
                 return df.index.get_level_values(0).str.match(classPattern[:-1])
-            elif type(classnames)==str:
+            elif isinstance(classnames,str):
                 return df.index.get_level_values(0)==classnames
             else:
                 return df.index.get_level_values(0).isin(classnames)
@@ -340,7 +337,7 @@ class RuleVerifier:
                         subjectDF = subjectDF.loc[ ~ subjectDF.index.get_level_values(ixLevel).str.match(generic2regex(tbCrit['-profile']))]
 
                     if 'match' in tbCrit:
-                        if type(tbCrit['match'])==list or tbCrit['match'].find('(')==-1:  # match profile key on dsname or resource name (list)
+                        if isinstance(tbCrit['match'],list) or tbCrit['match'].find('(')==-1:  # match profile key on dsname or resource name (list)
                             subjectDF = subjectDF.match(tbCrit['match'])
                     if '-match' in tbCrit:  # all except the matched profile(s)
                         subjectDF = subjectDF.loc[subjectDF.index.difference(subjectDF.match(tbCrit['-match']).index)]
@@ -375,7 +372,7 @@ class RuleVerifier:
                                 if 'fit' in fldCrit:
                                     fldLocs |= fldColumn.gt('') & fldColumn.isin(safeDomain(fldCrit['fit']))
                                 if 'value' in fldCrit:
-                                    if type(fldCrit['value'])==str:
+                                    if isinstance(fldCrit['value'],str):
                                         fldLocs |= fldColumn.eq(fldCrit['value'])
                                     else:
                                         fldLocs |= fldColumn.gt('') & fldColumn.isin(fldCrit['value'])
@@ -408,10 +405,10 @@ class RuleVerifier:
 
                     if 'join' in tbCrit:
                         joinCrit = tbCrit['join']
-                        if type(joinCrit)==str: # join: userTSO or join: USOMVS
+                        if isinstance(joinCrit,str): # join: userTSO or join: USOMVS
                             joinTab = joinCrit
                             joinCol = None
-                        elif type(joinCrit)==dict: # join: {table: userTSO, on: AUTH_ID}
+                        elif isinstance(joinCrit,dict): # join: {table: userTSO, on: AUTH_ID}
                             joinTab = ''
                             joinCol = None
                             if 'table' in joinCrit:
@@ -457,7 +454,7 @@ class RuleVerifier:
                         v_m('join','results after',subjectDF.shape,'elapsed {:.6f} seconds'.format(used))
 
                     if 'match' in tbCrit:
-                        if type(tbCrit['match'])==str and tbCrit['match'].find('(')!=-1:  # match and extract
+                        if isinstance(tbCrit['match'],str) and tbCrit['match'].find('(')!=-1:  # match and extract
                             matchPattern = tbCrit['match'].replace('.',r'\.').replace('*',r'\*')\
                                                           .replace('(','(?P<').replace(')','>[^.]*)')
                             matched = subjectDF[subjectDF._fieldPrefix+'NAME'].str.extract(matchPattern)  # extract 1 qualifier
@@ -491,7 +488,7 @@ class RuleVerifier:
                             if 'fit' in fldCrit:
                                 fldLocs |= fldColumn.isin(safeDomain(fldCrit['fit']))
                             if 'value' in fldCrit:
-                                if type(fldCrit['value'])==str:
+                                if isinstance(fldCrit['value'],str):
                                     fldLocs |= fldColumn.eq(fldCrit['value'])
                                 elif '' in fldCrit['value']:
                                     fldLocs |= fldColumn.isin(fldCrit['value'])
@@ -514,7 +511,7 @@ class RuleVerifier:
                     if 'skip' in actionLocs: tbLocs &= ~ actionLocs['skip']
 
                     if 'save' in tbCrit:
-                        if type(tbNames)==str or (type(tbNames)==list and len(tbNames)==1):
+                        if isinstance(tbNames,str) or (isinstance(tbNames,list) and len(tbNames)==1):
                             savedViews[tbCrit['save']] = (subjectDF.loc[tbLocs].copy(), tbModel)
                         else:
                             warnings.warn(f"save: {tbCrit['save']} ignored, {tbNames} is more than 1 input table")
@@ -537,7 +534,7 @@ class RuleVerifier:
                             if 'fit' in fldCrit:
                                 fldLocs |= fldColumn.isin(safeDomain(fldCrit['fit']))
                             if 'value' in fldCrit:
-                                if type(fldCrit['value'])==str:
+                                if isinstance(fldCrit['value'],str):
                                     fldLocs |= fldColumn.eq(fldCrit['value'])
                                 elif '' in fldCrit['value']:
                                     fldLocs |= fldColumn.isin(fldCrit['value'])
@@ -617,17 +614,18 @@ class RuleVerifier:
         savedViews = {}
 
         for (name,*items) in self._domains:
-            if type(name)!=str:
-                broken('domain',Name,f"domain entry {Name} must have a string lable")
-            if isinstance(items,list) :pass
+            if not isinstance(name,str):
+                broken('domain',name,f"domain entry {name} must have a string lable")
+            if isinstance(items,list):
+                pass
             else:
                 try:
                     shape = items.shape
                 except:
-                    broken('domain',Name,f"domain entry {Name} does not have a pandas value object")
+                    broken('domain',name,f"domain entry {name} does not have a pandas value object")
                 else:
                     if len(shape)>1:
-                        broken('domain',Name,f"domain entry {Name} must have a one-dimensional, list-like value")
+                        broken('domain',name,f"domain entry {name} must have a one-dimensional, list-like value")
 
 
         for tbRuleName, (tbNames,*tbCriteria) in self._rules.items():
@@ -671,14 +669,14 @@ class RuleVerifier:
                             broken('class',tbCrit['class'],f"cannot use {tbCrit['class']} in {tbClassName} table")
 
                     if 'match' in tbCrit:
-                        if type(tbCrit['match'])==str and tbCrit['match'].find('(')!=-1:
+                        if isinstance(tbCrit['match'],str) and tbCrit['match'].find('(')!=-1:
                             matchFields = re.findall(r'\((\S+?)\)',tbCrit['match'])
                             if len(matchFields)==0:
                                 broken('match',tbCrit['match'],f"at least 1 field should be defined between parentheses")
                             else:
                                 tbCrit['_matchFields'] = matchFields
                         else:
-                            if type(tbCrit['match'])==str or type(tbCrit['match'])==list:
+                            if isinstance(tbCrit['match'],(str,list)):
                                 for m in listMe(tbCrit['match']):
                                     if m.find('*')!=-1 or m.find('%')!=-1:
                                         broken('match',tbCrit['match'],f"no generic patterns supported in match")
@@ -688,7 +686,7 @@ class RuleVerifier:
                                 broken('match',tbCrit['match'],f"unrecognized type type(tbCrit['match'])")
 
                     if '-match' in tbCrit:
-                        if type(tbCrit['-match'])==str or type(tbCrit['-match'])==list:
+                        if isinstance(tbCrit['-match'],(str,list)):
                             for m in listMe(tbCrit['-match']):
                                 if m.find('*')!=-1 or m.find('%')!=-1:
                                     broken('-match',tbCrit['-match'],f"no generic patterns supported in match")
@@ -699,10 +697,10 @@ class RuleVerifier:
 
                     if 'join' in tbCrit:
                         joinCrit = tbCrit['join']
-                        if type(joinCrit)==str: # join: userTSO or join: USOMVS
+                        if isinstance(joinCrit,str): # join: userTSO or join: USOMVS
                             joinTab = joinCrit
                             joinCol = None
-                        elif type(joinCrit)==dict: # join: {table: userTSO, on: AUTH_ID}
+                        elif isinstance(joinCrit,dict): # join: {table: userTSO, on: AUTH_ID}
                             for d in joinCrit:
                                 if d not in ['table','on',True,'how'] and d[0]!='_':
                                     broken('join',joinCrit,f"unknown join parameter {d}")
@@ -747,7 +745,7 @@ class RuleVerifier:
                         else: continue
 
                         for fldCrit in listMe(actCrit):
-                            if type(fldCrit)!=dict:
+                            if not isinstance(fldCrit,dict):
                                 broken('filter',fldCrit,'each of criteria should be a dict')
                             for section in fldCrit.keys():
                                 if section not in ['field','fit','value','rule','eq','ne'] and section[0]!='_':
@@ -761,7 +759,7 @@ class RuleVerifier:
 
                             if 'fit' in fldCrit and fldCrit['fit'] not in self._domains:
                                 broken('fit',fldCrit['fit'],f"domain name {fldCrit['fit']} in filter not defined")
-                            if 'value' in fldCrit and type(fldCrit['value'])==bool:
+                            if 'value' in fldCrit and isinstance(fldCrit['value'],bool):
                                 broken('value',fldCrit['field'],f"yaml text string {fldCrit['value']} for {fldCrit['field']} is not a str")
 
                             for fN in ['field','eq','ne']:
@@ -777,14 +775,14 @@ class RuleVerifier:
                                         broken('field',fldCrit[fN],f"field name {fldCrit[fN]} not found in {tbName} or match definition")
 
                     if 'save' in tbCrit:
-                        if type(tbNames)==str or (type(tbNames)==list and len(tbNames)==1):
+                        if isinstance(tbNames,str) or (isinstance(tbNames,list) and len(tbNames)==1):
                             savedViews[tbCrit['save']] = (tbDF, tbModel, tbCrit)
                         else:
                             broken('save',tbCrit['save'],f"save: supported for 1 input table, {tbNames} has more than 1")
 
                     if 'test' in tbCrit:
                         for fldCrit in listMe(tbCrit['test']):
-                            if type(fldCrit)!=dict:
+                            if not isinstance(fldCrit,dict):
                                 broken('test',fldCrit,'each of criteria should be a dict')
                             for section in fldCrit.keys():
                                 if section not in ['field','fit','value','action','rule','id','eq','ne'] and section[0]!='_':
@@ -807,7 +805,7 @@ class RuleVerifier:
                                         broken('field',fldCrit[fN],f"field name {fldCrit[fN]} not found in {tbName} or match definition")
                             if 'fit' in fldCrit and fldCrit['fit'] not in self._domains:
                                 broken('fit',fldCrit['fit'],f"domain name {fldCrit['fit']} in test not defined")
-                            if 'value' in fldCrit and type(fldCrit['value'])==bool:
+                            if 'value' in fldCrit and isinstance(fldCrit['value'],bool):
                                 broken('value',fldCrit['field'],f"yaml text string {fldCrit['value']} for {fldCrit['field']} is not a str")
                             if 'action' in fldCrit and fldCrit['action'].upper() not in ['FAILURE','FAIL','F','V']:
                                 broken('action',fldCrit['field'],f"action {fldCrit['action']} for {fldCrit['field']} not recorgnized")

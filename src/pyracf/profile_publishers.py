@@ -1,3 +1,4 @@
+from .exceptions import PyRacfException
 from .group_structure import GroupStructureTree
 from .profile_frame import ProfileFrame
 from .rule_verify import RuleFrame

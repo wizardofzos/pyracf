@@ -72,12 +72,12 @@ class GroupStructureTree(dict):
         BOX_ENTRY = u'\u251C'
         BOX_CONT = u'\u2502'
         BOX_END = u'\u2514'
-        if not branch:
+        if branch is None:
             branch = self.tree
         info = ''
-        if type(branch)==str:
+        if isinstance(branch,str):
             info += prefix + ' ' +  str(branch) + '\n'
-        elif type(branch)==list:
+        elif isinstance(branch,list):
             # indent 1 level, prev level continues with just a bar
             if prefix and prefix[-1]==BOX_ENTRY:
                 prefix = prefix[0:-1]+BOX_CONT
@@ -96,12 +96,12 @@ class GroupStructureTree(dict):
 
     def simple_format(self,branch=None,depth=0):
         '''print groups, prefixed with vertical bars to show depth'''
-        if not branch:
+        if branch is None:
             branch = self.tree
         info = ''
-        if type(branch)==str:
+        if isinstance(branch,str):
             info += ' |'*depth + ' ' +  str(branch) + '\n'
-        elif type(branch)==list:
+        elif isinstance(branch,list):
             depth += 1
             for node in branch:
                 info += self.simple_format(node,depth)

@@ -16,7 +16,7 @@ def deprecated(func,oldname):
 def listMe(item):
     ''' make list in parameters optional when there is only 1 item, similar to the * unpacking feature in assignments.
     as a result you can just: for options in listMe(optioORoptions)  '''
-    return item if type(item)==list else [item]
+    return item if isinstance(item,list) else [item]
 
 def readableList(iter):
     ''' print entries from a dict index into a readable list, e.g., a, b or c '''
@@ -24,7 +24,7 @@ def readableList(iter):
 
 def simpleListed(item):
     ''' print a string or a list of strings with just commas between values '''
-    return item if type(item)==str else ','.join(item)
+    return item if isinstance(item,str) else ','.join(item)
 
 def nameInColumns(df,name,columns=[],prefix=None,returnAll=False):
     '''find prefixed column name in a Frame, return whole name, or all names if requested
@@ -42,17 +42,17 @@ def nameInColumns(df,name,columns=[],prefix=None,returnAll=False):
     if len(columns)==0:
         columns = df.columns
 
-    if type(name)==str:
+    if isinstance(name,str):
         if name in columns:
             found = [name]
         else:
             found = [cname for cname in columns if cname.split('_',1)[1]==name]
-    elif type(name)==list:
+    elif isinstance(name,list):
         returnAll = True  # if a list of names is given, return a list
         found = [cname for cname in columns if cname in name or cname.split('_',1)[1] in name]
 
     if prefix:
-        if type(prefix)==str:
+        if isinstance(prefix,str):
             found = [cname for cname in found if cname.split('_',1)[0] == prefix]
         else:
             found = [cname for cname in found if cname.split('_',1)[0] in prefix]
