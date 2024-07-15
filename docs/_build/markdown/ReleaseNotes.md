@@ -2,8 +2,10 @@
 
 ## Summary of changes
 
-### 0.9.1 (GID, UID without leading zeros, UACC and APPLID in CERT and KEYRING)
+### 0.9.1 auto_pickle, GID, UID without leading zeros, UACC and APPLID in CERT and KEYRING
 
+- r=RACF(…)auto_pickle=True) compares timestamp of pickles with unload file
+  uses pickles when newer, or reads unload and updates pickles
 - ProfilePublisher methods for GPOMVS, USOMVS, CERT and KEYRING tables
 - r.table() now uses the profile publisher method to return a df, instead of the df itself.
 - new property \_doc_stubs in ProfilePublisher with names of methods that are only there for ducmentation purposes, and should not be called

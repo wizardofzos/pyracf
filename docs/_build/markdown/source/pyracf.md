@@ -801,11 +801,7 @@ runs as method on the RACF object, table(‘DSACC’) or table(‘GRACC’)
 
 ## Module contents
 
-### *exception* pyracf.PyRacfException(message)
-
-Bases: `Exception`
-
-### *class* pyracf.RACF(irrdbu00=None, pickles=None, prefix='')
+### *class* pyracf.RACF(irrdbu00=None, pickles=None, auto_pickles=False, prefix='')
 
 Bases: [`ProfilePublisher`](#pyracf.profile_publishers.ProfilePublisher), [`XlsWriter`](#pyracf.xls_writers.XlsWriter)
 
@@ -817,7 +813,9 @@ Bases: [`ProfilePublisher`](#pyracf.profile_publishers.ProfilePublisher), [`XlsW
 
 #### STATE_CORRELATING *= 2*
 
-#### STATE_READY *= 3*
+#### STATE_CORRELATED *= 3*
+
+#### STATE_READY *= 4*
 
 #### *property* status
 
@@ -834,6 +832,20 @@ how many records with this name (type) were parsed
 #### table(rname=None)
 
 return table with this name (type)
+
+#### save_pickle(df='', dfname='', path='', prefix='')
+
+#### save_pickles(path='/tmp', prefix='')
+
+#### load_pickles(path='/tmp', prefix='')
+
+#### *property* rules *: [RuleVerifier](#pyracf.rule_verify.RuleVerifier)*
+
+create a RuleVerifier instance
+
+#### getdatasetrisk(profile='')
+
+This will produce a dict as follows:
 
 #### *property* ALIAS *: [ProfileFrame](#pyracf.profile_frame.ProfileFrame)*
 
@@ -1203,18 +1215,6 @@ User WORKATTR Data (0260).
 
 User Basic Data (0200).
 
-#### save_pickle(df='', dfname='', path='', prefix='')
-
-#### save_pickles(path='/tmp', prefix='')
-
-#### *property* rules *: [RuleVerifier](#pyracf.rule_verify.RuleVerifier)*
-
-create a RuleVerifier instance
-
-#### getdatasetrisk(profile='')
-
-This will produce a dict as follows:
-
-### *class* pyracf.IRRDBU(irrdbu00=None, pickles=None, prefix='')
+### *class* pyracf.IRRDBU(irrdbu00=None, pickles=None, auto_pickles=False, prefix='')
 
 Bases: [`RACF`](#pyracf.RACF)

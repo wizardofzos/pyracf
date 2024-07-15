@@ -120,6 +120,11 @@
           Fancy Parsing
          </a>
         </li>
+        <li class="toctree-l2">
+         <a class="reference internal" href="#pickles">
+          Pickles
+         </a>
+        </li>
        </ul>
       </li>
       <li class="toctree-l1">
@@ -418,14 +423,20 @@ USBD) containing all the users that have been revoked.
             &para;
            </a>
           </h3>
-          <section id="gid-uid-without-leading-zeros-uacc-and-applid-in-cert-and-keyring">
+          <section id="auto-pickle-gid-uid-without-leading-zeros-uacc-and-applid-in-cert-and-keyring">
            <h4>
-            0.9.1 (GID, UID without leading zeros, UACC and APPLID in CERT and KEYRING)
-            <a class="headerlink" href="#gid-uid-without-leading-zeros-uacc-and-applid-in-cert-and-keyring" title="Permalink to this heading">
+            0.9.1 auto_pickle, GID, UID without leading zeros, UACC and APPLID in CERT and KEYRING
+            <a class="headerlink" href="#auto-pickle-gid-uid-without-leading-zeros-uacc-and-applid-in-cert-and-keyring" title="Permalink to this heading">
              &para;
             </a>
            </h4>
            <ul class="simple">
+            <li>
+             <p>
+              r=RACF(&hellip;)auto_pickle=True) compares timestamp of pickles with unload file
+uses pickles when newer, or reads unload and updates pickles
+             </p>
+            </li>
             <li>
              <p>
               ProfilePublisher methods for GPOMVS, USOMVS, CERT and KEYRING tables
@@ -1532,6 +1543,86 @@ are selected for parsing and give you a nice overview at the end.
 </pre>
            </div>
           </div>
+         </section>
+         <section id="pickles">
+          <h3>
+           Pickles
+           <a class="headerlink" href="#pickles" title="Permalink to this heading">
+            &para;
+           </a>
+          </h3>
+          <p>
+           After parsing the input from the unload file, the RACF object has up to 100 pandas DataFrames.  For future runs, you can save these DataFrames as
+           <code class="docutils literal notranslate">
+            <span class="pre">
+             pickle
+            </span>
+            <span class="pre">
+             files
+            </span>
+           </code>
+           .  This should save processing time when you have to build another RACF object:
+          </p>
+          <div class="highlight-default notranslate">
+           <div class="highlight">
+            <pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">r</span> <span class="o">=</span> <span class="n">RACF</span><span class="p">(</span><span class="n">irrdbu00</span><span class="o">=</span><span class="s1">'/path/to/irrdbu00'</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">r</span><span class="o">.</span><span class="n">parse_fancycli</span><span class="p">(</span><span class="n">save_pickles</span><span class="o">=</span><span class="s1">'/tmp'</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">'prodsys-'</span><span class="p">)</span>
+</pre>
+           </div>
+          </div>
+          <p>
+           This creates up to 100 files in /tmp, with names like prodsys-GPBD.pickle and prodsys-USOMVS.pickle.  Although
+           <code class="docutils literal notranslate">
+            <span class="pre">
+             prefix
+            </span>
+           </code>
+           is optional, it helps to identify the files in future.
+          </p>
+          <p>
+           If you use the parse() method, you can execute a save_pickles() method too:
+          </p>
+          <div class="highlight-default notranslate">
+           <div class="highlight">
+            <pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">r</span> <span class="o">=</span> <span class="n">RACF</span><span class="p">(</span><span class="n">irrdbu00</span><span class="o">=</span><span class="s1">'/path/to/irrdbu00'</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">r</span><span class="o">.</span><span class="n">parse</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">while</span> <span class="n">r</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="s1">'status'</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">"Ready"</span><span class="p">:</span>
+<span class="gp">... </span>  <span class="nb">print</span><span class="p">(</span><span class="s1">'Parsing...'</span><span class="p">)</span>
+<span class="gp">... </span>  <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="go">Parsing...</span>
+<span class="go">Parsing...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">r</span><span class="o">.</span><span class="n">save_pickles</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s1">'/tmp'</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">'prodsys-'</span><span class="p">)</span>
+</pre>
+           </div>
+          </div>
+          <p>
+           Next time, when you start pyRACF, instead of reading the unload file, you can simply load the pickles, like so:
+          </p>
+          <div class="highlight-default notranslate">
+           <div class="highlight">
+            <pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">r</span> <span class="o">=</span> <span class="n">RACF</span><span class="p">(</span><span class="n">pickles</span><span class="o">=</span><span class="s1">'/tmp'</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">'prodsys-'</span><span class="p">)</span>
+</pre>
+           </div>
+          </div>
+          <p>
+           When you find that pickles are a time-saver, but you forget to refresh the pickles every time a new unload file is created, you can use the
+           <code class="docutils literal notranslate">
+            <span class="pre">
+             auto-pickles
+            </span>
+           </code>
+           function:
+          </p>
+          <div class="highlight-default notranslate">
+           <div class="highlight">
+            <pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">r</span> <span class="o">=</span> <span class="n">RACF</span><span class="p">(</span><span class="n">irrdbu00</span><span class="o">=</span><span class="s1">'/path/to/irrdbu00'</span><span class="p">,</span> <span class="n">pickles</span><span class="o">=</span><span class="s1">'/tmp'</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">'prodsys-'</span><span class="p">,</span> <span class="n">auto_pickle</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre>
+           </div>
+          </div>
+          <p>
+           This compares the timestamp of the pickles in the indicated directory with the timestamp of the unload file.  If the unload is newer, or there are no matching pickles, the unload is read and the pickles are written.  Next time, when the unload is older than the pickles, they are read.  Automatically.
+          </p>
          </section>
         </section>
         <span id="document-DataFrames">
@@ -18782,53 +18873,6 @@ runs as method on the RACF object, table(&lsquo;DSACC&rsquo;) or table(&lsquo;GR
               &para;
              </a>
             </h4>
-            <dl class="py exception">
-             <dt class="sig sig-object py" id="pyracf.PyRacfException">
-              <em class="property">
-               <span class="pre">
-                exception
-               </span>
-               <span class="w">
-               </span>
-              </em>
-              <span class="sig-prename descclassname">
-               <span class="pre">
-                pyracf.
-               </span>
-              </span>
-              <span class="sig-name descname">
-               <span class="pre">
-                PyRacfException
-               </span>
-              </span>
-              <span class="sig-paren">
-               (
-              </span>
-              <em class="sig-param">
-               <span class="n">
-                <span class="pre">
-                 message
-                </span>
-               </span>
-              </em>
-              <span class="sig-paren">
-               )
-              </span>
-              <a class="headerlink" href="#pyracf.PyRacfException" title="Permalink to this definition">
-               &para;
-              </a>
-             </dt>
-             <dd>
-              <p>
-               Bases:
-               <code class="xref py py-class docutils literal notranslate">
-                <span class="pre">
-                 Exception
-                </span>
-               </code>
-              </p>
-             </dd>
-            </dl>
             <dl class="py class">
              <dt class="sig sig-object py" id="pyracf.RACF">
               <em class="property">
@@ -18883,6 +18927,24 @@ runs as method on the RACF object, table(&lsquo;DSACC&rsquo;) or table(&lsquo;GR
                <span class="default_value">
                 <span class="pre">
                  None
+                </span>
+               </span>
+              </em>
+              ,
+              <em class="sig-param">
+               <span class="n">
+                <span class="pre">
+                 auto_pickles
+                </span>
+               </span>
+               <span class="o">
+                <span class="pre">
+                 =
+                </span>
+               </span>
+               <span class="default_value">
+                <span class="pre">
+                 False
                 </span>
                </span>
               </em>
@@ -19043,6 +19105,34 @@ runs as method on the RACF object, table(&lsquo;DSACC&rsquo;) or table(&lsquo;GR
                </dd>
               </dl>
               <dl class="py attribute">
+               <dt class="sig sig-object py" id="pyracf.RACF.STATE_CORRELATED">
+                <span class="sig-name descname">
+                 <span class="pre">
+                  STATE_CORRELATED
+                 </span>
+                </span>
+                <em class="property">
+                 <span class="w">
+                 </span>
+                 <span class="p">
+                  <span class="pre">
+                   =
+                  </span>
+                 </span>
+                 <span class="w">
+                 </span>
+                 <span class="pre">
+                  3
+                 </span>
+                </em>
+                <a class="headerlink" href="#pyracf.RACF.STATE_CORRELATED" title="Permalink to this definition">
+                 &para;
+                </a>
+               </dt>
+               <dd>
+               </dd>
+              </dl>
+              <dl class="py attribute">
                <dt class="sig sig-object py" id="pyracf.RACF.STATE_READY">
                 <span class="sig-name descname">
                  <span class="pre">
@@ -19060,7 +19150,7 @@ runs as method on the RACF object, table(&lsquo;DSACC&rsquo;) or table(&lsquo;GR
                  <span class="w">
                  </span>
                  <span class="pre">
-                  3
+                  4
                  </span>
                 </em>
                 <a class="headerlink" href="#pyracf.RACF.STATE_READY" title="Permalink to this definition">
@@ -19317,6 +19407,285 @@ runs as method on the RACF object, table(&lsquo;DSACC&rsquo;) or table(&lsquo;GR
                <dd>
                 <p>
                  return table with this name (type)
+                </p>
+               </dd>
+              </dl>
+              <dl class="py method">
+               <dt class="sig sig-object py" id="pyracf.RACF.save_pickle">
+                <span class="sig-name descname">
+                 <span class="pre">
+                  save_pickle
+                 </span>
+                </span>
+                <span class="sig-paren">
+                 (
+                </span>
+                <em class="sig-param">
+                 <span class="n">
+                  <span class="pre">
+                   df
+                  </span>
+                 </span>
+                 <span class="o">
+                  <span class="pre">
+                   =
+                  </span>
+                 </span>
+                 <span class="default_value">
+                  <span class="pre">
+                   ''
+                  </span>
+                 </span>
+                </em>
+                ,
+                <em class="sig-param">
+                 <span class="n">
+                  <span class="pre">
+                   dfname
+                  </span>
+                 </span>
+                 <span class="o">
+                  <span class="pre">
+                   =
+                  </span>
+                 </span>
+                 <span class="default_value">
+                  <span class="pre">
+                   ''
+                  </span>
+                 </span>
+                </em>
+                ,
+                <em class="sig-param">
+                 <span class="n">
+                  <span class="pre">
+                   path
+                  </span>
+                 </span>
+                 <span class="o">
+                  <span class="pre">
+                   =
+                  </span>
+                 </span>
+                 <span class="default_value">
+                  <span class="pre">
+                   ''
+                  </span>
+                 </span>
+                </em>
+                ,
+                <em class="sig-param">
+                 <span class="n">
+                  <span class="pre">
+                   prefix
+                  </span>
+                 </span>
+                 <span class="o">
+                  <span class="pre">
+                   =
+                  </span>
+                 </span>
+                 <span class="default_value">
+                  <span class="pre">
+                   ''
+                  </span>
+                 </span>
+                </em>
+                <span class="sig-paren">
+                 )
+                </span>
+                <a class="headerlink" href="#pyracf.RACF.save_pickle" title="Permalink to this definition">
+                 &para;
+                </a>
+               </dt>
+               <dd>
+               </dd>
+              </dl>
+              <dl class="py method">
+               <dt class="sig sig-object py" id="pyracf.RACF.save_pickles">
+                <span class="sig-name descname">
+                 <span class="pre">
+                  save_pickles
+                 </span>
+                </span>
+                <span class="sig-paren">
+                 (
+                </span>
+                <em class="sig-param">
+                 <span class="n">
+                  <span class="pre">
+                   path
+                  </span>
+                 </span>
+                 <span class="o">
+                  <span class="pre">
+                   =
+                  </span>
+                 </span>
+                 <span class="default_value">
+                  <span class="pre">
+                   '/tmp'
+                  </span>
+                 </span>
+                </em>
+                ,
+                <em class="sig-param">
+                 <span class="n">
+                  <span class="pre">
+                   prefix
+                  </span>
+                 </span>
+                 <span class="o">
+                  <span class="pre">
+                   =
+                  </span>
+                 </span>
+                 <span class="default_value">
+                  <span class="pre">
+                   ''
+                  </span>
+                 </span>
+                </em>
+                <span class="sig-paren">
+                 )
+                </span>
+                <a class="headerlink" href="#pyracf.RACF.save_pickles" title="Permalink to this definition">
+                 &para;
+                </a>
+               </dt>
+               <dd>
+               </dd>
+              </dl>
+              <dl class="py method">
+               <dt class="sig sig-object py" id="pyracf.RACF.load_pickles">
+                <span class="sig-name descname">
+                 <span class="pre">
+                  load_pickles
+                 </span>
+                </span>
+                <span class="sig-paren">
+                 (
+                </span>
+                <em class="sig-param">
+                 <span class="n">
+                  <span class="pre">
+                   path
+                  </span>
+                 </span>
+                 <span class="o">
+                  <span class="pre">
+                   =
+                  </span>
+                 </span>
+                 <span class="default_value">
+                  <span class="pre">
+                   '/tmp'
+                  </span>
+                 </span>
+                </em>
+                ,
+                <em class="sig-param">
+                 <span class="n">
+                  <span class="pre">
+                   prefix
+                  </span>
+                 </span>
+                 <span class="o">
+                  <span class="pre">
+                   =
+                  </span>
+                 </span>
+                 <span class="default_value">
+                  <span class="pre">
+                   ''
+                  </span>
+                 </span>
+                </em>
+                <span class="sig-paren">
+                 )
+                </span>
+                <a class="headerlink" href="#pyracf.RACF.load_pickles" title="Permalink to this definition">
+                 &para;
+                </a>
+               </dt>
+               <dd>
+               </dd>
+              </dl>
+              <dl class="py property">
+               <dt class="sig sig-object py" id="pyracf.RACF.rules">
+                <em class="property">
+                 <span class="pre">
+                  property
+                 </span>
+                 <span class="w">
+                 </span>
+                </em>
+                <span class="sig-name descname">
+                 <span class="pre">
+                  rules
+                 </span>
+                </span>
+                <em class="property">
+                 <span class="p">
+                  <span class="pre">
+                   :
+                  </span>
+                 </span>
+                 <span class="w">
+                 </span>
+                 <a class="reference internal" href="index.html#pyracf.rule_verify.RuleVerifier" title="pyracf.rule_verify.RuleVerifier">
+                  <span class="pre">
+                   RuleVerifier
+                  </span>
+                 </a>
+                </em>
+                <a class="headerlink" href="#pyracf.RACF.rules" title="Permalink to this definition">
+                 &para;
+                </a>
+               </dt>
+               <dd>
+                <p>
+                 create a RuleVerifier instance
+                </p>
+               </dd>
+              </dl>
+              <dl class="py method">
+               <dt class="sig sig-object py" id="pyracf.RACF.getdatasetrisk">
+                <span class="sig-name descname">
+                 <span class="pre">
+                  getdatasetrisk
+                 </span>
+                </span>
+                <span class="sig-paren">
+                 (
+                </span>
+                <em class="sig-param">
+                 <span class="n">
+                  <span class="pre">
+                   profile
+                  </span>
+                 </span>
+                 <span class="o">
+                  <span class="pre">
+                   =
+                  </span>
+                 </span>
+                 <span class="default_value">
+                  <span class="pre">
+                   ''
+                  </span>
+                 </span>
+                </em>
+                <span class="sig-paren">
+                 )
+                </span>
+                <a class="headerlink" href="#pyracf.RACF.getdatasetrisk" title="Permalink to this definition">
+                 &para;
+                </a>
+               </dt>
+               <dd>
+                <p>
+                 This will produce a dict as follows:
                 </p>
                </dd>
               </dl>
@@ -22816,230 +23185,6 @@ runs as method on the RACF object, table(&lsquo;DSACC&rsquo;) or table(&lsquo;GR
                 </p>
                </dd>
               </dl>
-              <dl class="py method">
-               <dt class="sig sig-object py" id="pyracf.RACF.save_pickle">
-                <span class="sig-name descname">
-                 <span class="pre">
-                  save_pickle
-                 </span>
-                </span>
-                <span class="sig-paren">
-                 (
-                </span>
-                <em class="sig-param">
-                 <span class="n">
-                  <span class="pre">
-                   df
-                  </span>
-                 </span>
-                 <span class="o">
-                  <span class="pre">
-                   =
-                  </span>
-                 </span>
-                 <span class="default_value">
-                  <span class="pre">
-                   ''
-                  </span>
-                 </span>
-                </em>
-                ,
-                <em class="sig-param">
-                 <span class="n">
-                  <span class="pre">
-                   dfname
-                  </span>
-                 </span>
-                 <span class="o">
-                  <span class="pre">
-                   =
-                  </span>
-                 </span>
-                 <span class="default_value">
-                  <span class="pre">
-                   ''
-                  </span>
-                 </span>
-                </em>
-                ,
-                <em class="sig-param">
-                 <span class="n">
-                  <span class="pre">
-                   path
-                  </span>
-                 </span>
-                 <span class="o">
-                  <span class="pre">
-                   =
-                  </span>
-                 </span>
-                 <span class="default_value">
-                  <span class="pre">
-                   ''
-                  </span>
-                 </span>
-                </em>
-                ,
-                <em class="sig-param">
-                 <span class="n">
-                  <span class="pre">
-                   prefix
-                  </span>
-                 </span>
-                 <span class="o">
-                  <span class="pre">
-                   =
-                  </span>
-                 </span>
-                 <span class="default_value">
-                  <span class="pre">
-                   ''
-                  </span>
-                 </span>
-                </em>
-                <span class="sig-paren">
-                 )
-                </span>
-                <a class="headerlink" href="#pyracf.RACF.save_pickle" title="Permalink to this definition">
-                 &para;
-                </a>
-               </dt>
-               <dd>
-               </dd>
-              </dl>
-              <dl class="py method">
-               <dt class="sig sig-object py" id="pyracf.RACF.save_pickles">
-                <span class="sig-name descname">
-                 <span class="pre">
-                  save_pickles
-                 </span>
-                </span>
-                <span class="sig-paren">
-                 (
-                </span>
-                <em class="sig-param">
-                 <span class="n">
-                  <span class="pre">
-                   path
-                  </span>
-                 </span>
-                 <span class="o">
-                  <span class="pre">
-                   =
-                  </span>
-                 </span>
-                 <span class="default_value">
-                  <span class="pre">
-                   '/tmp'
-                  </span>
-                 </span>
-                </em>
-                ,
-                <em class="sig-param">
-                 <span class="n">
-                  <span class="pre">
-                   prefix
-                  </span>
-                 </span>
-                 <span class="o">
-                  <span class="pre">
-                   =
-                  </span>
-                 </span>
-                 <span class="default_value">
-                  <span class="pre">
-                   ''
-                  </span>
-                 </span>
-                </em>
-                <span class="sig-paren">
-                 )
-                </span>
-                <a class="headerlink" href="#pyracf.RACF.save_pickles" title="Permalink to this definition">
-                 &para;
-                </a>
-               </dt>
-               <dd>
-               </dd>
-              </dl>
-              <dl class="py property">
-               <dt class="sig sig-object py" id="pyracf.RACF.rules">
-                <em class="property">
-                 <span class="pre">
-                  property
-                 </span>
-                 <span class="w">
-                 </span>
-                </em>
-                <span class="sig-name descname">
-                 <span class="pre">
-                  rules
-                 </span>
-                </span>
-                <em class="property">
-                 <span class="p">
-                  <span class="pre">
-                   :
-                  </span>
-                 </span>
-                 <span class="w">
-                 </span>
-                 <a class="reference internal" href="index.html#pyracf.rule_verify.RuleVerifier" title="pyracf.rule_verify.RuleVerifier">
-                  <span class="pre">
-                   RuleVerifier
-                  </span>
-                 </a>
-                </em>
-                <a class="headerlink" href="#pyracf.RACF.rules" title="Permalink to this definition">
-                 &para;
-                </a>
-               </dt>
-               <dd>
-                <p>
-                 create a RuleVerifier instance
-                </p>
-               </dd>
-              </dl>
-              <dl class="py method">
-               <dt class="sig sig-object py" id="pyracf.RACF.getdatasetrisk">
-                <span class="sig-name descname">
-                 <span class="pre">
-                  getdatasetrisk
-                 </span>
-                </span>
-                <span class="sig-paren">
-                 (
-                </span>
-                <em class="sig-param">
-                 <span class="n">
-                  <span class="pre">
-                   profile
-                  </span>
-                 </span>
-                 <span class="o">
-                  <span class="pre">
-                   =
-                  </span>
-                 </span>
-                 <span class="default_value">
-                  <span class="pre">
-                   ''
-                  </span>
-                 </span>
-                </em>
-                <span class="sig-paren">
-                 )
-                </span>
-                <a class="headerlink" href="#pyracf.RACF.getdatasetrisk" title="Permalink to this definition">
-                 &para;
-                </a>
-               </dt>
-               <dd>
-                <p>
-                 This will produce a dict as follows:
-                </p>
-               </dd>
-              </dl>
              </dd>
             </dl>
             <dl class="py class">
@@ -23096,6 +23241,24 @@ runs as method on the RACF object, table(&lsquo;DSACC&rsquo;) or table(&lsquo;GR
                <span class="default_value">
                 <span class="pre">
                  None
+                </span>
+               </span>
+              </em>
+              ,
+              <em class="sig-param">
+               <span class="n">
+                <span class="pre">
+                 auto_pickles
+                </span>
+               </span>
+               <span class="o">
+                <span class="pre">
+                 =
+                </span>
+               </span>
+               <span class="default_value">
+                <span class="pre">
+                 False
                 </span>
                </span>
               </em>

@@ -235,6 +235,7 @@ methods = [
  'parse',
  'parse_fancycli',
  'rules',
+ 'load_pickles',
  'save_pickle',
  'save_pickles',
  'status',
@@ -247,6 +248,7 @@ methods = [
 # attributes we should have
 otherAttributes = [
  'STATE_BAD',
+ 'STATE_CORRELATED',
  'STATE_CORRELATING',
  'STATE_INIT',
  'STATE_PARSING',
@@ -270,6 +272,8 @@ optionalAttributes = [
  '_irrdbu00',
  '_parsed',
  '_unloadlines',
+ '_auto_pickles',
+ '_pickles_prefix',
 ]
 
 frameMethods = [

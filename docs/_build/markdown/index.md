@@ -17,6 +17,7 @@ contain the root `toctree` directive. -->
   * [Unload a RACF database](LoadData.md#unload-a-racf-database)
   * [Parsing](LoadData.md#parsing)
   * [Fancy Parsing](LoadData.md#fancy-parsing)
+  * [Pickles](LoadData.md#pickles)
 * [Data Table Properties](DataFrames.md)
   * [Connect information](DataFrames.md#connect-information)
   * [Extra fields added](DataFrames.md#extra-fields-added)

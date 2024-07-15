@@ -92,3 +92,35 @@ are selected for parsing and give you a nice overview at the end.
    24-04-07 16:54:07 - recordtype 0101 -> 23990 records parsed
    ...
    24-04-07 16:54:07 - total parse time: 38.597577 seconds
+
+Pickles
+-------
+
+After parsing the input from the unload file, the RACF object has up to 100 pandas DataFrames.  For future runs, you can save these DataFrames as ``pickle files``.  This should save processing time when you have to build another RACF object::
+
+   >>> r = RACF(irrdbu00='/path/to/irrdbu00')
+   >>> r.parse_fancycli(save_pickles='/tmp', prefix='prodsys-')
+
+This creates up to 100 files in /tmp, with names like prodsys-GPBD.pickle and prodsys-USOMVS.pickle.  Although ``prefix`` is optional, it helps to identify the files in future.
+
+If you use the parse() method, you can execute a save_pickles() method too::
+
+   >>> r = RACF(irrdbu00='/path/to/irrdbu00')
+   >>> r.parse()
+   >>> while r.status['status'] != "Ready":
+   ...   print('Parsing...')
+   ...   time.sleep(10)
+   ...
+   Parsing...
+   Parsing...
+   >>> r.save_pickles(path='/tmp', prefix='prodsys-')
+
+Next time, when you start pyRACF, instead of reading the unload file, you can simply load the pickles, like so::
+
+   >>> r = RACF(pickles='/tmp', prefix='prodsys-')
+
+When you find that pickles are a time-saver, but you forget to refresh the pickles every time a new unload file is created, you can use the ``auto-pickles`` function::
+
+   >>> r = RACF(irrdbu00='/path/to/irrdbu00', pickles='/tmp', prefix='prodsys-', auto_pickle=True)
+
+This compares the timestamp of the pickles in the indicated directory with the timestamp of the unload file.  If the unload is newer, or there are no matching pickles, the unload is read and the pickles are written.  Next time, when the unload is older than the pickles, they are read.  Automatically.

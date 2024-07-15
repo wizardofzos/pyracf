@@ -34,7 +34,8 @@ class RACF(ProfilePublisher,XlsWriter):
     STATE_INIT        =  0
     STATE_PARSING     =  1
     STATE_CORRELATING =  2
-    STATE_READY       =  3
+    STATE_CORRELATED  =  3
+    STATE_READY       =  4
 
     # keep track of names used for a record type, record type + name must match those in offsets.json
     # A dict with 'key' -> RecordType
@@ -188,51 +189,40 @@ class RACF(ProfilePublisher,XlsWriter):
     except NameError:
         pass
 
-    def __init__(self, irrdbu00=None, pickles=None, prefix=''):
+    def __init__(self, irrdbu00=None, pickles=None, auto_pickles=False, prefix=''):
 
         self._state = self.STATE_INIT
 
-        if not irrdbu00 and not pickles:
+        if not irrdbu00 and not pickles and not auto_pickles:
             self._state = self.STATE_BAD
-        elif pickles:
+        elif pickles and not auto_pickles:
             # Read from pickles dir
+            self.load_pickles(path=pickles, prefix=prefix)
+            irrbdu00 = None  # don't read another database
+        elif pickles and auto_pickles:
+            # Read from pickles dir unless irrdbu00 is more recent
             picklefiles = glob.glob(f'{pickles}/{prefix}*.pickle')
-            self._starttime = datetime.now()
-            self._records = {}
-            self._unloadlines = 0
-
+            last_update = 0
             for pickle in picklefiles:
                 fname = os.path.basename(pickle)
                 recordname = fname.replace(prefix,'').split('.')[0]
                 if recordname in RACF._recordname_type:
-                    recordtype = RACF._recordname_type[recordname]
-                    dfname = RACF._recordname_df[recordname]
-                    setattr(self, dfname, ProfileFrame.read_pickle(pickle))
-                    recordsRetrieved = len(getattr(self, dfname))
-                    self._records[recordtype] = {
-                      "seen": recordsRetrieved,
-                      "parsed": recordsRetrieved
-                    }
-                    self._unloadlines += recordsRetrieved
+                    last_update = max(last_update,os.path.getmtime(pickle))
+            if last_update==0:
+                print(f'no matching pickles found {pickles}/{prefix}*.pickle')
+            if irrdbu00 is None or os.path.getmtime(irrdbu00)<last_update: # unload is older than pickles, so use pickles
+                self.load_pickles(path=pickles, prefix=prefix)
+                irrdbu00 = None  # don't read unload
+            else: # newer unload, pickles must be refreshed
+                if irrdbu00 is None:
+                    raise ValueError('autopickle has to process an irrdbu00 input file, but no file specified')
+                self._auto_pickles = True
+                self._pickles = pickles
+                self._pickles_prefix = prefix
+        self._irrdbu00 = irrdbu00
 
-            # create remaining public DFs as empty
-            emptyFrame = ProfileFrame()
-            for (rtype,rinfo) in RACF._recordtype_info.items():
-                if not hasattr(self, rinfo['df']):
-                    setattr(self, rinfo['df'], emptyFrame)
-                    self._records[rtype] = {
-                      "seen": 0,
-                      "parsed": 0
-                    }
-
-            self._state = self.STATE_CORRELATING
-            self._correlate()
-            self._state = self.STATE_READY
-            self._stoptime = datetime.now()
-        else:
+        if irrdbu00:
             # prepare for user's choice to do parse() or fancycli()
-            self._irrdbu00 = irrdbu00
-            self._state    = self.STATE_INIT
             self._unloadlines = sum(1 for _ in open(self._irrdbu00, errors="ignore"))
 
             # Running threads
@@ -271,6 +261,10 @@ class RACF(ProfilePublisher,XlsWriter):
             status = "Optimizing tables"
             start = self._starttime
             speed = math.floor(seen/((datetime.now() -self._starttime).total_seconds()))
+        elif self._state == self.STATE_CORRELATED:
+            status = "Saving tables to pickles"
+            start = self._starttime
+            speed = math.floor(seen/((datetime.now() -self._starttime).total_seconds()))
         elif self._state == self.STATE_READY:
             status = "Ready"
             speed  = math.floor(seen/((self._stoptime - self._starttime).total_seconds()))
@@ -280,6 +274,9 @@ class RACF(ProfilePublisher,XlsWriter):
         return {'status': status, 'input-lines': self._unloadlines, 'lines-read': seen, 'lines-parsed': parsed, 'lines-per-second': speed, 'parse-time': parsetime}
 
     def parse_fancycli(self, recordtypes=None, save_pickles=False, prefix=''):
+        if self._irrdbu00 is None:
+            print('No parse needed, pickles were loaded')
+            return
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - parsing {self._irrdbu00}')
         self.parse(recordtypes=recordtypes)
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - selected recordtypes: {",".join(recordtypes) if recordtypes else "all"}')
@@ -291,7 +288,7 @@ class RACF(ProfilePublisher,XlsWriter):
             print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - progress: {done}{todo} ({pct:.2f}%)'.center(80), end="\r")
             time.sleep(0.5)
         print('')
-        while self._state < self.STATE_READY:
+        while self._state < self.STATE_CORRELATED:
              print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - correlating data {40*" "}', end="\r")
              time.sleep(0.5)
         print('')
@@ -300,11 +297,17 @@ class RACF(ProfilePublisher,XlsWriter):
         for r in (recordtypes if recordtypes else self._recordtype_info.keys()):
             print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - recordtype {r} -> {self.parsed(self._recordtype_info[r]["name"])} records parsed')
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - total parse time: {(self._stoptime - self._starttime).total_seconds()} seconds')
-        if save_pickles:
+        if save_pickles or hasattr(self,'_auto_pickles'):
+            if hasattr(self,'_auto_pickles'):
+                save_pickles = self._pickles # save to auto-manage directory
             self.save_pickles(path=save_pickles,prefix=prefix)
             print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - Pickle files saved to {save_pickles}')
+        self._state = self.STATE_READY
 
     def parse(self, recordtypes=None):
+        if self._irrdbu00 is None:
+            print('No parse needed')
+            return
         pt = threading.Thread(target=self.parse_t,args=(recordtypes,))
         pt.start()
         return True
@@ -348,6 +351,10 @@ class RACF(ProfilePublisher,XlsWriter):
         if self.THREAD_COUNT == 0:
             self._state = self.STATE_CORRELATING
             self._correlate()
+            self._state = self.STATE_CORRELATED
+            self._stoptime = datetime.now()
+            if hasattr(self,'_auto_pickles'):
+                self.save_pickles(path=self._pickles,prefix=self._pickles_prefix)
             self._state = self.STATE_READY
             self._stoptime = datetime.now()
         return True
@@ -457,7 +464,7 @@ class RACF(ProfilePublisher,XlsWriter):
 
     def save_pickle(self, df='', dfname='', path='', prefix=''):
         # Sanity check
-        if self._state != self.STATE_READY:
+        if self._state not in [self.STATE_CORRELATED, self.STATE_READY]:
             raise PyRacfException('Not done parsing yet!')
 
         df.to_pickle(f'{path}/{prefix}{dfname}.pickle')
@@ -465,7 +472,7 @@ class RACF(ProfilePublisher,XlsWriter):
 
     def save_pickles(self, path='/tmp', prefix=''):
         # Sanity check
-        if self._state != self.STATE_READY:
+        if self._state not in [self.STATE_CORRELATED, self.STATE_READY]:
             raise PyRacfException('Not done parsing yet!')
         # Is Path there ?
         if not os.path.exists(path):
@@ -479,6 +486,43 @@ class RACF(ProfilePublisher,XlsWriter):
             else:
                 # TODO: ensure consistent data, delete old pickles that were not saved
                 pass
+
+
+    def load_pickles(self, path='/tmp', prefix=''):
+        # Read from pickles dir
+        picklefiles = glob.glob(f'{path}/{prefix}*.pickle')
+        self._starttime = datetime.now()
+        self._records = {}
+        self._unloadlines = 0
+
+        for pickle in picklefiles:
+            fname = os.path.basename(pickle)
+            recordname = fname.replace(prefix,'').split('.')[0]
+            if recordname in RACF._recordname_type:
+                recordtype = RACF._recordname_type[recordname]
+                dfname = RACF._recordname_df[recordname]
+                setattr(self, dfname, ProfileFrame.read_pickle(pickle))
+                recordsRetrieved = len(getattr(self, dfname))
+                self._records[recordtype] = {
+                  "seen": recordsRetrieved,
+                  "parsed": recordsRetrieved
+                }
+                self._unloadlines += recordsRetrieved
+
+        # create remaining public DFs as empty
+        emptyFrame = ProfileFrame()
+        for (rtype,rinfo) in RACF._recordtype_info.items():
+            if not hasattr(self, rinfo['df']):
+                setattr(self, rinfo['df'], emptyFrame)
+                self._records[rtype] = {
+                  "seen": 0,
+                  "parsed": 0
+                }
+
+        self._state = self.STATE_CORRELATING
+        self._correlate()
+        self._state = self.STATE_READY
+        self._stoptime = datetime.now()
 
 
     @property
