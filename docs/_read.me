@@ -1,0 +1,27 @@
+use pip3 to install sphinx and its output generators:
+
+pip3 install sphinx
+pip3 install sphinx-simplepdf
+pip3 install sphinx-markdown-builder
+
+sphinxcontrib-napoleon is used to interpret the google-style function headers, but it is already part of sphinx.
+
+
+create coathangers for autodoc chapters:
+
+make apidoc
+or
+sphinx-apidoc -f -o docs/source  ../pyracf-dev-0.9/src/pyracf
+
+
+create pdf, find results in docs/_build/simplepdf:
+
+make simplepdf
+
+
+create markdown, find results in docs/_build/markdown:
+
+make markdown
+
+then copy to wiki directory
+rename index.md to _Sidebar.md

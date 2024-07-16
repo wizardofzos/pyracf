@@ -1,6 +1,6 @@
 import importlib.resources
 import json
-import pandas as pd 
+import pandas as pd
 
 import math
 
@@ -13,12 +13,23 @@ import threading
 import time
 from datetime import datetime
 
-import xlsxwriter
-
 import os
 import glob
 
-import warnings 
+
+import warnings
+
+from .exceptions import PyRacfException
+from .profile_frame import ProfileFrame
+from .profile_publishers import ProfilePublisher
+from .rule_verify import RuleVerifier
+from .racf_functions import accessKeywords
+from .utils import deprecated, readableList
+from .xls_writers import XlsWriter
+
+
+class RACF(ProfilePublisher,XlsWriter):
+
 
 class StoopidException(Exception):
     def __init__(self, message):
@@ -138,14 +149,17 @@ class GroupStructureTree(dict):
                 info += self.simple_format(values,depth)
         return info
 
-class RACF:
-    
+
     # Our states
     STATE_BAD         = -1
     STATE_INIT        =  0
     STATE_PARSING     =  1
     STATE_CORRELATING =  2
-    STATE_READY       =  3
+    STATE_CORRELATED  =  3
+    STATE_READY       =  4
+
+
+
 
 
     # keep track of names used for a record type, record type + name must match those in offsets.json
@@ -153,45 +167,46 @@ class RACF:
     #                   'name' -> Internal name (and prefix for pickle-files, variables in the dfs (GPMEM_NAME etc... from offsets.json))
     #                   'df'   -> name of internal df
     #                   'index' -> index if different from <name>_NAME (and <name>_CLASS_NAME for GRxxx)
-    #                   'publisher' -> adds property in class to get the df (default: no publisher)
-    #                                *         -> same as df without the _
-    #                                all but * -> this name as property
+    #                   'publisher' -> adds property in class to get the df
+    #                                missing   -> same as df without the _
+    #                                str       -> define this name as property, unless there is a method in ProfilePublisher with this name
+
     _recordtype_info = {
-    '0100': {'name':'GPBD', 'df':'_groups', 'publisher':'*'},
-    '0101': {'name':'GPSGRP', 'df':'_subgroups', 'publisher':'*'},
-    '0102': {'name':'GPMEM', 'df':'_connects', "index":["GPMEM_NAME","GPMEM_MEMBER_ID"], 'publisher':'*'},
-    '0103': {'name':'GPINSTD', 'df':'_groupUSRDATA', 'publisher':'*'},
-    '0110': {'name':'GPDFP', 'df':'_groupDFP', 'publisher':'*'},
-    '0120': {'name':'GPOMVS', 'df':'_groupOMVS', 'publisher':'*'},
+    '0100': {'name':'GPBD', 'df':'_groups'},
+    '0101': {'name':'GPSGRP', 'df':'_subgroups'},
+    '0102': {'name':'GPMEM', 'df':'_connects', "index":["GPMEM_NAME","GPMEM_MEMBER_ID"]},
+    '0103': {'name':'GPINSTD', 'df':'_groupUSRDATA'},
+    '0110': {'name':'GPDFP', 'df':'_groupDFP'},
+    '0120': {'name':'GPOMVS', 'df':'_groupOMVS'}, # add GPOMVS_GID_
     '0130': {'name':'GPOVM', 'df':'_groupOVM'},
-    '0141': {'name':'GPTME', 'df':'_groupTME', 'publisher':'*'},
-    '0151': {'name':'GPCSD', 'df':'_groupCSDATA', 'publisher':'*'},
-    '0200': {'name':'USBD', 'df':'_users', 'publisher':'*'},
-    '0201': {'name':'USCAT', 'df':'_userCategories', 'publisher':'*'},
-    '0202': {'name':'USCLA', 'df':'_userClasses', 'publisher':'*'},
-    '0203': {'name':'USGCON', 'df':'_groupConnect', "index":["USGCON_GRP_ID","USGCON_NAME"], 'publisher':'*'},
-    '0204': {'name':'USINSTD', 'df':'_userUSRDATA'},  # , 'publisher':'*'
-    '0205': {'name':'USCON', 'df':'_connectData', "index":["USCON_GRP_ID","USCON_NAME"], 'publisher':'*'},
+    '0141': {'name':'GPTME', 'df':'_groupTME'},
+    '0151': {'name':'GPCSD', 'df':'_groupCSDATA'},
+    '0200': {'name':'USBD', 'df':'_users'},
+    '0201': {'name':'USCAT', 'df':'_userCategories'},
+    '0202': {'name':'USCLA', 'df':'_userClasses'},
+    '0203': {'name':'USGCON', 'df':'_groupConnect', "index":["USGCON_GRP_ID","USGCON_NAME"]},
+    '0204': {'name':'USINSTD', 'df':'_userUSRDATA'},
+    '0205': {'name':'USCON', 'df':'_connectData', "index":["USCON_GRP_ID","USCON_NAME"]},
     '0206': {'name':'USRSF', 'df':'_userRRSFdata', 'publisher':'userRRSFDATA'},
-    '0207': {'name':'USCERT', 'df':'_userCERTname', 'publisher':'*'},
-    '0208': {'name':'USNMAP', 'df':'_userAssociationMapping', 'publisher':'*'},
-    '0209': {'name':'USDMAP', 'df':'_userDistributedIdMapping'},  # , 'publisher':'*'
-    '020A': {'name':'USMFA', 'df':'_userMFAfactor', 'publisher':'*'},
-    '020B': {'name':'USMPOL', 'df':'_userMFApolicies', 'publisher':'*'},
-    '0210': {'name':'USDFP', 'df':'_userDFP', 'publisher':'*'},
-    '0220': {'name':'USTSO', 'df':'_userTSO', 'publisher':'*'},
-    '0230': {'name':'USCICS', 'df':'_userCICS', 'publisher':'*'},
-    '0231': {'name':'USCOPC', 'df':'_userCICSoperatorClasses', 'publisher':'*'},
-    '0232': {'name':'USCRSL', 'df':'_userCICSrslKeys', 'publisher':'*'},
-    '0233': {'name':'USCTSL', 'df':'_userCICStslKeys', 'publisher':'*'},
-    '0240': {'name':'USLAN', 'df':'_userLANGUAGE', 'publisher':'*'},
-    '0250': {'name':'USOPR', 'df':'_userOPERPARM', 'publisher':'*'},
-    '0251': {'name':'USOPRP', 'df':'_userOPERPARMscope', 'publisher':'*'},
-    '0260': {'name':'USWRK', 'df':'_userWORKATTR', 'publisher':'*'},
-    '0270': {'name':'USOMVS', 'df':'_userOMVS', 'publisher':'*'},
-    '0280': {'name':'USNETV', 'df':'_userNETVIEW', 'publisher':'*'},
-    '0281': {'name':'USNOPC', 'df':'_userNETVIEWopclass', 'publisher':'*'},
-    '0282': {'name':'USNDOM', 'df':'_userNETVIEWdomains', 'publisher':'*'},
+    '0207': {'name':'USCERT', 'df':'_userCERTname'},
+    '0208': {'name':'USNMAP', 'df':'_userAssociationMapping'},
+    '0209': {'name':'USDMAP', 'df':'_userDistributedIdMapping'},
+    '020A': {'name':'USMFA', 'df':'_userMFAfactor'},
+    '020B': {'name':'USMPOL', 'df':'_userMFApolicies'},
+    '0210': {'name':'USDFP', 'df':'_userDFP'},
+    '0220': {'name':'USTSO', 'df':'_userTSO'},
+    '0230': {'name':'USCICS', 'df':'_userCICS'},
+    '0231': {'name':'USCOPC', 'df':'_userCICSoperatorClasses'},
+    '0232': {'name':'USCRSL', 'df':'_userCICSrslKeys'},
+    '0233': {'name':'USCTSL', 'df':'_userCICStslKeys'},
+    '0240': {'name':'USLAN', 'df':'_userLANGUAGE'},
+    '0250': {'name':'USOPR', 'df':'_userOPERPARM'},
+    '0251': {'name':'USOPRP', 'df':'_userOPERPARMscope'},
+    '0260': {'name':'USWRK', 'df':'_userWORKATTR'},
+    '0270': {'name':'USOMVS', 'df':'_userOMVS'}, # add USOMVS_UID_
+    '0280': {'name':'USNETV', 'df':'_userNETVIEW'},
+    '0281': {'name':'USNOPC', 'df':'_userNETVIEWopclass'},
+    '0282': {'name':'USNDOM', 'df':'_userNETVIEWdomains'},
     '0290': {'name':'USDCE', 'df':'_userDCE'},
     '02A0': {'name':'USOVM', 'df':'_userOVM'},
     '02B0': {'name':'USLNOT', 'df':'_userLNOTES'},
@@ -199,25 +214,25 @@ class RACF:
     '02D0': {'name':'USKERB', 'df':'_userKERB'},
     '02E0': {'name':'USPROXY', 'df':'_userPROXY'},
     '02F0': {'name':'USEIM', 'df':'_userEIM'},
-    '02G1': {'name':'USCSD', 'df':'_userCSDATA', 'publisher':'*'},
-    '1210': {'name':'USMFAC', 'df':'_userMFAfactorTags', 'publisher':'*'},
-    '0400': {'name':'DSBD', 'df':'_datasets', 'publisher':'*'},
-    '0401': {'name':'DSCAT', 'df':'_datasetCategories', 'publisher':'*'},
-    '0402': {'name':'DSCACC', 'df':'_datasetConditionalAccess', "index":["DSCACC_NAME","DSCACC_AUTH_ID","DSCACC_ACCESS"], 'publisher':'*'},
+    '02G1': {'name':'USCSD', 'df':'_userCSDATA'},
+    '1210': {'name':'USMFAC', 'df':'_userMFAfactorTags'},
+    '0400': {'name':'DSBD', 'df':'_datasets'},
+    '0401': {'name':'DSCAT', 'df':'_datasetCategories'},
+    '0402': {'name':'DSCACC', 'df':'_datasetConditionalAccess', "index":["DSCACC_NAME","DSCACC_AUTH_ID","DSCACC_ACCESS"]},
     '0403': {'name':'DSVOL', 'df':'_datasetVolumes'},
-    '0404': {'name':'DSACC', 'df':'_datasetAccess', "index":["DSACC_NAME","DSACC_AUTH_ID","DSACC_ACCESS"], 'publisher':'*'},
-    '0405': {'name':'DSINSTD', 'df':'_datasetUSRDATA', 'publisher':'*'},
+    '0404': {'name':'DSACC', 'df':'_datasetAccess', "index":["DSACC_NAME","DSACC_AUTH_ID","DSACC_ACCESS"]},
+    '0405': {'name':'DSINSTD', 'df':'_datasetUSRDATA'},
     '0406': {'name':'DSMEM', 'df':'_datasetMember'},
-    '0410': {'name':'DSDFP', 'df':'_datasetDFP', 'publisher':'*'},
-    '0421': {'name':'DSTME', 'df':'_datasetTME', 'publisher':'*'},
-    '0431': {'name':'DSCSD', 'df':'_datasetCSDATA', 'publisher':'*'},
+    '0410': {'name':'DSDFP', 'df':'_datasetDFP'},
+    '0421': {'name':'DSTME', 'df':'_datasetTME'},
+    '0431': {'name':'DSCSD', 'df':'_datasetCSDATA'},
     '0500': {'name':'GRBD', 'df':'_generals'},
-    '0501': {'name':'GRTVOL', 'df':'_generalTAPEvolume', 'publisher':'*'},
-    '0502': {'name':'GRCAT', 'df':'_generalCategories', 'publisher':'*'},
+    '0501': {'name':'GRTVOL', 'df':'_generalTAPEvolume'},
+    '0502': {'name':'GRCAT', 'df':'_generalCategories'},
     '0503': {'name':'GRMEM', 'df':'_generalMembers'},
-    '0504': {'name':'GRVOL', 'df':'_generalTAPEvolumes', 'publisher':'*'},
+    '0504': {'name':'GRVOL', 'df':'_generalTAPEvolumes'},
     '0505': {'name':'GRACC', 'df':'_generalAccess', "index":["GRACC_CLASS_NAME","GRACC_NAME","GRACC_AUTH_ID","GRACC_ACCESS"]},
-    '0506': {'name':'GRINSTD', 'df':'_generalUSRDATA', 'publisher':'*'},
+    '0506': {'name':'GRINSTD', 'df':'_generalUSRDATA'},
     '0507': {'name':'GRCACC', 'df':'_generalConditionalAccess', "index":["GRCACC_CLASS_NAME","GRCACC_NAME","GRCACC_AUTH_ID","GRCACC_ACCESS"]},
     '0508': {'name':'GRFLTR', 'df':'_generalDistributedIdFilter', 'publisher':'DistributedIdFilter'},
     '0509': {'name':'GRDMAP', 'df':'_generalDistributedIdMapping', 'publisher':'DistributedIdMapping'},
@@ -225,13 +240,13 @@ class RACF:
     '0511': {'name':'GRSESE', 'df':'_generalSESSIONentities', 'publisher':'SESSIONentities'},
     '0520': {'name':'GRDLF', 'df':'_generalDLFDATA', 'publisher':'DLFDATA'},
     '0521': {'name':'GRDLFJ', 'df':'_generalDLFDATAjobnames', 'publisher':'DLFDATAjobnames'},
-    '0530': {'name':'GRSIGN', 'df':'_generalSSIGNON'}, # needs APPLDATA
+    '0530': {'name':'GRSIGN', 'df':'_generalSSIGNON', 'publisher':'SSIGNON'}, # add APPLDATA
     '0540': {'name':'GRST', 'df':'_generalSTDATA', 'publisher':'STDATA'},
     '0550': {'name':'GRSV', 'df':'_generalSVFMR', 'publisher':'SVFMR'}, # SYSMVIEW profiles
-    '0560': {'name':'GRCERT', 'df':'_generalCERT', 'publisher':'CERT'},
+    '0560': {'name':'GRCERT', 'df':'_generalCERT', 'publisher':'CERT'}, # add UACC and APPLDATA
     '1560': {'name':'CERTN', 'df':'_generalCERTname', 'publisher':'CERTname'},
     '0561': {'name':'CERTR', 'df':'_generalCERTreferences', 'publisher':'CERTreferences'},
-    '0562': {'name':'KEYR', 'df':'_generalKEYRING', 'publisher':'KEYRING'},
+    '0562': {'name':'KEYR', 'df':'_generalKEYRING', 'publisher':'KEYRING'}, # add APPLDATA
     '0570': {'name':'GRTME', 'df':'_generalTME', 'publisher':'TME'},
     '0571': {'name':'GRTMEC', 'df':'_generalTMEchild', 'publisher':'TMEchild'},
     '0572': {'name':'GRTMER', 'df':'_generalTMEresource', 'publisher':'TMEresource'},
@@ -251,17 +266,18 @@ class RACF:
     '05H0': {'name':'GRMFA', 'df':'_generalMFA', 'publisher':'MFA'},
     '05I0': {'name':'GRMFP', 'df':'_generalMFPOLICY', 'publisher':'MFPOLICY'},
     '05I1': {'name':'GRMPF', 'df':'_generalMFPOLICYfactors', 'publisher':'MFPOLICYfactors'},
-    '05J1': {'name':'GRCSD', 'df':'_generalCSDATA', 'publisher':'*'},
+    '05J1': {'name':'GRCSD', 'df':'_generalCSDATA'},
     '05K0': {'name':'GRIDTP', 'df':'_generalIDTFPARMS', 'publisher':'IDTFPARMS'},
     '05L0': {'name':'GRJES', 'df':'_generalJES', 'publisher':'JES'}
     }
 
     _recordname_type = {}    # {'GPBD': '0100', ....}
     _recordname_df = {}      # {'GPBD': '_groups', ....}
+    _recordname_publisher = {}      # {'GPBD': 'groups', ....}
     for (rtype,rinfo) in _recordtype_info.items():
         _recordname_type.update({rinfo['name']: rtype})
         _recordname_df.update({rinfo['name']: rinfo['df']})
-    
+
     # load irrdbu00 field definitions, save offsets in _recordtype_info
     # strictly speaking only needed for parse() function, but also not limited to one instance.
     with importlib.resources.open_text("pyracf", "offsets.json") as file:
@@ -270,82 +286,70 @@ class RACF:
         rtype = _offsets[offset]['record-type']
         if rtype in _recordtype_info.keys():
           _recordtype_info[rtype].update({"offsets": _offsets[offset]["offsets"]})
+
+    # define publishers as class properties so they turn up in sphinx-autodoc
+    for (rtype,rinfo) in _recordtype_info.items():
+        publisher = rinfo['publisher'] if 'publisher' in rinfo else rinfo['df'].lstrip('_')
+        if publisher:
+            _recordname_publisher.update({rinfo['name']: publisher}) # add publisher name to map for use in r.table()
+
+            if not hasattr(ProfilePublisher,publisher) or publisher in getattr(ProfilePublisher,'_doc_stubs'):
+                # publisher is not a method in ProfilePublisher, so add property and for docs add purpose too
+                purpose = rinfo['offsets'][0]['field-desc']\
+                          .replace('Record type of the','')\
+                          .replace('Record Type of the','')\
+                          .replace(' record','')\
+                          .replace(' Record','')
+
+                def _publish(self,frame=rinfo['df']) -> ProfileFrame:
+                    return getattr(self,frame)
+
+                vars()[publisher] = property(_publish,doc=purpose)
+
+    _grouptreeLines     = None  # df with all supgroups up to SYS1
+    _ownertreeLines     = None  # df with owners up to SYS1 or user ID
+
     try:
-        del file, rtype, rinfo, offset, _offsets  # don't need these as class attributes
+        del file, rtype, rinfo, offset, _offsets, publisher, purpose  # don't need these as class attributes
     except NameError:
         pass
 
-    _grouptree          = None  # dict with lists
-    _ownertree          = None  # dict with lists
-    _grouptreeLines     = None  # df with all supgroups up to SYS1
-    _ownertreeLines     = None  # df with owners up to SYS1 or user ID
-    
-    accessKeywords = [' ','NONE','EXECUTE','READ','UPDATE','CONTROL','ALTER','-owner-']
-    
-    def accessAllows(level=None):
-        ''' return list of access levels that allow the given access, e.g.
-        RACF.accessAllows('UPDATE') returns [,'UPDATE','CONTROL','ALTER','-owner-']
-        for use in pandas .query("ACCESS in @RACF.accessAllows('UPDATE')")
-        '''
-        return RACF.accessKeywords[RACF.accessKeywords.index(level):]
-
-    def __init__(self, irrdbu00=None, pickles=None, prefix=''):
-
-        # activate acl() method on our dataframes, so it get called with our instance's variables, the frame, and all optional parms
-        # e.g. msys._datasetAccess.loc[['SYS1.**']].acl(permits=True, explode=False, resolve=False, admin=False, sort="user")
-        pd.core.base.PandasObject.acl = lambda *x,**y: RACF.acl(self,*x,**y)
-
-        # generic and regex filter on the index levels of a frame
-        # e.g. msys._datasets.gfilter('SYS1.**').acl(resolve=True, allows='UPDATE', sort="user")
-        pd.core.base.PandasObject.gfilter = RACF.gfilter
-        pd.core.base.PandasObject.rfilter = RACF.rfilter
+    def __init__(self, irrdbu00=None, pickles=None, auto_pickles=False, prefix=''):
 
         self._state = self.STATE_INIT
 
-        if not irrdbu00 and not pickles:
+        if not irrdbu00 and not pickles and not auto_pickles:
             self._state = self.STATE_BAD
-        else:
-            if not pickles:
-                self._irrdbu00 = irrdbu00
-                self._state    = self.STATE_INIT
-                self._unloadlines = sum(1 for _ in open(self._irrdbu00, errors="ignore"))
-
-        if pickles:
+        elif pickles and not auto_pickles:
             # Read from pickles dir
+            self.load_pickles(path=pickles, prefix=prefix)
+            irrbdu00 = None  # don't read another database
+        elif pickles and auto_pickles:
+            # Read from pickles dir unless irrdbu00 is more recent
             picklefiles = glob.glob(f'{pickles}/{prefix}*.pickle')
-            self._starttime = datetime.now()
-            self._records = {}
-            self._unloadlines = 0
-            
+            last_update = 0
             for pickle in picklefiles:
                 fname = os.path.basename(pickle)
                 recordname = fname.replace(prefix,'').split('.')[0]
                 if recordname in RACF._recordname_type:
-                    recordtype = RACF._recordname_type[recordname]
-                    dfname = RACF._recordname_df[recordname]
-                    setattr(self, dfname, pd.read_pickle(pickle))
-                    recordsRetrieved = len(getattr(self, dfname))
-                    self._records[recordtype] = {
-                      "seen": recordsRetrieved,
-                      "parsed": recordsRetrieved
-                    }
-                    self._unloadlines += recordsRetrieved
+                    last_update = max(last_update,os.path.getmtime(pickle))
+            if last_update==0:
+                print(f'no matching pickles found {pickles}/{prefix}*.pickle')
+            if irrdbu00 is None or os.path.getmtime(irrdbu00)<last_update: # unload is older than pickles, so use pickles
+                self.load_pickles(path=pickles, prefix=prefix)
+                irrdbu00 = None  # don't read unload
+            else: # newer unload, pickles must be refreshed
+                if irrdbu00 is None:
+                    raise ValueError('autopickle has to process an irrdbu00 input file, but no file specified')
+                self._auto_pickles = True
+                self._pickles = pickles
+                self._pickles_prefix = prefix
+        self._irrdbu00 = irrdbu00
 
-            # create remaining public DFs as empty
-            for (rtype,rinfo) in RACF._recordtype_info.items():
-                if not hasattr(self, rinfo['df']):
-                    setattr(self, rinfo['df'], pd.DataFrame())
-                    self._records[rtype] = {
-                      "seen": 0,
-                      "parsed": 0
-                    }
+        if irrdbu00:
+            # prepare for user's choice to do parse() or fancycli()
+            self._unloadlines = sum(1 for _ in open(self._irrdbu00, errors="ignore"))
 
-            self._state = self.STATE_CORRELATING
-            self._correlate()
-            self._state = self.STATE_READY
-            self._stoptime = datetime.now()
-
-        else:
             # Running threads
             self.THREAD_COUNT = 0
 
@@ -382,18 +386,28 @@ class RACF:
             status = "Optimizing tables"
             start = self._starttime
             speed = math.floor(seen/((datetime.now() -self._starttime).total_seconds()))
+        elif self._state == self.STATE_CORRELATED:
+            status = "Saving tables to pickles"
+            start = self._starttime
+            speed = math.floor(seen/((datetime.now() -self._starttime).total_seconds()))
         elif self._state == self.STATE_READY:
             status = "Ready"
             speed  = math.floor(seen/((self._stoptime - self._starttime).total_seconds()))
             parsetime = (self._stoptime - self._starttime).total_seconds()
         else:
-            status = "Limbo"     
+            status = "Limbo"
         return {'status': status, 'input-lines': self._unloadlines, 'lines-read': seen, 'lines-parsed': parsed, 'lines-per-second': speed, 'parse-time': parsetime}
 
-    def parse_fancycli(self, recordtypes=_recordtype_info.keys(), save_pickles=False, prefix=''):
+    def parse_fancycli(self, recordtypes=None, save_pickles=False, prefix=''):
+        if self._irrdbu00 is None:
+            print('No parse needed, pickles were loaded')
+            return
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - parsing {self._irrdbu00}')
         self.parse(recordtypes=recordtypes)
-        print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - selected recordtypes: {",".join(recordtypes)}')
+
+
+
+
         while self._state < self.STATE_CORRELATING:
             progress =  math.floor(((sum(r['seen'] for r in self._records.values() if r)) / self._unloadlines) * 63)
             pct = (progress/63) * 100 # not as strange as it seems:)
@@ -402,24 +416,32 @@ class RACF:
             time.sleep(0.5)
             print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - progress: {done}{todo} ({pct:.2f}%)'.center(80), end="\r")
         print('')
+
         while self._state < self.STATE_READY:
              print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - correlating data {40*" "}', end="\r")
              time.sleep(0.5)
+        print('')
         # make completed line always show 100% :)
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - progress: {63*"▉"} ({100:.2f}%)'.center(80))
-        for r in recordtypes:
+        for r in (recordtypes if recordtypes else self._recordtype_info.keys()):
             print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - recordtype {r} -> {self.parsed(self._recordtype_info[r]["name"])} records parsed')
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - total parse time: {(self._stoptime - self._starttime).total_seconds()} seconds')
-        if save_pickles:
+        if save_pickles or hasattr(self,'_auto_pickles'):
+            if hasattr(self,'_auto_pickles'):
+                save_pickles = self._pickles # save to auto-manage directory
             self.save_pickles(path=save_pickles,prefix=prefix)
             print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - Pickle files saved to {save_pickles}')
+        self._state = self.STATE_READY
 
-    def parse(self, recordtypes=_recordtype_info.keys()):
+    def parse(self, recordtypes=None):
+        if self._irrdbu00 is None:
+            print('No parse needed')
+            return
         pt = threading.Thread(target=self.parse_t,args=(recordtypes,))
         pt.start()
         return True
 
-    def parse_t(self, thingswewant=_recordtype_info.keys()):
+    def parse_t(self, thingswewant=None):
         # TODO: make this multiple threads (per record-type?)
         if self.THREAD_COUNT == 0:
             self._starttime = datetime.now()
@@ -432,7 +454,7 @@ class RACF:
                     self._records[r]['seen'] += 1
                 else:
                     self._records[r] = {'seen': 1, 'parsed': 0}
-                if r in thingswewant:
+                if r in RACF._recordtype_info and (not thingswewant or r in thingswewant):
                     offsets = RACF._recordtype_info[r]["offsets"]
                     if offsets:
                         irrmodel = {}
@@ -441,23 +463,28 @@ class RACF:
                             end   = int(model['end'])
                             name  = model['field-name']
                             value = line[start-1:end].strip()
-                            irrmodel[name] = str(value) 
+                            irrmodel[name] = str(value)
                         self._parsed[r].append(irrmodel)
                         self._records[r]['parsed'] += 1
         # all models parsed :)
 
         for (rtype,rinfo) in RACF._recordtype_info.items():
-            if rtype in thingswewant:
-                setattr(self, rinfo['df'], pd.DataFrame.from_dict(self._parsed[rtype]))
+            if not thingswewant or rtype in thingswewant:
+                setattr(self, rinfo['df'], ProfileFrame.from_dict(self._parsed[rtype]))
 
-        # TODO: Reduce memory use, delete self._parsed after dataframes are made
+        # Reduce memory use, delete self._parsed after dataframes are made
+        del self._parsed
 
         # We need the correlate anyways all the times so let's run it
         self.THREAD_COUNT -= 1
         if self.THREAD_COUNT == 0:
             self._state = self.STATE_CORRELATING
             self._correlate()
-            self._state = self.STATE_READY         
+            self._state = self.STATE_CORRELATED
+            self._stoptime = datetime.now()
+            if hasattr(self,'_auto_pickles'):
+                self.save_pickles(path=self._pickles,prefix=self._pickles_prefix)
+            self._state = self.STATE_READY
             self._stoptime = datetime.now()
         return True
 
@@ -465,34 +492,41 @@ class RACF:
         """ how many records with this name (type) were parsed """
         rtype = RACF._recordname_type[rname]
         return self._records[rtype]['parsed'] if rtype in self._records else 0
-        
+
+    def table(self, rname=None) -> ProfileFrame:
+        """ return table with this name (type) """
+        if rname:
+            try:
+                return getattr(self, RACF._recordname_publisher[rname])
+            except KeyError:
+                warnings.warn(f'RACF object does not have a table {rname}')
+        else:
+            raise TypeError(f"table name missing, try {readableList(sorted(RACF._recordname_publisher.keys()))}")
+
     def _correlate(self, thingswewant=_recordtype_info.keys()):
         """ construct tables that combine the raw dataframes for improved processing """
-        
+
         # use the table definitions in _recordtype_info finalize the dfs:
         # set consistent index columns for existing dfs: profile key, connect group+user, of profile class+key (for G.R.)
-        # define properties to access the dfs, in addition to the properties defined as functions below
+
         for (rtype,rinfo) in RACF._recordtype_info.items():
             if rtype in thingswewant and rtype in self._records and self._records[rtype]['parsed']>0:
+                df = getattr(self,rinfo['df'])  # dataframe with these records
+                df._RACFobject = self  # used to access _groups and _connectData from ProfileFrame methods
+                fieldPrefix = rinfo["name"]+"_"
+                df._fieldPrefix = fieldPrefix
                 if "index" in rinfo:
                     keys = rinfo["index"]
-                    names = [k.replace(rinfo["name"]+"_","_") for k in keys]
+                    names = [k.replace(fieldPrefix,"_") for k in keys]
                 elif rtype[1]=="5":  # general resources
-                    keys = [rinfo["name"]+"_CLASS_NAME",rinfo["name"]+"_NAME"]
+                    keys = [fieldPrefix+"CLASS_NAME",fieldPrefix+"NAME"]
                     names = ["_CLASS_NAME","_NAME"]
                 else:
-                    keys = rinfo["name"]+"_NAME"
+                    keys = fieldPrefix+"NAME"
                     names = "_NAME"
-                if getattr(self,rinfo['df']).index.names!=names:  # reuse existing index for pickles
-                    getattr(self,rinfo['df']).set_index(keys,drop=False,inplace=True)
-                    getattr(self,rinfo['df']).rename_axis(names,inplace=True)  # prevent ambiguous index / column names 
-            if 'publisher' in rinfo:
-                publisher = rinfo['publisher'] if rinfo['publisher']!='*' else rinfo['df'].lstrip('_')
-                if hasattr(self, rinfo['df']):
-                    setattr(self, publisher, getattr(self, rinfo['df']))
-                else:
-                    setattr(self, publisher, lambda x: warnings.warn(f"{publisher} has not been collected."))
-
+                if df.index.names!=names:  # reuse existing index for pickles
+                    df.set_index(keys,drop=False,inplace=True)
+                    df.rename_axis(names,inplace=True)  # prevent ambiguous index / column names
 
         # copy group auth (USE,CREATE,CONNECT,JOIN) to complete the connectData list, using index alignment
         if self.parsed("GPBD") > 0 and self.parsed("GPMEM") > 0 and self.parsed("USCON") > 0:
@@ -501,38 +535,39 @@ class RACF:
         # copy ID(*) access into resource frames, similar to UACC: IDSTAR_ACCESS and ALL_USER_ACCESS
         if self.parsed("DSBD") > 0 and self.parsed("DSACC") > 0 and 'IDSTAR_ACCESS' not in self._datasets.columns:
             uaccs = pd.DataFrame()
+
+
             uaccs["UACC_NUM"] = self._datasets["DSBD_UACC"].map(RACF.accessKeywords.index)
+
             uaccs["IDSTAR_ACCESS"] = self._datasetAccess.reindex(['*'],level=1,axis=0).droplevel([1,2])['DSACC_ACCESS']
             uaccs["IDSTAR_ACCESS"] = uaccs["IDSTAR_ACCESS"].fillna(' ')
-            uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(RACF.accessKeywords.index)
+            uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(accessKeywords.index)
             uaccs["ALL_USER_NUM"] = uaccs[["IDSTAR_NUM","UACC_NUM"]].max(axis=1)
-            uaccs["ALL_USER_ACCESS"] = uaccs['ALL_USER_NUM'].map(RACF.accessKeywords.__getitem__)
+            uaccs["ALL_USER_ACCESS"] = uaccs['ALL_USER_NUM'].map(accessKeywords.__getitem__)
             column = self._datasets.columns.to_list().index('DSBD_UACC')
             self._datasets.insert(column+1,"IDSTAR_ACCESS",uaccs["IDSTAR_ACCESS"])
             self._datasets.insert(column+2,"ALL_USER_ACCESS",uaccs["ALL_USER_ACCESS"])
             del uaccs
-        
+
         if self.parsed("GRBD") > 0 and self.parsed("GRACC") > 0 and 'IDSTAR_ACCESS' not in self._generals.columns:
             uaccs = pd.DataFrame()
             uaccs["UACC"] = self._generals["GRBD_UACC"]
+
+            uaccs["UACC"] = uaccs["UACC"].where(uaccs["UACC"].isin(accessKeywords),other=' ')  # DIGTCERT fields may be distorted
+            uaccs["UACC_NUM"] = uaccs["UACC"].map(accessKeywords.index)
+
             uaccs["UACC"] = uaccs["UACC"].where(uaccs["UACC"].isin(RACF.accessKeywords),other=' ')  # DIGTCERT fields may be distorted
             uaccs["UACC_NUM"] = uaccs["UACC"].map(RACF.accessKeywords.index)
+
             uaccs["IDSTAR_ACCESS"] = self._generalAccess.reindex(['*'],level=2,axis=0).droplevel([2,3]).drop_duplicates(['GRACC_CLASS_NAME','GRACC_NAME','GRACC_ACCESS'])['GRACC_ACCESS']
             uaccs["IDSTAR_ACCESS"] = uaccs["IDSTAR_ACCESS"].fillna(' ')
-            uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(RACF.accessKeywords.index)
+            uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(accessKeywords.index)
             uaccs["ALL_USER_NUM"] = uaccs[["IDSTAR_NUM","UACC_NUM"]].max(axis=1)
-            uaccs["ALL_USER_ACCESS"] = uaccs['ALL_USER_NUM'].map(RACF.accessKeywords.__getitem__)
+            uaccs["ALL_USER_ACCESS"] = uaccs['ALL_USER_NUM'].map(accessKeywords.__getitem__)
             column = self._generals.columns.to_list().index('GRBD_UACC')
             self._generals.insert(column+1,"IDSTAR_ACCESS",uaccs["IDSTAR_ACCESS"])
             self._generals.insert(column+2,"ALL_USER_ACCESS",uaccs["ALL_USER_ACCESS"])
             del uaccs
-        
-        # self._connectByUser = self._connectData.set_index("USCON_NAME",drop=False).rename_axis('NAME')
-        # self._connectByGroup = self._connectData.set_index("USCON_GRP_ID",drop=False).rename_axis('GRP_ID')
-            
-        # dicts containing lists of groups for printing group structure
-        self._ownertree = self.ownertree
-        self._grouptree = self.grouptree
 
         # self._grouptreeLines: frame of group + name of all superior groups until SYS1
         gtl = self._groups[['GPBD_NAME','GPBD_SUPGRP_ID']]
@@ -547,7 +582,7 @@ class RACF:
         self._grouptreeLines = gtl.rename(columns={'GPBD_NAME':'GROUP','GPBD_SUPGRP_ID':'PARENTS'})\
                                   .set_index("GROUP",drop=False)\
                                   .rename_axis('GROUP_NAME')
-        
+
         # self._ownertreeLines: frame of group + name of all owners (group or user) until SYS1 or user ID found
         otl=self._groups[['GPBD_NAME','GPBD_SUPGRP_ID','GPBD_OWNER_ID']]
         otlLen = 0
@@ -563,24 +598,24 @@ class RACF:
                                   .set_index("GROUP",drop=False)\
                                   .rename_axis('GROUP_NAME')
 
-        
+
     def save_pickle(self, df='', dfname='', path='', prefix=''):
         # Sanity check
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
-        
+        if self._state not in [self.STATE_CORRELATED, self.STATE_READY]:
+            raise PyRacfException('Not done parsing yet!')
+
         df.to_pickle(f'{path}/{prefix}{dfname}.pickle')
 
 
     def save_pickles(self, path='/tmp', prefix=''):
         # Sanity check
-        if self._state != self.STATE_READY:
-            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        if self._state not in [self.STATE_CORRELATED, self.STATE_READY]:
+            raise PyRacfException('Not done parsing yet!')
         # Is Path there ?
         if not os.path.exists(path):
             madedir = os.system(f'mkdir -p {path}')
             if madedir != 0:
-                raise StoopidException(f'{path} does not exist, and cannot create')
+                raise PyRacfException(f'{path} does not exist, and cannot create')
         # Let's save the pickles
         for (rtype,rinfo) in RACF._recordtype_info.items():
             if rtype in self._records and self._records[rtype]['parsed']>0:
@@ -589,6 +624,25 @@ class RACF:
                 # TODO: ensure consistent data, delete old pickles that were not saved
                 pass
 
+
+
+    def load_pickles(self, path='/tmp', prefix=''):
+        # Read from pickles dir
+        picklefiles = glob.glob(f'{path}/{prefix}*.pickle')
+        self._starttime = datetime.now()
+        self._records = {}
+        self._unloadlines = 0
+
+        for pickle in picklefiles:
+            fname = os.path.basename(pickle)
+            recordname = fname.replace(prefix,'').split('.')[0]
+            if recordname in RACF._recordname_type:
+                recordtype = RACF._recordname_type[recordname]
+                dfname = RACF._recordname_df[recordname]
+                setattr(self, dfname, ProfileFrame.read_pickle(pickle))
+                recordsRetrieved = len(getattr(self, dfname))
+                self._records[recordtype] = {
+                  "seen": recordsRetrieved,
 
     def _generic2regex(selection, lenient='%&*'):
         ''' Change a RACF generic pattern into regex to match with text strings in pandas cells.  use lenient="" to match with dsnames/resources '''
@@ -1010,17 +1064,19 @@ class RACF:
                     'D': writer.book.add_format({'bg_color': 'cyan'}), 
                     'T': writer.book.add_format({'bg_color': 'orange'}),
                 }
+                self._unloadlines += recordsRetrieved
 
-        accessLevels = {
-                    'NONE': 'N',
-                    'EXECUTE': 'E',
-                    'READ': 'R',
-                    'UPDATE': 'U',
-                    'CONTROL': 'C',
-                    'ALTER': 'A',
-                    'NOTRUST': 'D',
-                    'TRUST': 'T'
+        # create remaining public DFs as empty
+        emptyFrame = ProfileFrame()
+        for (rtype,rinfo) in RACF._recordtype_info.items():
+            if not hasattr(self, rinfo['df']):
+                setattr(self, rinfo['df'], emptyFrame)
+                self._records[rtype] = {
+                  "seen": 0,
+                  "parsed": 0
                 }
+
+
 
         format_br = writer.book.add_format({})
         format_br.set_rotation(90)
@@ -1114,41 +1170,30 @@ class RACF:
         writer.close()   
 
 
-    @property
-    def ownertree(self):
-        ''' 
-        create dict with the user IDs that own groups as key, and a list of their owned groups as values.
-        if a group in this list owns group, the list is replaced by a dict.
-        '''
-        return self._ownertree if self._ownertree else GroupStructureTree(self._groups,"GPBD_OWNER_ID")
 
     @property
-    def grouptree(self):
-        ''' 
-        create dict starting with SYS1, and a list of groups owned by SYS1 as values.
-        if a group in this list owns group, the list is replaced by a dict.
-        because SYS1s superior group is blank/missing, we return the first group that is owned by "".
-        '''
-        return self._grouptree if self._grouptree else GroupStructureTree(self._groups,"GPBD_SUPGRP_ID")
+    def rules(self) -> RuleVerifier:
+        ''' create a RuleVerifier instance '''
+        return RuleVerifier(self)
 
 
     def getdatasetrisk(self, profile=''):
         '''This will produce a dict as follows:
-      
+
         '''
         try:
             if self.parsed("GPBD") == 0 or self.parsed("USCON") == 0 or self.parsed("USBD") == 0 or self.parsed("DSACC") == 0 or self.parsed("DSBD") == 0:
-                raise StoopidException("Need to parse DSACC and DSBD first...")
+                raise PyRacfException("Need to parse DSACC and DSBD first...")
         except:
-            raise StoopidException("Need to parse DSACC, USCON, USBD, GPBD and DSBD first...")
-        
+            raise PyRacfException("Need to parse DSACC, USCON, USBD, GPBD and DSBD first...")
+
         try:
             d = self.datasets.loc[[profile]]
         except KeyError:
-            d = pd.DataFrame()
+            d = self.datasets.head(0)
         if d.empty:
-            raise StoopidException(f'Profile {profile} not found...')
-        
+            raise PyRacfException(f'Profile {profile} not found...')
+
         owner = d['DSBD_OWNER_ID'].values[0]
         accesslist = {}
         accessmanagers = {}

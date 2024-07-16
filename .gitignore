@@ -1,4 +1,6 @@
 irrdbu00
 *.pickle
 __pycache__
+docs/_build/doctrees*
+docs/_build/simplepdf/_static
 venv/*

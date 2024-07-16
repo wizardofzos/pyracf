@@ -1,7 +1,8 @@
 # verify the result of parsing, not the actual content of dfs
 
 import pytest 
-import pandas as pd
+# import pandas as pd
+from pyracf.profile_frame import ProfileFrame
 
 externalFrames = ['ALIAS',
  'CDTINFO',
@@ -48,6 +49,8 @@ externalFrames = ['ALIAS',
  'datasetTME',
  'datasetUSRDATA',
  'datasets',
+ 'datasetMember',
+ 'datasetVolumes',
  'generalAccess',
  'generalCSDATA',
  'generalCategories',
@@ -57,19 +60,15 @@ externalFrames = ['ALIAS',
  'generalTAPEvolumes',
  'generalUSRDATA',
  'generals',
- 'genericAccess',
- 'genericConditionalAccess',
- 'genericMembers',
- 'generics',
  'groupCSDATA',
  'groupConnect',
  'groupDFP',
  'groupOMVS',
+ 'groupOVM',
  'groupTME',
  'groupUSRDATA',
  'groups',
  'groupsWithoutUsers',
- 'installdata',
  'operations',
  'revoked',
  'specials',
@@ -87,21 +86,27 @@ externalFrames = ['ALIAS',
  'userCSDATA',
  'userCategories',
  'userClasses',
+ 'userDCE',
  'userDFP',
  'userDistributedIdMapping',
- 'userDistributedMapping',
+ 'userEIM',
+ 'userKERB',
  'userLANGUAGE',
+ 'userLNOTES',
  'userMFAfactor',
  'userMFAfactorTags',
  'userMFApolicies',
+ 'userNDS',
  'userNETVIEW',
  'userNETVIEWdomains',
  'userNETVIEWopclass',
  'userOMVS',
  'userOPERPARM',
  'userOPERPARMscope',
+ 'userPROXY',
  'userRRSFDATA',
  'userTSO',
+ 'userOVM',
  'userUSRDATA',
  'userWORKATTR',
  'users',
@@ -209,16 +214,11 @@ internalFrames = ['_connectData',
 ]
 
 deprecatedFrames = [
- 'genericAccess',
- 'genericConditionalAccess',
- 'genericMembers',
- 'generics',
- 'installdata',
- 'userDistributedMapping',
 ]
 
 
 methods = [
+ 'accessMatrix2xls',
  'parsed',
  'connect',
  'dataset',
@@ -234,9 +234,12 @@ methods = [
  'ownertree',
  'parse',
  'parse_fancycli',
+ 'rules',
+ 'load_pickles',
  'save_pickle',
  'save_pickles',
  'status',
+ 'table',
  'user',
  'parse_t',
  'xls',
@@ -245,16 +248,17 @@ methods = [
 # attributes we should have
 otherAttributes = [
  'STATE_BAD',
+ 'STATE_CORRELATED',
  'STATE_CORRELATING',
  'STATE_INIT',
  'STATE_PARSING',
  'STATE_READY',
  '_correlate',
- '_grouptree',
- '_ownertree',
+ '_publish',
  '_recordname_df',
- '_recordname_type',
  '_recordtype_info',
+ '_recordname_publisher',
+ '_recordname_type',
  '_records',
  '_starttime',
  '_stoptime',
@@ -263,21 +267,24 @@ otherAttributes = [
 
 # attributes that don't get created for pickles (for example), so if we find them that's fine, if we don't it's fine too
 optionalAttributes = [
- 'accessAllows',
- 'accessKeywords',
- 'generic2regex',
- 'rankedAccess',
  'THREAD_COUNT',
+ '_doc_stubs',
  '_irrdbu00',
  '_parsed',
  '_unloadlines',
+ '_auto_pickles',
+ '_pickles_prefix',
 ]
 
 frameMethods = [
  'acl',
  'gfilter',
  'rfilter',
- 'giveMeProfiles',
+ 'find',
+ 'skip',
+ '_giveMeProfiles',
+ 'read_pickle',
+ 'to_pickle',
 ]
 
 
@@ -314,11 +321,15 @@ def test_unexpected_attributes(testparms):
       elif f in internalFrames: pass
       elif f in externalFrames: pass
       elif f in methods: pass
-      elif f in frameMethods: pass
       elif f in otherAttributes: pass
       elif f in optionalAttributes: pass
       else:
           assert not hasattr(r,f), f'unexpected attribute {f}'
+
+def test_frame_methods(testparms):
+  r = testparms['object']
+  for f in frameMethods:
+      assert f in dir(r._users), f'documented frame must have {f} method'
 
 
 

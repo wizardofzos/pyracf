@@ -13,6 +13,9 @@ For more information on the various records, please refer to the [IBM documentat
 To get started with PyRACF, install it using `pip install pyracf` or explore the source code on [GitHub](https://github.com/wizardofzos/pyracf/releases/latest). Use PyRACF to take control of your security data and protect your IBM Z systems from threats.
 
 
+
+## Documentation
+=======
 ## Updates
 
 ### 0.8.7 (fixes for pickles, pytest, wiki)
@@ -108,24 +111,20 @@ To get started with PyRACF, install it using `pip install pyracf` or explore the
 
 ### 0.4.5 (Fix Community Update Bug, thanks @Martydog)
 
-- Group Connections now actually usable :)
-### 0.4.4
 
-- Internal constants for all recordtypes
-- Improved 'parse_fancycli()'
+[Summary of changes](docs/ReleaseNotes.rst)
 
-### 0.4.3 (Community Update, thanks @Martydog)
+[Installation steps](docs/Installation.rst)
 
-- Add User Group Connections record 203 
-- Add User Installation Data record 204
+[Preview manual](docs/_build/markdown/index.md)
 
-### 0.4.2
+[Wiki](../../wiki)
 
-- Now XLS generation has more checks (fails gracefully if not all required records parsed, works when only genericAccess parsed)
-- Same for Orphan detection
-- Recordtype 0503 (General Resource Members/genericMembers) added
+[Concepts presentation, May 2024](docs/_external/GSE-NL-2024-concepts.pdf)
+
+## Sample code
   
-## Parsing IRRDBU00 unloads like a boss
+### Parsing IRRDBU00 unloads like a boss
 
     >>> from pyracf import RACF
     >>> mysys = RACF('/path/to/irrdbu00')
@@ -150,52 +149,7 @@ Then later, you don't need to parse the same unload again, just do:
     >>> hash(mysys.groups.values.tobytes())
     -8566685915584060910
 
-
-## All functions
-
-| Function/Property | Explanation | Example |
-|---|---|---|
-| acl | Returns DataFrame with access control list for the given frame | msys.datasets.acl(permits=True, explode=False, resolve=False, admin=False, access=None, allows=None, sort="profile")
-| auditors | Returns DataFrame with all user having the auditor bit switched on | mysys.auditors |
-| connect | Returns DataFrame with selected user to group connects | mysys.connect('SYS1',None) or mysys.connect('**','IBMUSER') |
-| connects | Returns DataFrame with all user to group connects, use connect or connectData instead | mysys.connects |
-| connectData | Returns DataFrame with all user to group connect information | mysys.connectData |
-| correlate | assigns index columns and prepares data structures for faster reporting | mysys.correlate() |
-| datasetAccess | Returns DataFrame with all Accesslists for all dataset profiles | mysys.datasetsAccess |
-| dataset | Returns DataFrame with selected datasetprofiles | mysys.dataset('SYS1.**') |
-| datasetPermit | Returns DataFrame with selected permits on datasetprofiles | mysys.datasetPermit(profile=, id=, access=) |
-| datasetConditionalPermit | Returns DataFrame with selected "PERMIT WHEN()" on datasetprofiles | mysys.datasetConditionalPermit(profile=, id=, access=) |
-| datasets | Returns DataFrame with all datasetprofiles | mysys.datasets |
-| generalAccess | Returns DataFrame with with all accesslists for general resource profiles | mysys.generalAccess
-| generalConditionalAccess | Returns DataFrame with with all conditional accesslists for general resource profiles | mysys.generalConditionalAccess
-| general | Returns DataFrame with selected general resource profiles | mysys.general(reclass=, profile=) |
-| generalPermit | Returns DataFrame with selected permits on resource profiles | mysys.generalPermit(resclass=, profile=, id=, access=) |
-| generalConditionalPermit | Returns DataFrame with selected "PERMIT WHEN()" on resource profiles | mysys.generalConditionalPermit(resclass=, profile=, id=, access=) |
-| generals | Returns DataFrame with with all general resource profiles | mysys.generals 
-| getdatasetrisk | Returns dict with users that have access or administrative authority on a profile | mysys.getdatasetrisk('SYS1.**') |
-| gfilter | Returns DataFrame with records matching the index fields specified, using RACF generic patterns | mysys.datasets.gfilter('SYS%.**')) or mysys.generals.gfilter('FACI*','BPX.**'))|
-| group | Returns DataFrame with group profiles matching selection | mysys.group('SYS1') |
-| groupConnect | Returns DataFrame with with user group connection records (0203 recordtype), use connect or connectData instead | mysys.groupConnect |
-| groups | Returns DataFrame with all group data | mysys.groups |
-| groupsWithoutUsers | Returns DataFrame with groups that have no connected users | mysys.groupsWithoutUsers |
-| grouptree | Returns dict with groups arranged by superior group | mysys.grouptree() |
-| operations | Returns a DataFrame  with all operations users | mysys.operations |
-| orphans | Returns 2 DataFrames one with orphans in dataset profile access lists, and one for general resources | d, g = mysys.orphans |
-| ownertree | Returns dict with groups arranged by owner group or user ID | mysys.ownertree() |
-| parse | parses the unload. optional specify recordtypes | mysys.parse(recordtypes=['0200']) |
-| parse_fancycli | parses the unload with a fancy cli status update. optional recordtypes can be specified | mysys.parse_fancycli(recorddtypes=['0200']) |
-| revoked | Returns a DataFrame  with all revoked users | mysys.revoked |
-| rfilter | Returns DataFrame with records matching the index fields specified, using regex patterns | mysys.generals.rfilter('FAC.*','BPX\..*')) |
-| save_pickles | Saves all parsed types as pickle files | mysys.save_pickles(path='/tmp', prefix='mysys-') |
-| specials | Returns a DataFrame  with all special users | mysys.specials |
-| status | Returns JSON with parsing status | mysys.status |
-| uacc_read_datasets | Returns a DataFrame  with all dataset profiles having UACC=READ | mysys.uacc_read_datasets |
-| uacc_update_datasets | Returns a DataFrame  with all dataset profiles having UACC=UPDATE | mysys.uacc_update_datasets |
-| user | Returns DataFrame with with user profiles matching selection | mysys.user('IBMUSER') |
-| users | Returns DataFrame with all user base data | mysys.users |
-| xls | Creates an XLSX with all permits per class | mysys.xls(fileName='myxls.xlsx') |
-
-# Example use-case
+### Example use-case
 
 Get all users that have not logged in (on?) since January 1st 2022. And print userID and last logon...
 
@@ -226,45 +180,43 @@ Print z/OS UNIX profiles
     mysys.general('FACILITY', 'BPX.**')  # show only the FACILITY BPX.** profile
     mysys.general('FACILITY')  # show all FACILITY profiles
 
-    mysys.generals.gfilter('FAC*', 'BPX.**')  # show all BPX profiles
-    mysys.generals.gfilter('UNIXPRIV') # print all in UNIXPRIV
+    mysys.generals.find('FAC*', 'BPX.**')  # show all BPX profiles
+    mysys.generals.find('UNIXPRIV') # print all in UNIXPRIV
 
 Show group information
 
     mysys.connect('SYS1')            # users connected to SYS1 groups
     mysys.connect('**','IBMUSER')    # groups IBMUSER is connected to
 
-    mysys.connectData.gfilter('SYS*','IBM*') # connects using patterns
-    mysys.connectData.rfilter('SYS[AB].*','PROD.*') # regex with alternatives
-    mysys.connectData.query("USCON_GRP_SPECIAL=='YES' & USCON_REVOKE=='YES'")  # group special revoked
-    mysys.connectData.query("GPMEM_AUTH==['CONNECT','JOIN']")  # users with connect authorities
+    mysys.connectData.find('SYS*','IBM*') # connects using patterns
+    mysys.connectData.find(re.compile('SYS[AB].*','PROD.*'))   # regex with alternatives
+    mysys.connectData.find(GRP_SPECIAL='YES', REVOKE=='YES')   # group special revoked
+    mysys.connectData.find(GPMEM_AUTH=['CONNECT','JOIN'])      # users with connect authorities
 
     mysys.users.query("index in @mysys.connect('SYS1').index")  # user details of users connected to SYS1
 
 Show access list information
 
-    mysys.datasetPermit('SYS1.**')    # IDs permitted on SYS1.**
+    mysys.datasetPermit('SYS1.**')                       # IDs permitted on SYS1.**
     mysys.datasetPermit(id='IBMUSER', access='ALTER')    # where is IBMUSER permitted
-    mysys.datasetPermit(id='*')       # where is ID(*) permitted
+    mysys.datasetPermit(id='*')                          # where is ID(*) permitted
 
-    mysys.datasets.gfilter('SYS1.**').acl(access='ALTER')    # IDs ALTER access on any SYS1 dataset profile
-    mysys.datasets.gfilter('SYS%.**').acl(allows='UPDATE')    # IDs with access that allows UPDATE
-    mysys.datasets.gfilter('SYS%.**').acl(allows='UPDATE', resolve=True)    # groups and user permits combined 
-    mysys.datasets.gfilter('PROD.**').acl(permits=False, admin=True)    # who can change groups or profiles to change access on PROD data sets
-    mysys.generals.gfilter('XFAC*', 'CKR.**').acl() # permits on zSecure Admin/Audit profile
+    mysys.datasets.find('SYS1.**').acl(access='ALTER')    # IDs ALTER access on any SYS1 dataset profile
+    mysys.datasets.find('SYS%.**').acl(allows='UPDATE')   # IDs with access that allows UPDATE
+    mysys.datasets.find('SYS%.**').acl(allows='UPDATE', resolve=True)    # groups and user permits combined 
+    mysys.datasets.find('PROD.**').acl(permits=False, admin=True)        # who can change groups or profiles to change access on PROD data sets
+    mysys.generals.find('XFAC*', 'CKR.**').acl()                         # permits on zSecure Admin/Audit profile
 
-    mysys.datasets.query("ALL_USER_ACCESS=='UPDATE'")    # UACC or ID(*) set to UPDATE
+    mysys.datasets.find(ALL_USER_ACCESS='UPDATE')         # UACC or ID(*) set to UPDATE
+
+    mysys.datasets.match('SYS1.PARMLIB').acl()            # permits on profile for a specific data set
 
 Show group tree information
 
-    print(msys.grouptree)  # group - superior group - subgroups in UNIX tree format
-    print(msys.ownertree.setformat('simple'))  # group - OWNER in simple format
-    msys.grouptree.tree  # get the dict
+    print(msys.grouptree)                   # group - superior group - subgroups in UNIX tree format
+    msys.ownertree.format('simple')         # group - OWNER in simple format
+    msys.grouptree                          # get the dict
 
-
-# Updates 
-
-In this version we introduced IRRRDBU as an alternative to RACF. Examples have been updated. The RACF class from previous version is still available, but you're advised to change this to IRRDBU, as future version will have another user of the RACF class.
 
 # Contribute to PyRACF
 

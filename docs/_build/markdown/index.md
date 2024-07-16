@@ -1,0 +1,68 @@
+<!-- pyRACF documentation master file, created by
+sphinx-quickstart on Sun May  5 11:05:18 2024.
+You can adapt this file completely to your liking, but it should at least
+contain the root `toctree` directive. -->
+
+# pyRACF user documentation
+
+# Contents:
+
+* [pyRACF background](Home.md)
+* [Release notes](ReleaseNotes.md)
+  * [Summary of changes](ReleaseNotes.md#summary-of-changes)
+* [Installation](Installation.md)
+  * [Full control installation](Installation.md#full-control-installation)
+  * [Jupyter Notebook](Installation.md#jupyter-notebook)
+* [Load RACF data](LoadData.md)
+  * [Unload a RACF database](LoadData.md#unload-a-racf-database)
+  * [Parsing](LoadData.md#parsing)
+  * [Fancy Parsing](LoadData.md#fancy-parsing)
+  * [Pickles](LoadData.md#pickles)
+* [Data Table Properties](DataFrames.md)
+  * [Connect information](DataFrames.md#connect-information)
+  * [Extra fields added](DataFrames.md#extra-fields-added)
+  * [What are the field names?](DataFrames.md#what-are-the-field-names)
+  * [Data Table Indices](DataFrames.md#data-table-indices)
+  * [Data selection methods](DataFrames.md#data-selection-methods)
+  * [Analytic Properties](DataFrames.md#analytic-properties)
+* [Methods to select specific entries](SpecificEntryFrames.md)
+  * [`ProfileSelectionFrame`](SpecificEntryFrames.md#pyracf.profile_publishers.ProfileSelectionFrame)
+* [Selection Methods to use on DataFrames](Methods.md)
+  * [Selection Methods](Methods.md#selection-methods)
+  * [Pandas Methods](Methods.md#pandas-methods)
+* [Output specification](CustomizingOutput.md)
+  * [Selecting columns for output](CustomizingOutput.md#selecting-columns-for-output)
+  * [Data presentation methods](CustomizingOutput.md#data-presentation-methods)
+* [Printable and python object attributes](PrintPythonAttributes.md)
+  * [Group Structure Properties](PrintPythonAttributes.md#group-structure-properties)
+  * [Status Properties](PrintPythonAttributes.md#status-properties)
+* [Verify RACF profiles using Rules](RuleVerifier.md)
+  * [Running a verification](RuleVerifier.md#running-a-verification)
+  * [Rules example](RuleVerifier.md#rules-example)
+  * [Rules syntax](RuleVerifier.md#rules-syntax)
+  * [Domains example](RuleVerifier.md#domains-example)
+  * [Verify access controls on APF libraries](RuleVerifier.md#verify-access-controls-on-apf-libraries)
+  * [Identify orphans in access control lists](RuleVerifier.md#identify-orphans-in-access-control-lists)
+  * [Methods and classes for RuleVerifier](RuleVerifier.md#module-pyracf.rule_verify)
+* [pyracf](source/modules.md)
+  * [pyracf package](source/pyracf.md)
+* [pyracf package](source/pyracf.md)
+  * [Submodules](source/pyracf.md#submodules)
+  * [pyracf.frame_filter module](source/pyracf.md#module-pyracf.frame_filter)
+  * [pyracf.getOffsets module](source/pyracf.md#pyracf-getoffsets-module)
+  * [pyracf.group_structure module](source/pyracf.md#module-pyracf.group_structure)
+  * [pyracf.profile_field_rules module](source/pyracf.md#module-pyracf.profile_field_rules)
+  * [pyracf.profile_filter_keywords module](source/pyracf.md#module-pyracf.profile_filter_keywords)
+  * [pyracf.profile_frame module](source/pyracf.md#module-pyracf.profile_frame)
+  * [pyracf.profile_publishers module](source/pyracf.md#module-pyracf.profile_publishers)
+  * [pyracf.racf_functions module](source/pyracf.md#module-pyracf.racf_functions)
+  * [pyracf.rule_verify module](source/pyracf.md#module-pyracf.rule_verify)
+  * [pyracf.utils module](source/pyracf.md#module-pyracf.utils)
+  * [pyracf.xls_writers module](source/pyracf.md#module-pyracf.xls_writers)
+  * [Module contents](source/pyracf.md#module-pyracf)
+
+# Indices and tables
+
+* [Index](genindex.md)
+* [Module Index](py-modindex.md)
+* [Search Page](search.md)
