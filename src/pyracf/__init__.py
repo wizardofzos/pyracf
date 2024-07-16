@@ -16,6 +16,7 @@ from datetime import datetime
 import os
 import glob
 
+
 import warnings
 
 from .exceptions import PyRacfException
@@ -29,6 +30,126 @@ from .xls_writers import XlsWriter
 
 class RACF(ProfilePublisher,XlsWriter):
 
+
+class StoopidException(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+def deprecated(func,oldname):
+    ''' Wrapper routine to add (deprecated) alias name to new routine (func), supports methods and properties. 
+        Inspired by functools.partial() '''
+    def deprecated_func(*arg,**keywords):
+        if hasattr(func,"__name__"):  # normal function object
+            newroutine = func
+        else:  # property object
+            newroutine = func.fget
+        warnings.warn(f"{oldname} is deprecated and will be removed, use {newroutine.__name__} instead.")
+        return newroutine(*arg,**keywords)
+    deprecated_func.func = func
+    return deprecated_func
+
+class GroupStructureTree(dict):
+    ''' Dict with group names starting from SYS1 (group tree) or from (multiple) user IDs (owner tree).
+    Printing these objects, the tree will be formatted as Unix tree (default, or after .setformat('unix') or with mainframe characters (after .setformat('simple').
+    The dict may be accessed with .tree '''
+    def __init__(self,df,linkup_field="GPBD_SUPGRP_ID"):
+        # get all owners... (group or user) or all superior groups
+        tree = {}
+        where_is = {}
+        higher_ups = df.groupby(linkup_field)
+        for higher_up in higher_ups.groups.keys():
+            if higher_up not in tree:
+                tree[higher_up] = []
+                for group in higher_ups.get_group(higher_up)['GPBD_NAME'].values:
+                    tree[higher_up].append(group)
+                    where_is[group] = tree[higher_up]
+        # initially, for an owner tree, anchor can be a user (like IBMUSER) or a group
+        # now we gotta condense it, so only IBMUSER and other group owning users are at top level
+        # for group tree, we should end up with SYS1, and a list of groups
+        deletes = []
+        for anchor in tree:
+            if anchor in where_is:
+                supgrpMembers = where_is[anchor]
+                ix = supgrpMembers.index(anchor)
+                supgrpMembers[ix] = {anchor: tree[anchor]}
+                deletes.append(anchor)
+        for anchor in deletes:
+            tree.pop(anchor)
+        if '' in tree:  # bring SYS1 to the top, supgroup of SYS1 is ''
+            tree = tree[''][0]
+        super().__init__(tree)
+        self._format = 'unix'
+        
+    def __str__(self):
+        ''' what happens when print(object) is issued '''
+        return self.simple_format(self) if self._format=='simple' else self.unix_format(self)
+         
+    def format(self,format='unix'):
+        ''' return printable tree '''
+        if format in ['unix','simple']:
+            return self.simple_format(self) if format=='simple' else self.unix_format(self)
+        else:
+            warnings.warn(f'Unsupported format value {format}, select unix or simple.')
+        
+    def setformat(self,format='unix'):
+        ''' set default format for next print '''
+        if format in ['unix','simple']:
+            self._format = format
+        else:
+            warnings.warn(f'Unsupported format value {format}, select unix or simple.')
+
+    @property
+    def tree(self):
+        warnings.warn('.tree attribute is deprecated, this is now the default return value of the tree objected')
+        return self
+
+    def unix_format(self,branch=None,prefix=''):
+        ''' print groups, prefixed with vertical bars to show depth '''
+        BOX_START = u'\u250C'
+        BOX_ENTRY = u'\u251C'
+        BOX_CONT = u'\u2502'
+        BOX_END = u'\u2514'
+        if not branch:
+            branch = self.tree
+        info = ''
+        if type(branch)==str:
+            info += prefix + ' ' +  str(branch) + '\n'
+        elif type(branch)==list:
+            # indent 1 level, prev level continues with just a bar
+            if prefix and prefix[-1]==BOX_ENTRY:
+                prefix = prefix[0:-1]+BOX_CONT
+            for node in branch:
+                # last node in a branch gets an END indicator, others get a T
+                mark = ' '+BOX_END if (node==branch[-1]) else ' '+BOX_ENTRY
+                info += self.unix_format(node,prefix=prefix+mark)
+        else:
+            for (node,values) in branch.items():
+                info += prefix + ' ' + str(node) + '\n'
+                # only 1 END indicator (which we just printed)
+                if prefix and prefix[-1]==BOX_END:
+                    prefix = prefix[0:-1]+' '
+                info += self.unix_format(values,prefix=prefix)
+        return info
+
+    def simple_format(self,branch=None,depth=0):
+        ''' print groups, prefixed with vertical bars to show depth '''
+        if not branch:
+            branch = self.tree
+        info = ''
+        if type(branch)==str:
+            info += ' |'*depth + ' ' +  str(branch) + '\n'
+        elif type(branch)==list:
+            depth += 1
+            for node in branch:            
+                info += self.simple_format(node,depth)
+        else:
+            for (node,values) in branch.items():
+                info += ' |'*depth + ' '  + str(node) + '\n'
+                info += self.simple_format(values,depth)
+        return info
+
+
     # Our states
     STATE_BAD         = -1
     STATE_INIT        =  0
@@ -36,6 +157,10 @@ class RACF(ProfilePublisher,XlsWriter):
     STATE_CORRELATING =  2
     STATE_CORRELATED  =  3
     STATE_READY       =  4
+
+
+
+
 
     # keep track of names used for a record type, record type + name must match those in offsets.json
     # A dict with 'key' -> RecordType
@@ -279,16 +404,20 @@ class RACF(ProfilePublisher,XlsWriter):
             return
         print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - parsing {self._irrdbu00}')
         self.parse(recordtypes=recordtypes)
-        print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - selected recordtypes: {",".join(recordtypes) if recordtypes else "all"}')
+
+
+
+
         while self._state < self.STATE_CORRELATING:
             progress =  math.floor(((sum(r['seen'] for r in self._records.values() if r)) / self._unloadlines) * 63)
             pct = (progress/63) * 100 # not as strange as it seems:)
             done = progress * '▉'
             todo = (63-progress) * ' '
-            print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - progress: {done}{todo} ({pct:.2f}%)'.center(80), end="\r")
             time.sleep(0.5)
+            print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - progress: {done}{todo} ({pct:.2f}%)'.center(80), end="\r")
         print('')
-        while self._state < self.STATE_CORRELATED:
+
+        while self._state < self.STATE_READY:
              print(f'{datetime.now().strftime("%y-%m-%d %H:%M:%S")} - correlating data {40*" "}', end="\r")
              time.sleep(0.5)
         print('')
@@ -406,7 +535,10 @@ class RACF(ProfilePublisher,XlsWriter):
         # copy ID(*) access into resource frames, similar to UACC: IDSTAR_ACCESS and ALL_USER_ACCESS
         if self.parsed("DSBD") > 0 and self.parsed("DSACC") > 0 and 'IDSTAR_ACCESS' not in self._datasets.columns:
             uaccs = pd.DataFrame()
-            uaccs["UACC_NUM"] = self._datasets["DSBD_UACC"].map(accessKeywords.index)
+
+
+            uaccs["UACC_NUM"] = self._datasets["DSBD_UACC"].map(RACF.accessKeywords.index)
+
             uaccs["IDSTAR_ACCESS"] = self._datasetAccess.reindex(['*'],level=1,axis=0).droplevel([1,2])['DSACC_ACCESS']
             uaccs["IDSTAR_ACCESS"] = uaccs["IDSTAR_ACCESS"].fillna(' ')
             uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(accessKeywords.index)
@@ -420,8 +552,13 @@ class RACF(ProfilePublisher,XlsWriter):
         if self.parsed("GRBD") > 0 and self.parsed("GRACC") > 0 and 'IDSTAR_ACCESS' not in self._generals.columns:
             uaccs = pd.DataFrame()
             uaccs["UACC"] = self._generals["GRBD_UACC"]
+
             uaccs["UACC"] = uaccs["UACC"].where(uaccs["UACC"].isin(accessKeywords),other=' ')  # DIGTCERT fields may be distorted
             uaccs["UACC_NUM"] = uaccs["UACC"].map(accessKeywords.index)
+
+            uaccs["UACC"] = uaccs["UACC"].where(uaccs["UACC"].isin(RACF.accessKeywords),other=' ')  # DIGTCERT fields may be distorted
+            uaccs["UACC_NUM"] = uaccs["UACC"].map(RACF.accessKeywords.index)
+
             uaccs["IDSTAR_ACCESS"] = self._generalAccess.reindex(['*'],level=2,axis=0).droplevel([2,3]).drop_duplicates(['GRACC_CLASS_NAME','GRACC_NAME','GRACC_ACCESS'])['GRACC_ACCESS']
             uaccs["IDSTAR_ACCESS"] = uaccs["IDSTAR_ACCESS"].fillna(' ')
             uaccs["IDSTAR_NUM"] = uaccs["IDSTAR_ACCESS"].map(accessKeywords.index)
@@ -488,6 +625,7 @@ class RACF(ProfilePublisher,XlsWriter):
                 pass
 
 
+
     def load_pickles(self, path='/tmp', prefix=''):
         # Read from pickles dir
         picklefiles = glob.glob(f'{path}/{prefix}*.pickle')
@@ -505,7 +643,426 @@ class RACF(ProfilePublisher,XlsWriter):
                 recordsRetrieved = len(getattr(self, dfname))
                 self._records[recordtype] = {
                   "seen": recordsRetrieved,
-                  "parsed": recordsRetrieved
+
+    def _generic2regex(selection, lenient='%&*'):
+        ''' Change a RACF generic pattern into regex to match with text strings in pandas cells.  use lenient="" to match with dsnames/resources '''
+        if selection in ('**',''):
+            return '.*$'
+        else:
+            return selection.replace('*.**','`dot``ast`')\
+                    .replace('.**',r'\`dot``dot``ast`')\
+                    .replace('*',r'[\w@#$`lenient`]`ast`')\
+                    .replace('%',r'[\w@#$]')\
+                    .replace('.',r'\.')\
+                    .replace('`dot`','.')\
+                    .replace('`ast`','*')\
+                    .replace('`lenient`',lenient)\
+                    +'$'
+
+
+    def _giveMeProfiles(self, df, selection=None, option=None):
+        ''' Search profiles using the index fields.  selection can be str or tuple.  Tuples check for group + user id in connects, or class + profile key in generals.
+        option controls how selection is interpreted, and how data must be returned:
+        None is for (expensive) backward compatibility, returns a df with 1 profile.
+        LIST returns a series for 1 profile, much faster and easier to process.
+        '''
+        if not selection:
+            raise StoopidException('profile criteria not specified...')
+        if option in (None,'LIST','L'):  # return 1 profile
+            # 1 string, several strings in a tuple, or a mix of strings and None
+            if type(selection)==str and not option:
+                selection = [selection]  # [] forces return of a df, not a Series
+            elif type(selection)==tuple:
+                if any([s in (None,'**') for s in selection]):  # any qualifiers are a mask
+                    selection = tuple(slice(None) if s in (None,'**') else s for s in selection),
+                else:
+                    selection = [selection]
+            else:
+                pass
+            try:
+                return df.loc[selection]
+            except KeyError:
+                if not option:  # return empty DataFrame with all the original columns
+                    return df.head(0)
+                else:  # return Series 
+                    return []
+        else:
+            raise StoopidException(f'unexpected last parameter {option}')
+
+
+    def gfilter(df, *selection):
+        ''' Search profiles using GENERIC pattern on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
+        locs = pd.array([True]*df.shape[0])
+        for s in range(len(selection)):
+            if selection[s] not in (None,'**'):
+                if selection[s]=='*':
+                    locs &= (df.index.get_level_values(s)=='*')
+                else: 
+                    locs &= (df.index.get_level_values(s).str.match(RACF._generic2regex(selection[s])))
+        return df.loc[locs]
+
+    def rfilter(df, *selection):
+        ''' Search profiles using refex on the index fields.  selection can be one or more values, corresponding to index levels of the df '''
+        locs = pd.array([True]*df.shape[0])
+        for s in range(len(selection)):
+            if selection[s] not in (None,'**','.*'):
+                locs &= (df.index.get_level_values(s).str.match(selection[s]))
+        return df.loc[locs]
+
+    # user frames
+
+    def user(self, userid=None, pattern=None):
+        return self._giveMeProfiles(self._users, userid, pattern)
+
+    def connect(self, group=None, userid=None, pattern=None):
+        ''' connect('SYS1') returns 1 index level with user IDs, connect(None,'IBMUSER') returns 1 index level with group names '''
+        if pattern=='L' or pattern=='LIST':
+            return self._giveMeProfiles(self._connectData, (group,userid), pattern)
+        else:
+            if group and (not userid or userid=='**'):
+                # with group given, return connected user IDs via index (.loc['group'] strips level(0))
+                selection = group
+            elif userid and (not group or group=='**'):
+                # with user ID given, return connected groups via index (only level(0))
+                return self._connectData.loc[(slice(None),userid),].droplevel(1)
+            else:
+                # with group + user ID given, return 1 entry with all index levels (because only the data columns will be of interest)
+                selection = [(group,userid)]
+            try:
+                return self._connectData.loc[selection]
+            except KeyError:
+                return self._connectData.head(0)  # empty frame
+
+
+    @property
+    def userUSRDATA(self):
+        # retained here due to deprecated property definition
+        return self._userUSRDATA
+
+    installdata = property(deprecated(userUSRDATA,"installdata"))
+
+    @property
+    def userDistributedIdMapping(self):
+        # retained here due to deprecated property definition
+        return self._userDistributedIdMapping
+
+    userDistributedMapping = property(deprecated(userDistributedIdMapping,"userDistributedMapping"))
+
+
+    @property
+    def specials(self):
+        return self._users.loc[self._users['USBD_SPECIAL'] == 'YES']
+
+    @property
+    def operations(self):
+        return self._users.loc[self._users['USBD_OPER'] == 'YES']
+
+    @property
+    def auditors(self):
+        return self._users.loc[self._users['USBD_AUDITOR'] == 'YES']
+
+    @property
+    def revoked(self):
+        return self._users.loc[self._users['USBD_REVOKE'] == 'YES']
+
+
+    # group frames
+
+    def group(self, group=None, pattern=None):
+        return self._giveMeProfiles(self._groups, group, pattern)
+
+    @property
+    def groupsWithoutUsers(self):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._groups.loc[~self.groups.GPBD_NAME.isin(self._connectData.USCON_GRP_ID)]
+    
+
+    # dataset frames
+        
+    def dataset(self, profile=None, pattern=None):
+        return self._giveMeProfiles(self._datasets, profile, pattern)
+
+    def datasetConditionalPermit(self, profile=None, id=None, access=None, pattern=None):
+        return self._giveMeProfiles(self._datasetConditionalAccess, (profile,id,access), pattern)
+
+    def datasetPermit(self, profile=None, id=None, access=None, pattern=None):
+        return self._giveMeProfiles(self._datasetAccess, (profile,id,access), pattern)
+
+    @property
+    def uacc_read_datasets(self):
+        return self._datasets.loc[self._datasets.DSBD_UACC=="READ"]
+    @property
+    def uacc_update_datasets(self):
+        return self._datasets.loc[self._datasets.DSBD_UACC=="UPDATE"]
+    @property
+    def uacc_control_datasets(self):
+        return self._datasets.loc[self._datasets.DSBD_UACC=="CONTROL"]
+    @property
+    def uacc_alter_datasets(self):
+        return self._datasets.loc[self._datasets.DSBD_UACC=="ALTER"]
+
+
+    # general resource frames
+
+    @property
+    def generals(self, query=None):
+        # retained here due to deprecated property definition
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._generals
+
+    generics = property(deprecated(generals,"generics"))
+
+    def general(self, resclass=None, profile=None, pattern=None):
+        return self._giveMeProfiles(self._generals, (resclass,profile), pattern)
+
+    @property
+    def generalMembers(self, query=None):
+        # retained here due to deprecated property definition
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._generalMembers    
+
+    genericMembers = property(deprecated(generalMembers,"genericMembers"))
+
+    @property
+    def generalAccess(self, query=None):
+        # retained here due to deprecated property definition
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._generalAccess
+
+    genericAccess = property(deprecated(generalAccess,"genericAccess"))
+    
+    def generalPermit(self, resclass=None, profile=None, id=None, access=None, pattern=None):
+        return self._giveMeProfiles(self._generalAccess, (resclass,profile,id,access), pattern)
+    
+    
+    @property
+    def generalConditionalAccess(self):
+        # retained here due to deprecated property definition
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+        return self._generalConditionalAccess
+
+    genericConditionalAccess = property(deprecated(generalConditionalAccess,"genericConditionalAccess"))
+    
+    def generalConditionalPermit(self, resclass=None, profile=None, id=None, access=None, pattern=None):
+        return self._giveMeProfiles(self._generalConditionalAccess, (resclass,profile,id,access), pattern)
+
+    @property
+    def SSIGNON(self): # GRSIGN
+        return self._generalSSIGNON.join(self._generals['GRBD_APPL_DATA'])
+
+
+
+    def rankedAccess(args):
+        ''' translate access levels into integers, add 10 if permit is for the user ID. 
+        could be used in .apply() but would be called for each row, so very very slow '''
+        (userid,authid,access) = args
+        accessNum = RACF.accessKeywords.index(access)
+        return accessNum+10 if userid==authid else accessNum
+
+    def acl(self, df, permits=True, explode=False, resolve=False, admin=False, access=None, allows=None, sort="profile"):
+        ''' transform {dataset,general}[Conditional]Access table:
+        permits=True: show normal ACL (with the groups identified in field USER_ID)
+        explode=True: replace all groups with the users connected to the groups (in field USER_ID)
+        resolve=True: show user specific permit, or the highest group permit for each user
+        admin=True: add the users that have ability to change the groups on the ACL (in field ADMIN_ID)
+            VIA identifies the group name, AUTHORITY the RACF privilege involved
+        access=access level: show entries that are equal to the level specified, access='CONTROL'
+        allows=access level: show entries that are higher or equal to the level specified, allows='UPDATE'
+        sort=["user","access","id","admin","profile"] sort the resulting output
+        '''
+        tbName = df.columns[0].split('_')[0]
+        tbEntity = tbName[0:2]
+        if tbName in ["DSBD","DSACC","DSCACC"]:
+            tbProfileKeys = ["NAME","VOL"]
+        elif tbName in ["GRBD","GRACC","GRCACC"]:
+            tbProfileKeys = ["CLASS_NAME","NAME"]
+        else:
+            raise StoopidException(f'Table {tbName} not supported for acl( ), except DSBD, DSACC, DSCACC, GRBD, GRACC or GRCACC.')
+
+        if tbName in ["DSBD","GRBD"]:
+            # profiles selected, add corresp. access + cond.access frames
+            tbProfiles = df[[tbName+"_"+k for k in tbProfileKeys+["OWNER_ID","UACC"]]].copy()
+            tbProfiles.columns = [c.replace(tbName+"_","") for c in tbProfiles.columns]
+            tbPermits = []
+            for tb in [tbEntity+"ACC",tbEntity+"CACC"]:
+                if self.parsed(tb)>0:
+                    tbPermits.append(getattr(self,self._recordname_df[tb])\
+                                     .merge(tbProfiles["UACC"], left_index=True, right_index=True))
+                    tbPermits[-1].columns = [c.replace(tb+"_","") for c in tbPermits[-1].columns]
+            tbPermits = pd.concat(tbPermits,sort=False)\
+                          .drop(["RECORD_TYPE","ACCESS_CNT","UACC"],axis=1)\
+                          .fillna(' ') 
+        elif tbName in ["DSACC","DSCACC","GRACC","GRCACC"]:
+            # access frame selected, add profiles from frame tbEntity+BD
+            tbPermits = df.copy()
+            tbPermits.columns = [c.replace(tbName+"_","") for c in tbPermits.columns]
+            tbPermits.drop(["RECORD_TYPE","ACCESS_CNT"],axis=1,inplace=True)
+            tbProfiles = getattr(self,self._recordname_df[tbEntity+"BD"])\
+                         .loc[tbPermits.droplevel([-2,-1]).index.drop_duplicates()].copy()
+            tbProfiles.columns = [c.replace(tbEntity+"BD_","") for c in tbProfiles.columns]
+            tbProfiles = tbProfiles[tbProfileKeys+["OWNER_ID","UACC"]]
+        else:
+            raise StoopidException(f'Table {tbName} not supported for acl( ), except DSBD, DSACC, DSCACC, GRBD, GRACC or GRCACC.')
+          
+        # tbProfiles and tbPermits have column names without the tbName prefix
+        
+        returnFields = ["USER_ID","AUTH_ID","ACCESS"]
+        conditionalFields = ["CATYPE","CANAME","NET_ID","CACRITERIA"]
+
+        sortBy = {"user":["USER_ID"]+tbProfileKeys, 
+                  "access":["RANKED_ACCESS","USER_ID"],
+                  "id":["AUTH_ID"]+tbProfileKeys, 
+                  "admin":"ADMIN_ID", 
+                  "profile":tbProfileKeys+["USER_ID"]}
+        if sort not in sortBy:
+            raise StoopidException(f'Sort value {sort} not supported for acl( ), use one of {",".join(sortBy.keys())}.')
+        
+        if explode or resolve or admin:  # get view of connectData with only one index level (the group name)
+            groupMembers = self._connectData.droplevel(1)
+
+        if explode or resolve:  # get user IDs connected to groups into field USER_ID
+            acl = pd.merge(tbPermits, groupMembers[["USCON_NAME"]], how="left", left_on="AUTH_ID", right_index=True)
+            acl.insert(3,"USER_ID",acl["USCON_NAME"].where(acl["USCON_NAME"].notna(),acl["AUTH_ID"]))
+        elif permits:  # just the userid+access from RACF, add USER_ID column for consistency
+            acl = tbPermits
+            acl.insert(3,"USER_ID",acl["AUTH_ID"].where(~ acl["AUTH_ID"].isin(self._groups.index.values),"-group-"))
+        else:
+            acl = AclFrame(tbPermits.head(0))
+            if not admin:  # no option that produces data?
+                return acl  # give up early, prevent KeyErrors due to empty tables
+
+        if permits or explode or resolve:  # add -uacc- pseudo access
+            uacc = tbProfiles.query("UACC!='NONE'").copy()
+            if not uacc.empty:
+                uacc["OWNER_ID"] = "-uacc-" # is renamed to AUTH_ID
+                uacc["USER_ID"] = "-uacc-"
+                uacc = uacc.rename({"OWNER_ID":"AUTH_ID","UACC":"ACCESS"},axis=1)
+                acl = pd.concat([acl,uacc], ignore_index=True, sort=False).fillna(' ') # lose index b/c concat doesn't support us
+            
+        if resolve or sort=="access":
+            # map access level to number, add 10 for user permits so they override group permits in sort_values( )
+            acl["RANKED_ACCESS"] = acl["ACCESS"].map(RACF.accessKeywords.index)
+            acl["RANKED_ACCESS"] = acl["RANKED_ACCESS"].where(acl["USER_ID"]!=acl["AUTH_ID"], acl["RANKED_ACCESS"]+10)
+        if resolve:
+            # keep highest value of RANKED_ACCESS, this is at least twice as fast as using .iloc[].idxmax() 
+            condAcc = ["CATYPE","CANAME"] if "CATYPE" in acl.columns else []
+            acl = acl.sort_values(tbProfileKeys+["USER_ID"]+condAcc+["RANKED_ACCESS"])\
+                     .drop_duplicates(tbProfileKeys+["USER_ID"]+condAcc, keep='last')
+        if sort=="access":
+            acl.RANKED_ACCESS = 10 - (acl.RANKED_ACCESS % 10)  # highest access first
+        
+        if admin:
+            # owner of the profile, or group special, or group authority
+            # users who own the profiles
+            profile_userowners = pd.merge(tbProfiles, self._users["USBD_NAME"],
+                                          how="inner", left_on="OWNER_ID", right_index=True)\
+                                   .rename({"OWNER_ID":"ADMIN_ID"},axis=1)\
+                                   .drop(["USBD_NAME","UACC"],axis=1)
+            profile_userowners["AUTHORITY"] = "OWNER"
+            profile_userowners["VIA"] = "-profile-"
+            profile_userowners["ACCESS"] = "-owner-"
+
+            # groups that own the profiles
+            profile_groupowner1 = pd.merge(tbProfiles, self._groups[["GPBD_NAME"]],
+                                           how="inner", left_on="OWNER_ID", right_index=True)\
+                                    .drop(["GPBD_NAME","UACC"],axis=1)
+            profile_groupowner1["ACCESS"] = "-owner-"
+            profile_groupowner2 = pd.merge(profile_groupowner1, self._ownertreeLines, how="inner", left_on="OWNER_ID", right_index=True)\
+                                    .drop(["GROUP","OWNER_ID"],axis=1)
+            # identify group special on owner group and on any owning group
+            profile_groupowner1.rename({"OWNER_ID":"OWNER_IDS"},axis=1,inplace=True)
+            # continue with group special processing to find admin users
+
+            # who has administrative authority to modify groups from the ACL?
+            admin_owners = pd.merge(tbPermits, self._groups[["GPBD_NAME","GPBD_OWNER_ID","GPBD_SUPGRP_ID"]],
+                                    how="inner", left_on="AUTH_ID", right_index=True)
+            admin_owners["USER_ID"] = "-group-"
+
+            # users who own those groups
+            admin_gowners = admin_owners.query("GPBD_OWNER_ID != GPBD_SUPGRP_ID")\
+                                        .rename({"GPBD_NAME":"VIA","GPBD_OWNER_ID":"ADMIN_ID"},axis=1)\
+                                        .drop(["GPBD_SUPGRP_ID"],axis=1)
+            admin_gowners["AUTHORITY"] = "OWNER"
+            
+            # find all owner groups + groups up to SYS1 or user ID that breaks ownership
+            admin_grpspec1 = admin_owners.query("GPBD_OWNER_ID == GPBD_SUPGRP_ID")\
+                                         .drop(["GPBD_OWNER_ID","GPBD_SUPGRP_ID"],axis=1)
+            admin_grpspec2 = pd.merge(admin_grpspec1, self._ownertreeLines, how="inner", left_on="AUTH_ID", right_index=True)\
+                               .drop(["GPBD_NAME","GROUP"],axis=1)
+            admin_grpspec1.rename({"GPBD_NAME":"OWNER_IDS"},axis=1,inplace=True)
+            
+            # identify group special on ACL group and on any owning group
+            admin_grpspec = pd.merge(pd.concat([admin_grpspec1,admin_grpspec2,profile_groupowner1,profile_groupowner2], sort=False),\
+                                     groupMembers[["USCON_NAME","USCON_GRP_ID","USCON_GRP_SPECIAL"]]\
+                                             .query('USCON_GRP_SPECIAL == "YES"'),
+                                     how="inner", left_on="OWNER_IDS", right_index=True)\
+                               .rename({"USCON_NAME":"ADMIN_ID","OWNER_IDS":"VIA"},axis=1)\
+                               .drop(["USCON_GRP_ID","USCON_GRP_SPECIAL"],axis=1)
+            admin_grpspec["AUTHORITY"] = "GRPSPECIAL"
+
+            # CONNECT or JOIN authority on an ACL group
+            admin_grpauth = pd.merge(tbPermits, groupMembers[["USCON_NAME","USCON_GRP_ID","GPMEM_AUTH"]]
+                                                 .query('GPMEM_AUTH==["CONNECT","JOIN"]'),
+                                     how="inner", left_on="AUTH_ID", right_index=True)\
+                              .rename({"USCON_NAME":"ADMIN_ID","USCON_GRP_ID":"VIA","GPMEM_AUTH":"AUTHORITY"},axis=1)
+            admin_grpauth["USER_ID"] = "-group-"
+            
+            acl = pd.concat([acl,profile_userowners,admin_gowners,admin_grpspec,admin_grpauth],
+                            ignore_index=True, sort=False).fillna(' ')
+            returnFields += ["ADMIN_ID","AUTHORITY","VIA"]
+            
+        if access:
+            acl = acl.loc[acl["ACCESS"].map(RACF.accessKeywords.index)==RACF.accessKeywords.index(access.upper())]
+        if allows:
+            acl = acl.loc[acl["ACCESS"].map(RACF.accessKeywords.index)>=RACF.accessKeywords.index(allows.upper())]
+
+        condAcc = conditionalFields if "CATYPE" in acl.columns and any(acl["CATYPE"].gt(' ')) else []
+        return acl.sort_values(by=sortBy[sort])[tbProfileKeys+returnFields+condAcc].reset_index(drop=True)
+
+    
+    @property
+    def orphans(self):
+        
+        if self.parsed("DSACC") + self.parsed("GRACC") == 0:
+            raise StoopidException('No dataset/general access records parsed! (PEBKAM/ID-10T error)')
+            
+        datasetOrphans = None
+        generalOrphans = None
+
+        if self.parsed("DSACC") > 0:
+            self._datasetAccess = self._datasetAccess.assign(inGroups=self._datasetAccess.DSACC_AUTH_ID.isin(self._groups.GPBD_NAME))
+            self._datasetAccess = self._datasetAccess.assign(inUsers=self._datasetAccess.DSACC_AUTH_ID.isin(self._users.USBD_NAME))
+            datasetOrphans = self._datasetAccess.loc[(self._datasetAccess['inGroups'] == False) & (self._datasetAccess['inUsers'] == False) & (self._datasetAccess['DSACC_AUTH_ID'] != "*") & (self._datasetAccess['DSACC_AUTH_ID'] != "&RACUID")]
+        
+        if self.parsed("GRACC") > 0:
+                self._generalAccess = self._generalAccess.assign(inGroups=self._generalAccess.GRACC_AUTH_ID.isin(self._groups.GPBD_NAME))
+                self._generalAccess = self._generalAccess.assign(inUsers=self._generalAccess.GRACC_AUTH_ID.isin(self._users.USBD_NAME))
+                generalOrphans =  self._generalAccess.loc[(self._generalAccess['inGroups'] == False) & (self._generalAccess['inUsers'] == False) & (self._generalAccess['GRACC_AUTH_ID'] != "*") & (self._generalAccess['GRACC_AUTH_ID'] != "&RACUID")]
+
+        return datasetOrphans, generalOrphans
+
+    def xls(self,fileName='irrdbu00.xlsx'):
+        if self._state != self.STATE_READY:
+            raise StoopidException('Not done parsing yet! (PEBKAM/ID-10T error)')
+
+        if self.parsed("DSACC") + self.parsed("GRACC") == 0:
+            raise StoopidException('No dataset/general access records parsed! (PEBKAM/ID-10T error)')
+
+        writer = pd.ExcelWriter(f'{fileName}', engine='xlsxwriter')
+        accessLevelFormats = {
+                    'N': writer.book.add_format({'bg_color': 'silver'}),
+                    'E': writer.book.add_format({'bg_color': 'purple'}),
+                    'R': writer.book.add_format({'bg_color': 'yellow'}),
+                    'U': writer.book.add_format({'bg_color': 'orange'}),
+                    'C': writer.book.add_format({'bg_color': 'red'}),
+                    'A': writer.book.add_format({'bg_color': 'red'}),
+                    'D': writer.book.add_format({'bg_color': 'cyan'}), 
+                    'T': writer.book.add_format({'bg_color': 'orange'}),
                 }
                 self._unloadlines += recordsRetrieved
 
@@ -519,10 +1076,99 @@ class RACF(ProfilePublisher,XlsWriter):
                   "parsed": 0
                 }
 
-        self._state = self.STATE_CORRELATING
-        self._correlate()
-        self._state = self.STATE_READY
-        self._stoptime = datetime.now()
+
+
+        format_br = writer.book.add_format({})
+        format_br.set_rotation(90)
+        format_nr = writer.book.add_format({})
+        format_center = writer.book.add_format({})
+        format_center.set_align('center')
+        format_center.set_align('vcenter')
+
+        ss = datetime.now()
+
+        classes = self.generalAccess.groupby(['GRACC_CLASS_NAME'])
+        for c in classes.groups:
+            s = datetime.now()
+            authIDsInClass = list(self.generalAccess.loc[self.generalAccess.GRACC_CLASS_NAME==c]['GRACC_AUTH_ID'].unique())
+            profilesInClass = list(self.generalAccess.loc[self.generalAccess.GRACC_CLASS_NAME==c]['GRACC_NAME'].unique())
+            longestProfile = 0
+            for p in profilesInClass:
+                if len(p) > longestProfile:
+                    longestProfile = len(p)
+            newdata = {}
+            newdata['Profiles'] = []
+            for id in authIDsInClass:
+                newdata[id] = [None] * len(profilesInClass)
+            classdata = classes.get_group(c)
+            profiles = classdata.groupby(['GRACC_NAME'])
+            for i,p in enumerate(profiles.groups):
+                profiledata = profiles.get_group(p)
+                newdata['Profiles'].append(p)
+                users = profiledata.groupby(['GRACC_AUTH_ID'])
+                for u in users.groups:
+                    useraccess = users.get_group(u)['GRACC_ACCESS'].values[0]
+                    newdata[u][i] = accessLevels[useraccess]
+            df1 = pd.DataFrame(newdata)
+            df1.to_excel(writer, sheet_name=c, index=False)
+            worksheet = writer.sheets[c]
+            worksheet.set_row(0, 64, format_br)
+            worksheet.set_column(1, len(authIDsInClass)+1, 2, format_center )
+            worksheet.autofit()
+            worksheet.write(0, 0, 'Profile', format_nr)
+
+            shared_strings = sorted(worksheet.str_table.string_table, key=worksheet.str_table.string_table.get)
+            for i in range(len(authIDsInClass)+1):
+                for j in range(len(profilesInClass)+1):
+                    if i>0 and j>0:
+                        rdict = worksheet.table.get(j,None)
+                        centry = rdict.get(i,None)
+                        if centry:
+                            value = shared_strings[centry.string]
+                            worksheet.write(j, i, value, accessLevelFormats[value])
+
+        if self.parsed("DSBD") > 0:
+            ss = datetime.now()
+            profilesInClass = list(self.datasetAccess['DSACC_NAME'].unique())
+            authIDsInClass = list(self.datasetAccess['DSACC_AUTH_ID'].unique())
+            authids = 0
+            longestProfile = 0
+            for p in profilesInClass:
+                if len(p) > longestProfile:
+                    longestProfile = len(p)
+            newdata = {}
+            newdata['Profiles'] = []
+            for id in authIDsInClass:
+                    newdata[id] = [None] * len(profilesInClass)
+            profiles = self.datasetAccess.groupby(['DSACC_NAME'])
+            for i,p in enumerate(profiles.groups):
+                profiledata = profiles.get_group(p)
+                newdata['Profiles'].append(p)
+                users = profiledata.groupby(['DSACC_AUTH_ID'])
+                for u in users.groups:
+                    useraccess = users.get_group(u)['DSACC_ACCESS'].values[0]
+                    newdata[u][i] = accessLevels[useraccess]
+
+            df1 = pd.DataFrame(newdata)
+            df1.to_excel(writer, sheet_name='DATASET', index=False)
+            worksheet = writer.sheets['DATASET']
+            worksheet.set_row(0, 64, format_br)
+            worksheet.set_column(1, len(authIDsInClass)+1, 2, format_center )
+            worksheet.set_column(0, 0, longestProfile + 2 )
+            worksheet.write(0, 0, 'Profile', format_nr)
+
+            shared_strings = sorted(worksheet.str_table.string_table, key=worksheet.str_table.string_table.get)
+            for i in range(len(authIDsInClass)+1):
+                for j in range(len(profilesInClass)+1):
+                    if i>0 and j>0:
+                        rdict = worksheet.table.get(j,None)
+                        centry = rdict.get(i,None)
+                        if centry:
+                            value = shared_strings[centry.string]
+                            worksheet.write(j, i, value, accessLevelFormats[value])
+
+        writer.close()   
+
 
 
     @property
