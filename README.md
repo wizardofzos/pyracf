@@ -1,5 +1,14 @@
 # pyracf
 
+# IMPORTANT UPDATE:
+
+PyRACF will be moving to a new home "soon". I want to be have more Mainframe Pandas Parsing Capabilities in a single framework, so I've started
+to work on mfpandas. You can already take a sneak-peak via ... or ...
+
+As a extra benefit, Leonard (comme-suis) can use this space for "the other pyracf" located at https://github.com/ambitus/pyracf. 
+
+Don't worry, all pyracf versions fro this package will still be available at the (soon to be stale) https://github.com/wizardofzos/pyracf.
+
 ## PyRACF: A Python module for analyzing RACF security
 
 PyRACF is a powerful Python module that simplifies the parsing and querying of any RACF database, providing an efficient and intuitive way to analyze security setups on IBM Z systems. By consuming the IRRDBU00 unload, PyRACF generates "Panda DataFrames" for each 'recordtype', which allow for seamless manipulation and analysis of the data.
